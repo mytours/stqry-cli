@@ -1,0 +1,47 @@
+version: 2
+
+builds:
+  - main: ./cmd/stqry
+    binary: stqry
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+    hooks:
+      post:
+        # Sign and notarize macOS binaries with quill (runs on Linux, no Mac needed).
+        # On snapshots/dry-runs, --ad-hoc skips the real cert and --dry-run skips notarization.
+        - cmd: sh -c '[ "{{ .Os }}" != "darwin" ] || quill sign-and-notarize "{{ .Path }}" --dry-run={{ .IsSnapshot }} --ad-hoc={{ .IsSnapshot }} -vv'
+          env:
+            - QUILL_SIGN_P12={{ .Env.MACOS_SIGN_P12 }}
+            - QUILL_SIGN_PASSWORD={{ .Env.MACOS_SIGN_PASSWORD }}
+            - QUILL_NOTARY_KEY={{ .Env.MACOS_NOTARY_KEY }}
+            - QUILL_NOTARY_KEY_ID={{ .Env.MACOS_NOTARY_KEY_ID }}
+            - QUILL_NOTARY_ISSUER={{ .Env.MACOS_NOTARY_ISSUER_ID }}
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+# brews:
+#   - repository:
+#       owner: stqry
+#       name: homebrew-tap
+#     homepage: "https://github.com/mytours/stqry-cli"
+#     description: "STQRY CLI - manage collections, screens, media, and content"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
