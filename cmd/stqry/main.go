@@ -1,11 +1,7 @@
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "github.com/mytours/stqry-cli/internal/cli"
 
 func main() {
-	fmt.Println("stqry - STQRY CLI")
-	os.Exit(0)
+	cli.Execute()
 }
