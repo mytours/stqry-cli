@@ -1,0 +1,36 @@
+version: 2
+
+builds:
+  - main: ./cmd/stqry
+    binary: stqry
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+brews:
+  - repository:
+      owner: stqry
+      name: homebrew-tap
+    homepage: "https://github.com/mytours/stqry-cli"
+    description: "STQRY CLI - manage collections, screens, media, and content"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
