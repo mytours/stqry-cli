@@ -9,6 +9,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var regionURLs = map[string]string{
+	"us": "https://api-us.stqry.com",
+	"ca": "https://api-ca.stqry.com",
+	"eu": "https://api-eu.stqry.com",
+	"sg": "https://api-sg.stqry.com",
+	"au": "https://api-au.stqry.com",
+}
+
+func resolveAPIURL(region, apiURL string) (string, error) {
+	if apiURL != "" {
+		return apiURL, nil
+	}
+	if region != "" {
+		url, ok := regionURLs[region]
+		if !ok {
+			return "", fmt.Errorf("unknown region %q. Valid regions: us, ca, eu, sg, au", region)
+		}
+		return url, nil
+	}
+	return "", fmt.Errorf("either --region or --api-url is required")
+}
+
 func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -24,9 +46,9 @@ func newConfigCmd() *cobra.Command {
 	return cmd
 }
 
-// config add-site --name=X --token=X --api-url=X
+// config add-site --name=X --token=X --region=X [--api-url=X]
 func newConfigAddSiteCmd() *cobra.Command {
-	var name, token, apiURL string
+	var name, token, region, apiURL string
 
 	cmd := &cobra.Command{
 		Use:   "add-site",
@@ -38,8 +60,9 @@ func newConfigAddSiteCmd() *cobra.Command {
 			if token == "" {
 				return fmt.Errorf("--token is required")
 			}
-			if apiURL == "" {
-				return fmt.Errorf("--api-url is required")
+			resolvedURL, err := resolveAPIURL(region, apiURL)
+			if err != nil {
+				return err
 			}
 
 			if _, exists := globalConfig.Sites[name]; exists {
@@ -48,7 +71,7 @@ func newConfigAddSiteCmd() *cobra.Command {
 
 			globalConfig.Sites[name] = &config.Site{
 				Token:  token,
-				APIURL: apiURL,
+				APIURL: resolvedURL,
 			}
 
 			if err := config.SaveGlobalConfig(globalConfig, config.DefaultGlobalConfigPath()); err != nil {
@@ -64,7 +87,8 @@ func newConfigAddSiteCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&name, "name", "", "Site name (required)")
 	cmd.Flags().StringVar(&token, "token", "", "API token (required)")
-	cmd.Flags().StringVar(&apiURL, "api-url", "", "API base URL (required)")
+	cmd.Flags().StringVar(&region, "region", "", "Region (us, ca, eu, sg, au)")
+	cmd.Flags().StringVar(&apiURL, "api-url", "", "API base URL (overrides --region, e.g. for staging)")
 
 	return cmd
 }
@@ -171,16 +195,38 @@ func newConfigListSitesCmd() *cobra.Command {
 	}
 }
 
-// config init --name=X
+// config init [--name=X] [--token=X] [--region=X | --api-url=X]
 func newConfigInitCmd() *cobra.Command {
-	var name string
+	var name, token, region, apiURL string
 
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Create .stqry/config.yaml in the current directory",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting working directory: %w", err)
+			}
+
+			// Full inline config: token + region/api-url provided — store credentials locally, skip global config.
+			if token != "" {
+				resolvedURL, err := resolveAPIURL(region, apiURL)
+				if err != nil {
+					return err
+				}
+				dirCfg := &config.DirectoryConfig{Token: token, APIURL: resolvedURL}
+				if err := config.SaveDirectoryConfig(cwd, dirCfg); err != nil {
+					return fmt.Errorf("saving directory config: %w", err)
+				}
+				if !flagQuiet && !flagJSON {
+					fmt.Printf("Initialised .stqry/config.yaml with inline site credentials.\n")
+				}
+				return nil
+			}
+
+			// Name-only: reference a site from global config.
 			if name == "" {
-				return fmt.Errorf("--name is required")
+				return fmt.Errorf("--name is required (or provide --token and --region/--api-url for inline config)")
 			}
 
 			if _, exists := globalConfig.Sites[name]; !exists {
@@ -195,11 +241,6 @@ func newConfigInitCmd() *cobra.Command {
 				return fmt.Errorf("site %q not found in global config.%s", name, hint)
 			}
 
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("getting working directory: %w", err)
-			}
-
 			dirCfg := &config.DirectoryConfig{Site: name}
 			if err := config.SaveDirectoryConfig(cwd, dirCfg); err != nil {
 				return fmt.Errorf("saving directory config: %w", err)
@@ -212,7 +253,10 @@ func newConfigInitCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&name, "name", "", "Site name to use in this directory (required)")
+	cmd.Flags().StringVar(&name, "name", "", "Site name from global config to use in this directory")
+	cmd.Flags().StringVar(&token, "token", "", "API token (stores credentials inline, skips global config)")
+	cmd.Flags().StringVar(&region, "region", "", "Region (us, ca, eu, sg, au)")
+	cmd.Flags().StringVar(&apiURL, "api-url", "", "API base URL (overrides --region, e.g. for staging)")
 
 	return cmd
 }

@@ -18,7 +18,9 @@ type GlobalConfig struct {
 }
 
 type DirectoryConfig struct {
-	Site string `yaml:"site"`
+	Site   string `yaml:"site,omitempty"`
+	Token  string `yaml:"token,omitempty"`
+	APIURL string `yaml:"api_url,omitempty"`
 }
 
 func DefaultGlobalConfigPath() string {
@@ -87,17 +89,29 @@ func SaveDirectoryConfig(dir string, cfg *DirectoryConfig) error {
 	return os.WriteFile(filepath.Join(stqryDir, "config.yaml"), data, 0644)
 }
 
-func ResolveSite(global *GlobalConfig, flagSite string, dirSite string) (*Site, error) {
-	name := flagSite
-	if name == "" {
-		name = dirSite
+func ResolveSite(global *GlobalConfig, flagSite string, dirCfg *DirectoryConfig) (*Site, error) {
+	// --site flag takes priority: look up in global config.
+	if flagSite != "" {
+		site, ok := global.Sites[flagSite]
+		if !ok {
+			return nil, fmt.Errorf("site %q not found in config. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>`", flagSite, flagSite)
+		}
+		return site, nil
 	}
-	if name == "" {
-		return nil, fmt.Errorf("no site specified. Use --site or run `stqry config init` in this directory")
+
+	// Directory config with inline credentials takes next priority.
+	if dirCfg != nil && dirCfg.Token != "" && dirCfg.APIURL != "" {
+		return &Site{Token: dirCfg.Token, APIURL: dirCfg.APIURL}, nil
 	}
-	site, ok := global.Sites[name]
-	if !ok {
-		return nil, fmt.Errorf("site %q not found in config. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>`", name, name)
+
+	// Directory config referencing a named global site.
+	if dirCfg != nil && dirCfg.Site != "" {
+		site, ok := global.Sites[dirCfg.Site]
+		if !ok {
+			return nil, fmt.Errorf("site %q not found in config. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>`", dirCfg.Site, dirCfg.Site)
+		}
+		return site, nil
 	}
-	return site, nil
+
+	return nil, fmt.Errorf("no site specified. Use --site or run `stqry config init` in this directory")
 }

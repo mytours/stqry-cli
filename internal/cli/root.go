@@ -72,7 +72,7 @@ func newRootCmd() *cobra.Command {
 				return fmt.Errorf("finding directory config: %w", err)
 			}
 
-			site, err := config.ResolveSite(globalConfig, flagSite, dirCfg.Site)
+			site, err := config.ResolveSite(globalConfig, flagSite, dirCfg)
 			if err != nil {
 				return err
 			}

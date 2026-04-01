@@ -82,7 +82,8 @@ func TestResolveSite(t *testing.T) {
 		},
 	}
 
-	site, err := ResolveSite(global, "bobs", "")
+	// --site flag resolves from global config.
+	site, err := ResolveSite(global, "bobs", &DirectoryConfig{})
 	if err != nil {
 		t.Fatalf("ResolveSite with flag: %v", err)
 	}
@@ -90,20 +91,32 @@ func TestResolveSite(t *testing.T) {
 		t.Errorf("expected ABC123, got %s", site.Token)
 	}
 
-	site, err = ResolveSite(global, "", "bobs")
+	// Directory config referencing a named site.
+	site, err = ResolveSite(global, "", &DirectoryConfig{Site: "bobs"})
 	if err != nil {
-		t.Fatalf("ResolveSite with dir: %v", err)
+		t.Fatalf("ResolveSite with dir site name: %v", err)
 	}
 	if site.Token != "ABC123" {
 		t.Errorf("expected ABC123, got %s", site.Token)
 	}
 
-	_, err = ResolveSite(global, "", "")
+	// Directory config with inline credentials.
+	site, err = ResolveSite(global, "", &DirectoryConfig{Token: "INLINE", APIURL: "https://api-eu.stqry.com"})
+	if err != nil {
+		t.Fatalf("ResolveSite with inline dir config: %v", err)
+	}
+	if site.Token != "INLINE" {
+		t.Errorf("expected INLINE, got %s", site.Token)
+	}
+
+	// No site specified.
+	_, err = ResolveSite(global, "", &DirectoryConfig{})
 	if err == nil {
 		t.Fatal("expected error when no site specified")
 	}
 
-	_, err = ResolveSite(global, "unknown", "")
+	// Unknown site in flag.
+	_, err = ResolveSite(global, "unknown", &DirectoryConfig{})
 	if err == nil {
 		t.Fatal("expected error for unknown site")
 	}
