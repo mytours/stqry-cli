@@ -22,12 +22,12 @@ archives:
       - goos: windows
         format: zip
 
-brews:
-  - repository:
-      owner: stqry
-      name: homebrew-tap
-    homepage: "https://github.com/mytours/stqry-cli"
-    description: "STQRY CLI - manage collections, screens, media, and content"
+# brews:
+#   - repository:
+#       owner: stqry
+#       name: homebrew-tap
+#     homepage: "https://github.com/mytours/stqry-cli"
+#     description: "STQRY CLI - manage collections, screens, media, and content"
 
 checksum:
   name_template: "checksums.txt"
