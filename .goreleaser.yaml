@@ -33,12 +33,17 @@ archives:
       - goos: windows
         format: zip
 
-# brews:
-#   - repository:
-#       owner: stqry
-#       name: homebrew-tap
-#     homepage: "https://github.com/mytours/stqry-cli"
-#     description: "STQRY CLI - manage collections, screens, media, and content"
+brews:
+  - repository:
+      owner: mytours
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/mytours/stqry-cli"
+    description: "STQRY CLI - manage collections, screens, media, and content"
+    install: |
+      bin.install "stqry"
+    test: |
+      system "#{bin}/stqry", "--version"
 
 checksum:
   name_template: "checksums.txt"
