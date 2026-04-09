@@ -143,3 +143,186 @@ func TestListCollectionItems(t *testing.T) {
 		t.Errorf("expected meta.Count=2, got %d", meta.Count)
 	}
 }
+
+func TestUpdateCollection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/collections/42" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		colFields, ok := body["collection"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected body.collection to be a map, got %T", body["collection"])
+		}
+		if colFields["name"] != "updated-col" {
+			t.Errorf("expected collection.name=updated-col, got %v", colFields["name"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection": map[string]interface{}{"id": 42, "name": "updated-col"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	col, err := UpdateCollection(c, "42", map[string]interface{}{"name": "updated-col"})
+	if err != nil {
+		t.Fatalf("UpdateCollection: %v", err)
+	}
+	if col["name"] != "updated-col" {
+		t.Errorf("expected name=updated-col, got %v", col["name"])
+	}
+}
+
+func TestDeleteCollection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/collections/42" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(204)
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	err := DeleteCollection(c, "42")
+	if err != nil {
+		t.Fatalf("DeleteCollection: %v", err)
+	}
+}
+
+func TestCreateCollectionItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/collections/7/collection_items" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		itemFields, ok := body["collection_item"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected body.collection_item to be a map, got %T", body["collection_item"])
+		}
+		if itemFields["item_type"] != "Screen" {
+			t.Errorf("expected item_type=Screen, got %v", itemFields["item_type"])
+		}
+		if itemFields["item_id"] != "10" {
+			t.Errorf("expected item_id=10, got %v", itemFields["item_id"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 3, "item_type": "Screen", "item_id": "10"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	item, err := CreateCollectionItem(c, "7", map[string]interface{}{"item_type": "Screen", "item_id": "10"})
+	if err != nil {
+		t.Fatalf("CreateCollectionItem: %v", err)
+	}
+	if item["item_type"] != "Screen" {
+		t.Errorf("expected item_type=Screen, got %v", item["item_type"])
+	}
+}
+
+func TestUpdateCollectionItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/collections/7/collection_items/1" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		itemFields, ok := body["collection_item"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected body.collection_item to be a map, got %T", body["collection_item"])
+		}
+		if itemFields["position"] != float64(3) {
+			t.Errorf("expected position=3, got %v", itemFields["position"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 1, "position": 3},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	item, err := UpdateCollectionItem(c, "7", "1", map[string]interface{}{"position": 3})
+	if err != nil {
+		t.Fatalf("UpdateCollectionItem: %v", err)
+	}
+	if item["position"] != float64(3) {
+		t.Errorf("expected position=3, got %v", item["position"])
+	}
+}
+
+func TestDeleteCollectionItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/collections/7/collection_items/1" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(204)
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	err := DeleteCollectionItem(c, "7", "1")
+	if err != nil {
+		t.Fatalf("DeleteCollectionItem: %v", err)
+	}
+}
+
+func TestReorderCollectionItems(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/collections/7/collection_items/update_positions" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		ids, ok := body["ids"].([]interface{})
+		if !ok {
+			t.Fatalf("expected body.ids to be a slice, got %T", body["ids"])
+		}
+		if len(ids) != 2 {
+			t.Errorf("expected 2 ids, got %d", len(ids))
+		}
+		if ids[0] != "2" || ids[1] != "1" {
+			t.Errorf("unexpected ids order: %v", ids)
+		}
+		w.WriteHeader(200)
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	err := ReorderCollectionItems(c, "7", []string{"2", "1"})
+	if err != nil {
+		t.Fatalf("ReorderCollectionItems: %v", err)
+	}
+}

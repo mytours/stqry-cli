@@ -9,8 +9,8 @@ import (
 
 func TestClientGet(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer test-token" {
-			t.Errorf("expected Bearer test-token, got %s", r.Header.Get("Authorization"))
+		if r.Header.Get("X-Api-Token") != "test-token" {
+			t.Errorf("expected X-Api-Token: test-token, got %s", r.Header.Get("X-Api-Token"))
 		}
 		if r.URL.Path != "/api/public/collections" {
 			t.Errorf("unexpected path: %s", r.URL.Path)

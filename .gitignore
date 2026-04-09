@@ -1,0 +1,11 @@
+# Build output
+bin/
+
+# Local environment (credentials, API URLs)
+.env
+
+# Local planning docs
+docs/superpowers/plans/*
+docs/superpowers/specs/*
+!docs/superpowers/plans/.gitkeep
+!docs/superpowers/specs/.gitkeep
