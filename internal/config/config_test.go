@@ -46,11 +46,9 @@ func TestLoadGlobalConfigMissing(t *testing.T) {
 	}
 }
 
-func TestFindDirectoryConfig(t *testing.T) {
+func TestFindDirectoryConfigFindsStqryYaml(t *testing.T) {
 	root := t.TempDir()
-	stqryDir := filepath.Join(root, ".stqry")
-	os.MkdirAll(stqryDir, 0755)
-	os.WriteFile(filepath.Join(stqryDir, "config.yaml"), []byte("site: bobs\n"), 0644)
+	os.WriteFile(filepath.Join(root, "stqry.yaml"), []byte("site: bobs\n"), 0644)
 
 	deepDir := filepath.Join(root, "sub", "deep")
 	os.MkdirAll(deepDir, 0755)
@@ -61,6 +59,53 @@ func TestFindDirectoryConfig(t *testing.T) {
 	}
 	if dirCfg.Site != "bobs" {
 		t.Errorf("expected site bobs, got %s", dirCfg.Site)
+	}
+}
+
+func TestFindDirectoryConfigFindsStqryYml(t *testing.T) {
+	root := t.TempDir()
+	os.WriteFile(filepath.Join(root, "stqry.yml"), []byte("site: ymlsite\n"), 0644)
+
+	dirCfg, err := FindDirectoryConfig(root)
+	if err != nil {
+		t.Fatalf("FindDirectoryConfig: %v", err)
+	}
+	if dirCfg.Site != "ymlsite" {
+		t.Errorf("expected site ymlsite, got %s", dirCfg.Site)
+	}
+}
+
+func TestFindDirectoryConfigPrefersYamlOverYml(t *testing.T) {
+	root := t.TempDir()
+	os.WriteFile(filepath.Join(root, "stqry.yaml"), []byte("site: yamlwins\n"), 0644)
+	os.WriteFile(filepath.Join(root, "stqry.yml"), []byte("site: ymllosses\n"), 0644)
+
+	dirCfg, err := FindDirectoryConfig(root)
+	if err != nil {
+		t.Fatalf("FindDirectoryConfig: %v", err)
+	}
+	if dirCfg.Site != "yamlwins" {
+		t.Errorf("expected site yamlwins, got %s", dirCfg.Site)
+	}
+}
+
+func TestSaveDirectoryConfigWritesStqryYaml(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &DirectoryConfig{Site: "testsite"}
+
+	if err := SaveDirectoryConfig(dir, cfg); err != nil {
+		t.Fatalf("SaveDirectoryConfig: %v", err)
+	}
+
+	expectedPath := filepath.Join(dir, "stqry.yaml")
+	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+		t.Errorf("expected %s to exist", expectedPath)
+	}
+
+	// Hidden dir should NOT be created.
+	hiddenPath := filepath.Join(dir, ".stqry", "config.yaml")
+	if _, err := os.Stat(hiddenPath); err == nil {
+		t.Errorf("expected .stqry/config.yaml NOT to exist, but it does")
 	}
 }
 
