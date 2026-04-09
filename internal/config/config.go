@@ -60,14 +60,16 @@ func SaveGlobalConfig(cfg *GlobalConfig, path string) error {
 func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
 	dir := startDir
 	for {
-		candidate := filepath.Join(dir, ".stqry", "config.yaml")
-		data, err := os.ReadFile(candidate)
-		if err == nil {
-			var cfg DirectoryConfig
-			if err := yaml.Unmarshal(data, &cfg); err != nil {
-				return nil, fmt.Errorf("parsing %s: %w", candidate, err)
+		for _, name := range []string{"stqry.yaml", "stqry.yml"} {
+			candidate := filepath.Join(dir, name)
+			data, err := os.ReadFile(candidate)
+			if err == nil {
+				var cfg DirectoryConfig
+				if err := yaml.Unmarshal(data, &cfg); err != nil {
+					return nil, fmt.Errorf("parsing %s: %w", candidate, err)
+				}
+				return &cfg, nil
 			}
-			return &cfg, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -78,15 +80,11 @@ func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
 }
 
 func SaveDirectoryConfig(dir string, cfg *DirectoryConfig) error {
-	stqryDir := filepath.Join(dir, ".stqry")
-	if err := os.MkdirAll(stqryDir, 0755); err != nil {
-		return fmt.Errorf("creating .stqry dir: %w", err)
-	}
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("marshaling dir config: %w", err)
 	}
-	return os.WriteFile(filepath.Join(stqryDir, "config.yaml"), data, 0644)
+	return os.WriteFile(filepath.Join(dir, "stqry.yaml"), data, 0644)
 }
 
 func ResolveSite(global *GlobalConfig, flagSite string, dirCfg *DirectoryConfig) (*Site, error) {
