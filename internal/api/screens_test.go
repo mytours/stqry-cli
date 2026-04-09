@@ -155,3 +155,362 @@ func TestListSectionSubItemsEmpty(t *testing.T) {
 		t.Errorf("expected 0 items, got %d", len(items))
 	}
 }
+
+func TestGetScreen(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"screen": map[string]interface{}{"id": "42", "name": "Museum Entry"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	screen, err := GetScreen(c, "42")
+	if err != nil {
+		t.Fatalf("GetScreen: %v", err)
+	}
+	if screen["name"] != "Museum Entry" {
+		t.Errorf("expected name=Museum Entry, got %v", screen["name"])
+	}
+}
+
+func TestCreateScreen(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		screenFields, ok := body["screen"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected body.screen to be a map, got %T", body["screen"])
+		}
+		if screenFields["name"] != "New Screen" {
+			t.Errorf("expected screen.name=New Screen, got %v", screenFields["name"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"screen": map[string]interface{}{"id": "99", "name": "New Screen"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	screen, err := CreateScreen(c, map[string]interface{}{"name": "New Screen"})
+	if err != nil {
+		t.Fatalf("CreateScreen: %v", err)
+	}
+	if screen["name"] != "New Screen" {
+		t.Errorf("expected name=New Screen, got %v", screen["name"])
+	}
+}
+
+func TestUpdateScreen(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		screenFields, ok := body["screen"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected body.screen to be a map, got %T", body["screen"])
+		}
+		if screenFields["name"] != "Updated" {
+			t.Errorf("expected screen.name=Updated, got %v", screenFields["name"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"screen": map[string]interface{}{"id": "42", "name": "Updated"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	screen, err := UpdateScreen(c, "42", map[string]interface{}{"name": "Updated"})
+	if err != nil {
+		t.Fatalf("UpdateScreen: %v", err)
+	}
+	if screen["name"] != "Updated" {
+		t.Errorf("expected name=Updated, got %v", screen["name"])
+	}
+}
+
+func TestDeleteScreen(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(204)
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	err := DeleteScreen(c, "42")
+	if err != nil {
+		t.Fatalf("DeleteScreen: %v", err)
+	}
+}
+
+func TestGetStorySection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42/story_sections/10" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"story_section": map[string]interface{}{"id": "10", "section_type": "info"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	section, err := GetStorySection(c, "42", "10")
+	if err != nil {
+		t.Fatalf("GetStorySection: %v", err)
+	}
+	if section["section_type"] != "info" {
+		t.Errorf("expected section_type=info, got %v", section["section_type"])
+	}
+}
+
+func TestCreateStorySection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42/story_sections" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		sectionFields, ok := body["story_section"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected body.story_section to be a map, got %T", body["story_section"])
+		}
+		if sectionFields["section_type"] != "gallery" {
+			t.Errorf("expected section_type=gallery, got %v", sectionFields["section_type"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"story_section": map[string]interface{}{"id": "12", "section_type": "gallery"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	section, err := CreateStorySection(c, "42", map[string]interface{}{"section_type": "gallery"})
+	if err != nil {
+		t.Fatalf("CreateStorySection: %v", err)
+	}
+	if section["section_type"] != "gallery" {
+		t.Errorf("expected section_type=gallery, got %v", section["section_type"])
+	}
+}
+
+func TestUpdateStorySection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42/story_sections/10" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		sectionFields, ok := body["story_section"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected body.story_section to be a map, got %T", body["story_section"])
+		}
+		if sectionFields["section_type"] != "video" {
+			t.Errorf("expected section_type=video, got %v", sectionFields["section_type"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"story_section": map[string]interface{}{"id": "10", "section_type": "video"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	section, err := UpdateStorySection(c, "42", "10", map[string]interface{}{"section_type": "video"})
+	if err != nil {
+		t.Fatalf("UpdateStorySection: %v", err)
+	}
+	if section["section_type"] != "video" {
+		t.Errorf("expected section_type=video, got %v", section["section_type"])
+	}
+}
+
+func TestDeleteStorySection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42/story_sections/10" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(204)
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	err := DeleteStorySection(c, "42", "10")
+	if err != nil {
+		t.Fatalf("DeleteStorySection: %v", err)
+	}
+}
+
+func TestReorderStorySections(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42/story_sections/update_positions" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		ids, ok := body["section_ids"].([]interface{})
+		if !ok {
+			t.Fatalf("expected body.section_ids to be a slice, got %T", body["section_ids"])
+		}
+		if len(ids) != 2 {
+			t.Errorf("expected 2 section_ids, got %d", len(ids))
+		}
+		if ids[0] != "11" || ids[1] != "10" {
+			t.Errorf("unexpected section_ids order: %v", ids)
+		}
+		w.WriteHeader(200)
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	err := ReorderStorySections(c, "42", []string{"11", "10"})
+	if err != nil {
+		t.Fatalf("ReorderStorySections: %v", err)
+	}
+}
+
+func TestCreateSectionSubItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42/story_sections/10/badge_items" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		itemFields, ok := body["badge_item"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected body.badge_item to be a map, got %T", body["badge_item"])
+		}
+		if itemFields["badge_id"] != "badge-xyz" {
+			t.Errorf("expected badge_id=badge-xyz, got %v", itemFields["badge_id"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"badge_item": map[string]interface{}{"id": "200", "badge_id": "badge-xyz"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	item, err := CreateSectionSubItem(c, "42", "10", "badge_items", "badge_item", map[string]interface{}{"badge_id": "badge-xyz"})
+	if err != nil {
+		t.Fatalf("CreateSectionSubItem: %v", err)
+	}
+	if item["badge_id"] != "badge-xyz" {
+		t.Errorf("expected badge_id=badge-xyz, got %v", item["badge_id"])
+	}
+}
+
+func TestUpdateSectionSubItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42/story_sections/10/badge_items/100" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		itemFields, ok := body["badge_item"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected body.badge_item to be a map, got %T", body["badge_item"])
+		}
+		if itemFields["badge_id"] != "badge-updated" {
+			t.Errorf("expected badge_id=badge-updated, got %v", itemFields["badge_id"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"badge_item": map[string]interface{}{"id": "100", "badge_id": "badge-updated"},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	item, err := UpdateSectionSubItem(c, "42", "10", "badge_items", "100", "badge_item", map[string]interface{}{"badge_id": "badge-updated"})
+	if err != nil {
+		t.Fatalf("UpdateSectionSubItem: %v", err)
+	}
+	if item["badge_id"] != "badge-updated" {
+		t.Errorf("expected badge_id=badge-updated, got %v", item["badge_id"])
+	}
+}
+
+func TestDeleteSectionSubItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/screens/42/story_sections/10/badge_items/100" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(204)
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	err := DeleteSectionSubItem(c, "42", "10", "badge_items", "100")
+	if err != nil {
+		t.Fatalf("DeleteSectionSubItem: %v", err)
+	}
+}
