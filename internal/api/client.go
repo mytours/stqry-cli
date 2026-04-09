@@ -66,7 +66,7 @@ func (c *Client) doRequest(method, path string, query map[string]string, body in
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.Token)
+	req.Header.Set("X-Api-Token", c.Token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
