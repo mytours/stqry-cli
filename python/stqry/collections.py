@@ -23,7 +23,7 @@ class CollectionsResource:
 
     def list_items(self, collection_id: str, **query) -> list:
         path = f"/api/public/collections/{collection_id}/collection_items"
-        resp = self._http.get(path, params=query)
+        resp = self._http.get(path, params=query or None)
         return resp.get("collection_items", [])
 
     def get_item(self, collection_id: str, item_id: str) -> dict:
