@@ -58,6 +58,10 @@ jobs:
         working-directory: python
         run: pip install build twine && python -m build
 
+      - name: Check package
+        working-directory: python
+        run: twine check dist/*
+
       - name: Publish to PyPI
         working-directory: python
         env:

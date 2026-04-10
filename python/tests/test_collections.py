@@ -71,3 +71,28 @@ def test_reorder_items():
         "/api/public/collections/col1/collection_items/update_positions",
         {"ids": ["id2", "id1"]},
     )
+
+
+def test_get_item():
+    r = _resource()
+    r._http.get.return_value = {"collection_item": {"id": "a"}}
+    result = r.get_item("col1", "a")
+    r._http.get.assert_called_once_with("/api/public/collections/col1/collection_items/a", params=None)
+    assert result == {"id": "a"}
+
+
+def test_update_item():
+    r = _resource()
+    r._http.patch.return_value = {"collection_item": {"id": "a"}}
+    result = r.update_item("col1", "a", position=2)
+    r._http.patch.assert_called_once_with(
+        "/api/public/collections/col1/collection_items/a",
+        {"collection_item": {"position": 2}},
+    )
+    assert result == {"id": "a"}
+
+
+def test_delete_item():
+    r = _resource()
+    r.delete_item("col1", "a")
+    r._http.delete.assert_called_once_with("/api/public/collections/col1/collection_items/a", params=None)
