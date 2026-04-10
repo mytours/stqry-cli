@@ -22,34 +22,37 @@ Download the latest binary for your platform from [GitHub Releases](https://gith
 
 ## Quick Start
 
-Add a new site:
+Add a site to your global config:
 
 ```bash
-stqry add-site
+stqry config add-site --name=mysite --token=<API_TOKEN> --region=us
 ```
 
-Initialize configuration:
+Pin that site to the current directory (writes `stqry.yaml`):
 
 ```bash
-stqry config init
+stqry config init --name=mysite
 ```
 
 List collections:
 
 ```bash
-stqry collection list
+stqry collections list
 ```
 
-Create a screen:
+Create a screen (both `--name` and `--type` are required; `--type` must be
+one of `story`, `web`, `panorama`, `ar`, `kiosk`):
 
 ```bash
-stqry screen create
+stqry screens create --name="Welcome" --type=story
 ```
 
-Upload media:
+Create a media item from a local file (uploads the file and creates a media
+item linked to it). `--type` must be one of `map`, `webpackage`, `animation`,
+`audio`, `image`, `video`, `webvideo`, `ar`, `data`:
 
 ```bash
-stqry media upload
+stqry media create --file=./photo.jpg --type=image --name=photo.jpg
 ```
 
 ## AI Agent Integration
@@ -73,25 +76,32 @@ Commands support multiple output formats:
 Default (human-readable):
 
 ```bash
-stqry collection list
+stqry collections list
 ```
 
-JSON output:
+JSON output — wraps results in a `{ "data": [...], "meta": {...} }` envelope:
 
 ```bash
-stqry collection list --json
+stqry collections list --json
 ```
 
-Quiet mode (minimal output):
+Quiet mode — emits only the raw `data` payload (no envelope), handy for piping:
 
 ```bash
-stqry collection list --quiet
+stqry collections list --quiet
 ```
 
-Parse JSON output with jq:
+Parse output with jq. Note that list endpoints are paginated — use `--page` /
+`--per-page` to walk through results:
 
 ```bash
-stqry collection list --json | jq '.[] | .name'
+stqry collections list --quiet | jq '.[].name'
+```
+
+With `--json` you need to reach into the envelope:
+
+```bash
+stqry collections list --json | jq '.data[].name'
 ```
 
 ## Site Configuration
