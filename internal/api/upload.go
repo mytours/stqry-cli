@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+// uploadClientTimeout is the total request budget for the S3 POST in the
+// upload flow. It is deliberately much larger than Client.HTTPClient's 30 s
+// default, because the timer covers body write + S3 commit + response
+// headers, and a medium-size file on a slow connection can easily exceed 30 s.
+const uploadClientTimeout = 10 * time.Minute
+
 // PresignResponse holds the presigned S3 URL and form fields.
 type PresignResponse struct {
 	URL    string            `json:"url"`
@@ -127,7 +133,14 @@ func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(wr
 	uploadReq.ContentLength = totalSize
 	uploadReq.Header.Set("Content-Type", mw.FormDataContentType())
 
-	uploadResp, err := c.HTTPClient.Do(uploadReq)
+	// Use a dedicated HTTP client with a much longer total timeout for the S3
+	// upload. c.HTTPClient has a 30 s Client.Timeout which is fine for normal
+	// API calls but too tight for multi-megabyte uploads on slow connections —
+	// the 30 s budget has to cover the entire body write plus reading S3's
+	// response headers, and real users have hit "Client.Timeout exceeded while
+	// awaiting headers" on ~6 MB files.
+	uploadClient := &http.Client{Timeout: uploadClientTimeout}
+	uploadResp, err := uploadClient.Do(uploadReq)
 	if err != nil {
 		return nil, fmt.Errorf("uploading to S3: %w", err)
 	}
