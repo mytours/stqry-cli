@@ -57,7 +57,7 @@ func newScreensListCmd() *cobra.Command {
 				outMeta = &output.Meta{Page: meta.Page, PerPage: meta.PerPage, Total: meta.Count}
 			}
 
-			columns := []string{"id", "name", "title", "screen_type"}
+			columns := []string{"id", "name", "title", "type"}
 			return printer.PrintList(columns, screens, outMeta)
 		},
 	}
@@ -103,14 +103,14 @@ func newScreensCreateCmd() *cobra.Command {
 			}
 
 			fields := map[string]interface{}{
-				"name":        name,
-				"screen_type": screenType,
+				"name": name,
+				"type": screenType,
 			}
 			if title != "" {
 				if flagLang != "" {
 					fields["title"] = map[string]interface{}{flagLang: title}
 				} else {
-					fields["title"] = title
+					fields["title"] = map[string]interface{}{"en": title}
 				}
 			}
 
@@ -224,7 +224,7 @@ func newSectionsListCmd() *cobra.Command {
 				outMeta = &output.Meta{Page: meta.Page, PerPage: meta.PerPage, Total: meta.Count}
 			}
 
-			columns := []string{"id", "section_type", "position", "title"}
+			columns := []string{"id", "type", "position", "title"}
 			return printer.PrintList(columns, sections, outMeta)
 		},
 	}
@@ -271,7 +271,7 @@ func newSectionsAddCmd() *cobra.Command {
 			}
 
 			fields := map[string]interface{}{
-				"section_type": sectionType,
+				"type": sectionType,
 			}
 			if title != "" {
 				if flagLang != "" {
