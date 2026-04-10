@@ -8,7 +8,7 @@ from stqry.projects import ProjectsResource
 
 
 class Client:
-    def __init__(self, api_url: str = None, token: str = None):
+    def __init__(self, api_url: str | None = None, token: str | None = None):
         api_url = api_url or os.environ.get("STQRY_API_URL")
         token = token or os.environ.get("STQRY_API_TOKEN")
         if not api_url or not token:
