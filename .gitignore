@@ -11,5 +11,9 @@ python/.venv/
 # Local planning docs
 docs/superpowers/plans/*
 docs/superpowers/specs/*
+docs/plans/*
+docs/specs/*
 !docs/superpowers/plans/.gitkeep
 !docs/superpowers/specs/.gitkeep
+!docs/plans/.gitkeep
+!docs/specs/.gitkeep
