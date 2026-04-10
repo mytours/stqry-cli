@@ -59,7 +59,7 @@ func newMediaListCmd() *cobra.Command {
 				outMeta = &output.Meta{Page: meta.Page, PerPage: meta.PerPage, Total: meta.Count}
 			}
 
-			cols := []string{"id", "name", "media_item_type", "primary_language"}
+			cols := []string{"id", "name", "type", "primary_language"}
 			return printer.PrintList(cols, items, outMeta)
 		},
 	}
@@ -98,7 +98,7 @@ func newMediaCreateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fields := map[string]interface{}{}
 			if mediaType != "" {
-				fields["media_item_type"] = mediaType
+				fields["type"] = mediaType
 			}
 			if name != "" {
 				fields["name"] = name

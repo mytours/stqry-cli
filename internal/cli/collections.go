@@ -89,8 +89,8 @@ func newCollectionsCreateCmd() *cobra.Command {
 		Short: "Create a collection",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fields := map[string]interface{}{
-				"name":            name,
-				"collection_type": collectionType,
+				"name": name,
+				"type": collectionType,
 			}
 			if title != "" {
 				if flagLang != "" {
