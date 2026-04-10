@@ -119,6 +119,12 @@ func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(wr
 	if err != nil {
 		return nil, fmt.Errorf("creating upload request: %w", err)
 	}
+	// Explicitly set Content-Length because http.NewRequest only auto-detects
+	// it for *bytes.Reader / *bytes.Buffer / *strings.Reader, and wrapping the
+	// reader in progressReader hides that concrete type. Without this the
+	// request goes out with Transfer-Encoding: chunked, which real AWS S3
+	// rejects with 411 Length Required.
+	uploadReq.ContentLength = totalSize
 	uploadReq.Header.Set("Content-Type", mw.FormDataContentType())
 
 	uploadResp, err := c.HTTPClient.Do(uploadReq)
