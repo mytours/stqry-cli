@@ -24,7 +24,7 @@ class HttpClient:
     def patch(self, path: str, json: dict) -> dict:
         resp = self._session.patch(self._base_url + path, json=json, timeout=30)
         resp.raise_for_status()
-        return resp.json()
+        return resp.json() if resp.content else {}
 
     def delete(self, path: str, params: dict = None) -> None:
         resp = self._session.delete(self._base_url + path, params=params, timeout=30)
