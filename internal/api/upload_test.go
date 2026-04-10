@@ -104,6 +104,62 @@ func TestUploadFile(t *testing.T) {
 	_ = lastWritten
 }
 
+// TestUploadFileSetsContentLength verifies that the S3 POST sends an explicit
+// Content-Length instead of falling back to chunked transfer encoding. Real
+// AWS S3 rejects chunked POST uploads with 411 Length Required; httptest
+// accepts both, so this test asserts the request shape directly.
+func TestUploadFileSetsContentLength(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "test.png")
+	if err := os.WriteFile(filePath, []byte("fake png bytes"), 0600); err != nil {
+		t.Fatalf("creating temp file: %v", err)
+	}
+
+	var gotContentLength int64 = -1
+	var gotTransferEncoding []string
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/public/uploaded_files/presigned", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"url":    "",
+			"fields": map[string]string{"key": "uploads/test.png"},
+		})
+	})
+	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		gotContentLength = r.ContentLength
+		gotTransferEncoding = r.TransferEncoding
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("/api/public/uploaded_files/process_enqueue", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{"job_id": "job-cl"})
+	})
+	mux.HandleFunc("/api/public/uploaded_files/process_status/job-cl", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":        "complete",
+			"uploaded_file": map[string]interface{}{"id": "uf-1"},
+		})
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	// Pass a non-nil onProgress to exercise the progressReader wrapping path.
+	_, err := UploadFile(c, filePath, server.URL, func(written, total int64) {})
+	if err != nil {
+		t.Fatalf("UploadFile: %v", err)
+	}
+
+	if gotContentLength <= 0 {
+		t.Errorf("expected S3 upload to have Content-Length > 0, got %d", gotContentLength)
+	}
+	for _, enc := range gotTransferEncoding {
+		if enc == "chunked" {
+			t.Errorf("S3 upload must not use chunked transfer encoding (S3 rejects it with 411); got TransferEncoding=%v", gotTransferEncoding)
+		}
+	}
+}
+
 // TestUploadFileError verifies that an error status from process_status propagates correctly.
 func TestUploadFileError(t *testing.T) {
 	tmpDir := t.TempDir()
