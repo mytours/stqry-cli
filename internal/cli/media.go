@@ -3,11 +3,25 @@ package cli
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/mytours/stqry-cli/internal/api"
 	"github.com/mytours/stqry-cli/internal/output"
 	"github.com/spf13/cobra"
 )
+
+// validMediaTypes mirrors MediaItem::MEDIA_ITEM_SUBTYPES_SHORT in mytours-web
+// (app/models/media_item.rb). Keep in sync if new subtypes are added.
+var validMediaTypes = []string{"map", "webpackage", "animation", "audio", "image", "video", "webvideo", "ar", "data"}
+
+func validateMediaType(t string) error {
+	for _, v := range validMediaTypes {
+		if t == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid media type %q (valid: %s)", t, strings.Join(validMediaTypes, ", "))
+}
 
 func newMediaCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -96,9 +110,15 @@ func newMediaCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a media item (optionally uploading a file)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fields := map[string]interface{}{}
-			if mediaType != "" {
-				fields["type"] = mediaType
+			if mediaType == "" {
+				return fmt.Errorf("--type is required (one of: %s)", strings.Join(validMediaTypes, ", "))
+			}
+			if err := validateMediaType(mediaType); err != nil {
+				return err
+			}
+
+			fields := map[string]interface{}{
+				"type": mediaType,
 			}
 			if name != "" {
 				fields["name"] = name
@@ -144,7 +164,7 @@ func newMediaCreateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&filePath, "file", "", "Path to file to upload")
-	cmd.Flags().StringVar(&mediaType, "type", "", "Media item type (required)")
+	cmd.Flags().StringVar(&mediaType, "type", "", fmt.Sprintf("Media item type (required; one of: %s)", strings.Join(validMediaTypes, ", ")))
 	cmd.Flags().StringVar(&name, "name", "", "Media item name")
 
 	return cmd

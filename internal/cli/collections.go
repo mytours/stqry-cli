@@ -3,11 +3,25 @@ package cli
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/mytours/stqry-cli/internal/api"
 	"github.com/mytours/stqry-cli/internal/output"
 	"github.com/spf13/cobra"
 )
+
+// validCollectionTypes mirrors Collection::SUBTYPES_SHORT in mytours-web
+// (app/models/collection.rb). Keep in sync if new subtypes are added.
+var validCollectionTypes = []string{"list", "tour", "organization", "menu", "search"}
+
+func validateCollectionType(t string) error {
+	for _, v := range validCollectionTypes {
+		if t == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid collection type %q (valid: %s)", t, strings.Join(validCollectionTypes, ", "))
+}
 
 func newCollectionsCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -88,6 +102,9 @@ func newCollectionsCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a collection",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateCollectionType(collectionType); err != nil {
+				return err
+			}
 			fields := map[string]interface{}{
 				"name": name,
 				"type": collectionType,
@@ -110,7 +127,7 @@ func newCollectionsCreateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&name, "name", "", "Collection name (required)")
-	cmd.Flags().StringVar(&collectionType, "type", "", "Collection type (required)")
+	cmd.Flags().StringVar(&collectionType, "type", "", fmt.Sprintf("Collection type (required; one of: %s)", strings.Join(validCollectionTypes, ", ")))
 	cmd.Flags().StringVar(&title, "title", "", "Collection title")
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("type")
