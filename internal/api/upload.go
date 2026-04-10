@@ -138,21 +138,24 @@ func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(wr
 		return nil, fmt.Errorf("S3 upload failed with status %d", uploadResp.StatusCode)
 	}
 
-	// Build s3_url: presign.URL + key field value.
+	// Step 3: Enqueue. The Rails job passes s3_url straight to
+	// S3Utils.download which calls fog files.get(remote_path) — remote_path
+	// must be the S3 object key, not a full URL. See
+	// app/sidekiq/uploaded_file_process.rb and
+	// spec/sidekiq/uploaded_file_process_spec.rb in mytours-web.
 	key := presign.Fields["key"]
-	s3URL := presign.URL + "/" + key
 	if key == "" {
-		s3URL = presign.URL
+		return nil, fmt.Errorf("presign response missing key field")
 	}
-
-	// Step 3: Enqueue.
 	var enqueue EnqueueResponse
-	if err := c.Post("/api/public/uploaded_files/process_enqueue", map[string]interface{}{"s3_url": s3URL}, &enqueue); err != nil {
+	if err := c.Post("/api/public/uploaded_files/process_enqueue", map[string]interface{}{"s3_url": key}, &enqueue); err != nil {
 		return nil, fmt.Errorf("enqueue: %w", err)
 	}
 
-	// Step 4: Poll for completion.
+	// Step 4: Poll for completion. Surface progress messages so the user can
+	// see what stage the server-side job is in.
 	deadline := time.Now().Add(5 * time.Minute)
+	var lastMessage string
 	for time.Now().Before(deadline) {
 		var status ProcessStatusResponse
 		path := fmt.Sprintf("/api/public/uploaded_files/process_status/%s", enqueue.JobID)
@@ -160,10 +163,15 @@ func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(wr
 			return nil, fmt.Errorf("polling status: %w", err)
 		}
 
+		if status.Message != "" && status.Message != lastMessage && onProgress != nil {
+			fmt.Printf("Processing: %s\n", status.Message)
+			lastMessage = status.Message
+		}
+
 		switch status.Status {
 		case "complete":
 			return status.UploadedFile, nil
-		case "error", "transcoder_error", "transcoder_invalid_file":
+		case "failed", "error", "transcoder_error", "transcoder_invalid_file", "interrupted":
 			msg := status.Message
 			if msg == "" {
 				msg = status.Status

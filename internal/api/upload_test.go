@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // TestUploadFile exercises the full upload flow against a mock HTTP server.
@@ -46,14 +47,19 @@ func TestUploadFile(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	// Step 3: enqueue
+	// Step 3: enqueue — the Rails job expects s3_url to be the raw S3 object
+	// key (e.g. "uploads/test-video.mp4"), not a full URL. See
+	// spec/sidekiq/uploaded_file_process_spec.rb in mytours-web.
+	var enqueuedS3URL string
 	mux.HandleFunc("/api/public/uploaded_files/process_enqueue", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Errorf("enqueue: expected POST, got %s", r.Method)
 		}
 		var body map[string]interface{}
 		json.NewDecoder(r.Body).Decode(&body)
-		if body["s3_url"] == nil {
+		if s, ok := body["s3_url"].(string); ok {
+			enqueuedS3URL = s
+		} else {
 			t.Error("expected s3_url in enqueue body")
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -95,6 +101,11 @@ func TestUploadFile(t *testing.T) {
 	}
 	if result["id"] != "uf-abc" {
 		t.Errorf("expected id=uf-abc, got %v", result["id"])
+	}
+
+	// The enqueue request must carry the S3 object key, not a URL.
+	if enqueuedS3URL != "uploads/test-video.mp4" {
+		t.Errorf("expected enqueue s3_url to be the S3 key \"uploads/test-video.mp4\", got %q", enqueuedS3URL)
 	}
 
 	// Progress callback should have been called.
@@ -195,6 +206,60 @@ func TestUploadFileError(t *testing.T) {
 	_, err := UploadFile(c, filePath, server.URL, nil)
 	if err == nil {
 		t.Fatal("expected error for transcoder_invalid_file status")
+	}
+}
+
+// TestUploadFileSidekiqFailed verifies that a Sidekiq::Status "failed" status
+// from process_status propagates as an error instead of silently polling until
+// the 5-minute timeout.
+func TestUploadFileSidekiqFailed(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "bad.png")
+	if err := os.WriteFile(filePath, []byte("x"), 0600); err != nil {
+		t.Fatalf("creating temp file: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/public/uploaded_files/presigned", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"url":    "",
+			"fields": map[string]string{"key": "upload_file_cache/123_bad.png"},
+		})
+	})
+	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("/api/public/uploaded_files/process_enqueue", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{"job_id": "job-failed"})
+	})
+	mux.HandleFunc("/api/public/uploaded_files/process_status/job-failed", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "failed",
+			"message": "S3Utils::NotFound: not found",
+		})
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	// Use a short deadline so the test doesn't take forever if the fix regresses.
+	done := make(chan error, 1)
+	go func() {
+		_, err := UploadFile(c, filePath, server.URL, nil)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected error for failed status")
+		}
+		if !contains(err.Error(), "failed") && !contains(err.Error(), "not found") {
+			t.Errorf("expected error to mention the failure, got %q", err.Error())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("UploadFile did not return within 10s; likely still polling on an unknown status")
 	}
 }
 
