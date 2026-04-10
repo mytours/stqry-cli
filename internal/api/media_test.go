@@ -44,23 +44,25 @@ func TestCreateMediaItem(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		itemFields, ok := body["media_item"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.media_item to be a map, got %T", body["media_item"])
+		if _, wrapped := body["media_item"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"media_item\": %v", body)
 		}
-		if itemFields["name"] != "New Video" {
-			t.Errorf("expected media_item.name=New Video, got %v", itemFields["name"])
+		if body["name"] != "New Video" {
+			t.Errorf("expected name=New Video, got %v", body["name"])
+		}
+		if body["type"] != "video" {
+			t.Errorf("expected type=video, got %v", body["type"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"media_item": map[string]interface{}{"id": "mi-2", "name": "New Video"},
+			"media_item": map[string]interface{}{"id": "mi-2", "name": "New Video", "type": "video"},
 		})
 	}))
 	defer server.Close()
 
 	c := NewClient(server.URL, "test-token")
-	item, err := CreateMediaItem(c, map[string]interface{}{"name": "New Video"})
+	item, err := CreateMediaItem(c, map[string]interface{}{"name": "New Video", "type": "video"})
 	if err != nil {
 		t.Fatalf("CreateMediaItem: %v", err)
 	}
@@ -81,12 +83,11 @@ func TestUpdateMediaItem(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		itemFields, ok := body["media_item"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.media_item to be a map, got %T", body["media_item"])
+		if _, wrapped := body["media_item"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"media_item\": %v", body)
 		}
-		if itemFields["name"] != "Updated" {
-			t.Errorf("expected media_item.name=Updated, got %v", itemFields["name"])
+		if body["name"] != "Updated" {
+			t.Errorf("expected name=Updated, got %v", body["name"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
