@@ -209,6 +209,60 @@ func TestUploadFileError(t *testing.T) {
 	}
 }
 
+// TestUploadFileSlowS3 verifies that the S3 upload step uses an HTTP client
+// with a longer timeout than the default 30-second Client.Timeout set on
+// Client.HTTPClient. Real users hit "Client.Timeout exceeded while awaiting
+// headers" on medium-size (~6 MB) files when the 30 s budget covers the whole
+// request lifecycle (body write + S3 commit + response headers).
+func TestUploadFileSlowS3(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "slow.png")
+	if err := os.WriteFile(filePath, []byte("fake png bytes"), 0600); err != nil {
+		t.Fatalf("creating temp file: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/public/uploaded_files/presigned", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"url":    "",
+			"fields": map[string]string{"key": "upload_file_cache/slow.png"},
+		})
+	})
+	// Sleep longer than the main client's tightened timeout so that if
+	// UploadFile reuses c.HTTPClient for the upload step, the request will
+	// fail with a Client.Timeout error instead of succeeding.
+	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(500 * time.Millisecond)
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("/api/public/uploaded_files/process_enqueue", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{"job_id": "job-slow"})
+	})
+	mux.HandleFunc("/api/public/uploaded_files/process_status/job-slow", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":        "complete",
+			"uploaded_file": map[string]interface{}{"id": "uf-slow"},
+		})
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	// Tighten the main client to a budget much smaller than the /upload
+	// handler's sleep. Presign/enqueue/status handlers respond instantly on
+	// localhost so they still fit comfortably.
+	c.HTTPClient.Timeout = 200 * time.Millisecond
+
+	result, err := UploadFile(c, filePath, server.URL, nil)
+	if err != nil {
+		t.Fatalf("UploadFile: %v", err)
+	}
+	if result["id"] != "uf-slow" {
+		t.Errorf("expected id=uf-slow, got %v", result["id"])
+	}
+}
+
 // TestUploadFileSidekiqFailed verifies that a Sidekiq::Status "failed" status
 // from process_status propagates as an error instead of silently polling until
 // the 5-minute timeout.
