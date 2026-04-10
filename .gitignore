@@ -1,5 +1,7 @@
 # Build output
 bin/
+python/dist/
+python/.venv/
 
 # Local environment (credentials, API URLs)
 .env
