@@ -201,7 +201,7 @@ func newConfigInitCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Create .stqry/config.yaml in the current directory",
+		Short: "Create stqry.yaml in the current directory",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -219,7 +219,7 @@ func newConfigInitCmd() *cobra.Command {
 					return fmt.Errorf("saving directory config: %w", err)
 				}
 				if !flagQuiet && !flagJSON {
-					fmt.Printf("Initialised .stqry/config.yaml with inline site credentials.\n")
+					fmt.Printf("Initialised stqry.yaml with inline site credentials.\n")
 				}
 				return nil
 			}
