@@ -76,3 +76,55 @@ def test_list_sub_items():
         "/api/public/screens/sc1/story_sections/s1/badge_items", params=None
     )
     assert result == [{"id": "b1"}]
+
+
+def test_get_section():
+    r = _resource()
+    r._http.get.return_value = {"story_section": {"id": "s1"}}
+    result = r.get_section("sc1", "s1")
+    r._http.get.assert_called_once_with("/api/public/screens/sc1/story_sections/s1", params=None)
+    assert result == {"id": "s1"}
+
+
+def test_update_section():
+    r = _resource()
+    r._http.patch.return_value = {"story_section": {"id": "s1"}}
+    result = r.update_section("sc1", "s1", title="New")
+    r._http.patch.assert_called_once_with(
+        "/api/public/screens/sc1/story_sections/s1", {"story_section": {"title": "New"}}
+    )
+    assert result == {"id": "s1"}
+
+
+def test_delete_section():
+    r = _resource()
+    r.delete_section("sc1", "s1")
+    r._http.delete.assert_called_once_with("/api/public/screens/sc1/story_sections/s1", params=None)
+
+
+def test_create_sub_item():
+    r = _resource()
+    r._http.post.return_value = {"badge_item": {"id": "b1"}}
+    result = r.create_sub_item("sc1", "s1", "badge_items", "badge_item", label="X")
+    r._http.post.assert_called_once_with(
+        "/api/public/screens/sc1/story_sections/s1/badge_items", {"badge_item": {"label": "X"}}
+    )
+    assert result == {"id": "b1"}
+
+
+def test_update_sub_item():
+    r = _resource()
+    r._http.patch.return_value = {"badge_item": {"id": "b1"}}
+    result = r.update_sub_item("sc1", "s1", "badge_items", "b1", "badge_item", label="Y")
+    r._http.patch.assert_called_once_with(
+        "/api/public/screens/sc1/story_sections/s1/badge_items/b1", {"badge_item": {"label": "Y"}}
+    )
+    assert result == {"id": "b1"}
+
+
+def test_delete_sub_item():
+    r = _resource()
+    r.delete_sub_item("sc1", "s1", "badge_items", "b1")
+    r._http.delete.assert_called_once_with(
+        "/api/public/screens/sc1/story_sections/s1/badge_items/b1", params=None
+    )
