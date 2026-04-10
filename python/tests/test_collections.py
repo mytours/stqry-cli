@@ -48,7 +48,7 @@ def test_list_items():
     r = _resource()
     r._http.get.return_value = {"collection_items": [{"id": "a"}], "meta": {}}
     result = r.list_items("col1")
-    r._http.get.assert_called_once_with("/api/public/collections/col1/collection_items", params={})
+    r._http.get.assert_called_once_with("/api/public/collections/col1/collection_items", params=None)
     assert result == [{"id": "a"}]
 
 
