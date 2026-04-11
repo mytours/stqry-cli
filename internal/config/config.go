@@ -54,7 +54,7 @@ func SaveGlobalConfig(cfg *GlobalConfig, path string) error {
 	if err != nil {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
 
 func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
@@ -84,7 +84,7 @@ func SaveDirectoryConfig(dir string, cfg *DirectoryConfig) error {
 	if err != nil {
 		return fmt.Errorf("marshaling dir config: %w", err)
 	}
-	return os.WriteFile(filepath.Join(dir, "stqry.yaml"), data, 0644)
+	return os.WriteFile(filepath.Join(dir, "stqry.yaml"), data, 0600)
 }
 
 func ResolveSite(global *GlobalConfig, flagSite string, dirCfg *DirectoryConfig) (*Site, error) {

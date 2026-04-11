@@ -50,6 +50,4 @@ func TestResolveClientFromDirConfig(t *testing.T) {
 	if client.Token != "mytoken" {
 		t.Errorf("expected mytoken, got %s", client.Token)
 	}
-	_ = filepath.Join(dir, "stqry.yaml")
-	_ = bytes.NewBuffer(nil)
 }

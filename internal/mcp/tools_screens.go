@@ -12,12 +12,12 @@ import (
 func registerScreenTools(s *server.MCPServer, flagSite string) {
 	registerScreenCRUD(s, flagSite)
 	registerSectionCRUD(s, flagSite)
-	registerSubItemTools(s, flagSite, "list_badge_items", "create_badge_item", "update_badge_item", "delete_badge_item", "badge_items", "badge_item")
-	registerSubItemTools(s, flagSite, "list_link_items", "create_link_item", "update_link_item", "delete_link_item", "link_items", "link_item")
-	registerSubItemTools(s, flagSite, "list_section_media", "create_section_media", "update_section_media", "delete_section_media", "media_items", "media_item")
-	registerSubItemTools(s, flagSite, "list_price_items", "create_price_item", "update_price_item", "delete_price_item", "price_items", "price_item")
-	registerSubItemTools(s, flagSite, "list_social_items", "create_social_item", "update_social_item", "delete_social_item", "social_items", "social_item")
-	registerSubItemTools(s, flagSite, "list_opening_times", "create_opening_time", "update_opening_time", "delete_opening_time", "opening_time_items", "opening_time_item")
+	registerSubItemTools(s, flagSite, "list_badge_items", "create_badge_item", "update_badge_item", "delete_badge_item", "badge_items", "badge_item", "badge_items")
+	registerSubItemTools(s, flagSite, "list_link_items", "create_link_item", "update_link_item", "delete_link_item", "link_items", "link_item", "link_items")
+	registerSubItemTools(s, flagSite, "list_section_media", "create_section_media", "update_section_media", "delete_section_media", "media_items", "media_item", "section media attachments")
+	registerSubItemTools(s, flagSite, "list_price_items", "create_price_item", "update_price_item", "delete_price_item", "price_items", "price_item", "price_items")
+	registerSubItemTools(s, flagSite, "list_social_items", "create_social_item", "update_social_item", "delete_social_item", "social_items", "social_item", "social_items")
+	registerSubItemTools(s, flagSite, "list_opening_times", "create_opening_time", "update_opening_time", "delete_opening_time", "opening_time_items", "opening_time_item", "opening_time_items")
 }
 
 func registerScreenCRUD(s *server.MCPServer, flagSite string) {
@@ -332,11 +332,11 @@ func registerSectionCRUD(s *server.MCPServer, flagSite string) {
 	)
 }
 
-func registerSubItemTools(s *server.MCPServer, flagSite string, listTool, createTool, updateTool, deleteTool, apiPath, singularKey string) {
+func registerSubItemTools(s *server.MCPServer, flagSite string, listTool, createTool, updateTool, deleteTool, apiPath, singularKey, humanName string) {
 	// list sub-items for a section
 	s.AddTool(
 		mcpgo.NewTool(listTool,
-			mcpgo.WithDescription(fmt.Sprintf("List all %s for a STQRY story section.", apiPath)),
+			mcpgo.WithDescription(fmt.Sprintf("List all %s for a STQRY story section.", humanName)),
 			mcpgo.WithString("screen_id",
 				mcpgo.Required(),
 				mcpgo.Description("The screen ID"),
