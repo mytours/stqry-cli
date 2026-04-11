@@ -10,6 +10,10 @@ import (
 )
 
 func registerMediaTools(s *server.MCPServer, flagSite string) {
+	// Note: create_media (CreateMediaItem) is intentionally not exposed as an MCP tool.
+	// Media creation requires a multipart file upload, which is not suitable for the
+	// text-based MCP tool protocol. Use the `stqry media upload` CLI command instead.
+
 	// list_media: returns all media items for the configured site
 	s.AddTool(
 		mcpgo.NewTool("list_media",
