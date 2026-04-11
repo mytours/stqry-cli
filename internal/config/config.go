@@ -97,6 +97,15 @@ func ResolveSite(global *GlobalConfig, flagSite string, dirCfg *DirectoryConfig)
 		return site, nil
 	}
 
+	// STQRY_SITE environment variable.
+	if envSite := os.Getenv("STQRY_SITE"); envSite != "" {
+		site, ok := global.Sites[envSite]
+		if !ok {
+			return nil, fmt.Errorf("site %q (from STQRY_SITE) not found in config", envSite)
+		}
+		return site, nil
+	}
+
 	// Directory config with inline credentials takes next priority.
 	if dirCfg != nil && dirCfg.Token != "" && dirCfg.APIURL != "" {
 		return &Site{Token: dirCfg.Token, APIURL: dirCfg.APIURL}, nil
