@@ -27,6 +27,52 @@ func WriteProjectConfig(apiURL, token string) error {
 
 func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 	s.AddTool(
+		mcpgo.NewTool("debug_env",
+			mcpgo.WithDescription("Dump environment variables and working directory for debugging. Remove before release."),
+		),
+		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+			cwd, _ := os.Getwd()
+			env := os.Environ()
+			return jsonResult(map[string]interface{}{
+				"cwd": cwd,
+				"env": env,
+			})
+		},
+	)
+
+	s.AddTool(
+		mcpgo.NewTool("connect",
+			mcpgo.WithDescription("Connect to a STQRY site for this session using a token and API URL. "+
+				"Read these from stqry.yaml in your project directory. "+
+				"Credentials are held in memory and cleared when the MCP server restarts."),
+			mcpgo.WithString("token",
+				mcpgo.Required(),
+				mcpgo.Description("The STQRY API token"),
+			),
+			mcpgo.WithString("api_url",
+				mcpgo.Required(),
+				mcpgo.Description("The STQRY API URL, e.g. https://api.stqry.com or https://api-ca.stqry.com"),
+			),
+		),
+		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+			token := req.GetString("token", "")
+			apiURL := req.GetString("api_url", "")
+			if token == "" || apiURL == "" {
+				return mcpgo.NewToolResultError("token and api_url are required"), nil
+			}
+			parsed, err := url.Parse(apiURL)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+				return mcpgo.NewToolResultError("api_url must be a valid http or https URL (e.g. https://api.stqry.com)"), nil
+			}
+			sess.Set(&config.Site{Token: token, APIURL: apiURL})
+			return jsonResult(map[string]interface{}{
+				"ok":      true,
+				"message": "connected to " + parsed.Host,
+			})
+		},
+	)
+
+	s.AddTool(
 		mcpgo.NewTool("configure_project",
 			mcpgo.WithDescription("Write stqry.yaml in the current directory with API credentials. Use this to configure a project to connect to STQRY."),
 			mcpgo.WithString("api_url",
