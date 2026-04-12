@@ -5,14 +5,13 @@ import (
 	"os"
 
 	"github.com/mytours/stqry-cli/internal/api"
+	"github.com/mytours/stqry-cli/internal/buildinfo"
 	"github.com/mytours/stqry-cli/internal/config"
 	"github.com/mytours/stqry-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
 var (
-	version = "dev"
-
 	flagSite   string
 	flagLang   string
 	flagJSON   bool
@@ -47,7 +46,7 @@ func newRootCmd() *cobra.Command {
 		Use:   "stqry",
 		Short: "STQRY CLI — manage your STQRY sites",
 		Long:  "stqry is a command-line tool for managing STQRY content: sites, collections, screens, media, and more.",
-		Version: version,
+		Version: buildinfo.Version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// 1. Initialise printer.
 			printer = &output.Printer{JSON: flagJSON, Quiet: flagQuiet}

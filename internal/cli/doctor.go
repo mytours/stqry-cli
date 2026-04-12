@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mytours/stqry-cli/internal/buildinfo"
 	"github.com/mytours/stqry-cli/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -366,7 +367,7 @@ func runDoctor(w io.Writer, verbose bool) bool {
 	}
 
 	// --- Version group ---
-	results = append(results, checkCLIVersion(version, defaultGitHubReleasesURL, httpClient))
+	results = append(results, checkCLIVersion(buildinfo.Version, defaultGitHubReleasesURL, httpClient))
 
 	printDoctorResults(w, results, verbose)
 
