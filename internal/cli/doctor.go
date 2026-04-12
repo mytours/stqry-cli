@@ -40,11 +40,11 @@ func checkGlobalConfig(configPath string) checkResult {
 	}
 	if _, err := os.Stat(configPath); err != nil {
 		r.status = statusFail
-		r.message = "~/.config/stqry/config.yaml not found"
+		r.message = ""
 		r.detail = fmt.Sprintf("Looked for: %s", configPath)
 	} else {
 		r.status = statusPass
-		r.message = "Global config found"
+		r.message = configPath
 		r.detail = fmt.Sprintf("Path: %s", configPath)
 	}
 	r.duration = time.Since(start)
@@ -60,11 +60,11 @@ func checkDirectoryConfig(cwd string) checkResult {
 	dirCfg, err := config.FindDirectoryConfig(cwd)
 	if err != nil || dirCfg == nil || (dirCfg.Site == "" && dirCfg.Token == "" && dirCfg.APIURL == "") {
 		r.status = statusFail
-		r.message = "No stqry.yaml found in current directory or parents"
+		r.message = ""
 		r.detail = fmt.Sprintf("Looked up from: %s", cwd)
 	} else {
 		r.status = statusPass
-		r.message = "stqry.yaml found"
+		r.message = ""
 		r.detail = fmt.Sprintf("Searched from: %s", cwd)
 	}
 	r.duration = time.Since(start)
@@ -84,7 +84,7 @@ func checkSiteResolved(globalCfg *config.GlobalConfig, flagSite string, dirCfg *
 		r.detail = err.Error()
 	} else {
 		r.status = statusPass
-		r.message = fmt.Sprintf("Site resolved → %s", site.APIURL)
+		r.message = site.APIURL
 		r.detail = fmt.Sprintf("API URL: %s", site.APIURL)
 	}
 	r.duration = time.Since(start)
@@ -114,7 +114,7 @@ func checkAPIReachable(baseURL string, httpClient *http.Client) checkResult {
 
 	host := hostFromURL(baseURL)
 	r.status = statusPass
-	r.message = fmt.Sprintf("Reachable (%s)", host)
+	r.message = host
 	r.detail = fmt.Sprintf("URL: %s → HTTP %d", baseURL, resp.StatusCode)
 	return r
 }
@@ -151,7 +151,7 @@ func checkTokenValid(baseURL, token string, httpClient *http.Client) checkResult
 	}
 
 	r.status = statusPass
-	r.message = "Token accepted"
+	r.message = ""
 	r.detail = fmt.Sprintf("GET /api/v3/collections → HTTP %d", resp.StatusCode)
 	return r
 }
@@ -162,11 +162,11 @@ func checkRegion(apiURL string) checkResult {
 	if strings.HasPrefix(host, "api-") {
 		parts := strings.SplitN(host, ".", 2)
 		region := strings.TrimPrefix(parts[0], "api-")
-		r.message = fmt.Sprintf("Region: %s", region)
+		r.message = region
 		r.detail = fmt.Sprintf("Full URL: %s", apiURL)
 		return r
 	}
-	r.message = fmt.Sprintf("Region: %s", host)
+	r.message = host
 	r.detail = fmt.Sprintf("Full URL: %s", apiURL)
 	return r
 }
