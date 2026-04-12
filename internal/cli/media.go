@@ -23,6 +23,11 @@ func newMediaCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "media",
 		Short: "Manage media assets",
+		Example: `  # List all media items
+  stqry media list
+
+  # Upload an image and create a media item
+  stqry media create --type image --file ./photo.jpg`,
 	}
 
 	cmd.AddCommand(newMediaListCmd())
@@ -43,6 +48,14 @@ func newMediaListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List media items",
+		Example: `  # List all media items
+  stqry media list
+
+  # Search for media by name
+  stqry media list --q "banner"
+
+  # List using a specific site
+  stqry media list --site mysite`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -86,6 +99,11 @@ func newMediaGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a media item by ID",
+		Example: `  # Get a media item by ID
+  stqry media get 55
+
+  # Get media item details as JSON
+  stqry media get 55 --json`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			item, err := api.GetMediaItem(activeClient, args[0])
@@ -105,6 +123,11 @@ func newMediaCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a media item (optionally uploading a file)",
+		Example: `  # Create an image media item with a file
+  stqry media create --type image --file ./photo.jpg
+
+  # Create a video media item with a name and language
+  stqry media create --type video --file ./tour.mp4 --name "City Tour" --lang en`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateMediaType(mediaType); err != nil {
 				return err
@@ -173,6 +196,8 @@ func newMediaUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <id>",
 		Short: "Update a media item",
+		Example: `  # Rename a media item
+  stqry media update 55 --name "New Banner"`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fields := map[string]interface{}{}
@@ -199,6 +224,11 @@ func newMediaDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Delete a media item",
+		Example: `  # Delete a media item
+  stqry media delete 55
+
+  # Delete a language variant of a media item
+  stqry media delete 55 --lang fr`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var query map[string]string
@@ -225,6 +255,11 @@ func newMediaUploadCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upload <file>",
 		Short: "Upload a file (optionally attach to a media item)",
+		Example: `  # Upload a file and get the uploaded file ID
+  stqry media upload ./photo.jpg
+
+  # Upload a file and attach it to an existing media item
+  stqry media upload ./photo.jpg --media-id 55 --lang en`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			filePath := args[0]
