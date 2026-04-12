@@ -10,17 +10,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// validMediaTypes mirrors MediaItem::MEDIA_ITEM_SUBTYPES_SHORT in mytours-web
-// (app/models/media_item.rb). Keep in sync if new subtypes are added.
-var validMediaTypes = []string{"map", "webpackage", "animation", "audio", "image", "video", "webvideo", "ar", "data"}
-
 func validateMediaType(t string) error {
-	for _, v := range validMediaTypes {
+	for _, v := range api.ValidMediaTypes {
 		if t == v {
 			return nil
 		}
 	}
-	return fmt.Errorf("invalid media type %q (valid: %s)", t, strings.Join(validMediaTypes, ", "))
+	return fmt.Errorf("invalid media type %q (valid: %s)", t, strings.Join(api.ValidMediaTypes, ", "))
 }
 
 func newMediaCmd() *cobra.Command {
@@ -163,7 +159,7 @@ func newMediaCreateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&filePath, "file", "", "Path to file to upload")
-	cmd.Flags().StringVar(&mediaType, "type", "", fmt.Sprintf("Media item type (required; one of: %s)", strings.Join(validMediaTypes, ", ")))
+	cmd.Flags().StringVar(&mediaType, "type", "", fmt.Sprintf("Media item type (required; one of: %s)", strings.Join(api.ValidMediaTypes, ", ")))
 	cmd.Flags().StringVar(&name, "name", "", "Media item name")
 	cmd.MarkFlagRequired("type")
 
