@@ -18,13 +18,19 @@ func registerMediaTools(s *server.MCPServer, flagSite string) {
 	s.AddTool(
 		mcpgo.NewTool("list_media",
 			mcpgo.WithDescription("List all media items for the configured STQRY site."),
+			mcpgo.WithNumber("page",
+				mcpgo.Description("Page number (1-based, default: 1)"),
+			),
+			mcpgo.WithNumber("per_page",
+				mcpgo.Description("Items per page (default: 25)"),
+			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 			client, err := ResolveClient(flagSite)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
-			items, meta, err := api.ListMediaItems(client, nil)
+			items, meta, err := api.ListMediaItems(client, paginationQuery(req.GetInt("page", 0), req.GetInt("per_page", 0)))
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("listing media items: %v", err)), nil
 			}

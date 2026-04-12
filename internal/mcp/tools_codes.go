@@ -14,13 +14,19 @@ func registerCodeTools(s *server.MCPServer, flagSite string) {
 	s.AddTool(
 		mcpgo.NewTool("list_codes",
 			mcpgo.WithDescription("List all codes for the configured STQRY site."),
+			mcpgo.WithNumber("page",
+				mcpgo.Description("Page number (1-based, default: 1)"),
+			),
+			mcpgo.WithNumber("per_page",
+				mcpgo.Description("Items per page (default: 25)"),
+			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 			client, err := ResolveClient(flagSite)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
-			codes, meta, err := api.ListCodes(client, nil)
+			codes, meta, err := api.ListCodes(client, paginationQuery(req.GetInt("page", 0), req.GetInt("per_page", 0)))
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("listing codes: %v", err)), nil
 			}

@@ -14,13 +14,19 @@ func registerProjectTools(s *server.MCPServer, flagSite string) {
 	s.AddTool(
 		mcpgo.NewTool("list_projects",
 			mcpgo.WithDescription("List all projects for the configured STQRY site."),
+			mcpgo.WithNumber("page",
+				mcpgo.Description("Page number (1-based, default: 1)"),
+			),
+			mcpgo.WithNumber("per_page",
+				mcpgo.Description("Items per page (default: 25)"),
+			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 			client, err := ResolveClient(flagSite)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
-			projects, meta, err := api.ListProjects(client, nil)
+			projects, meta, err := api.ListProjects(client, paginationQuery(req.GetInt("page", 0), req.GetInt("per_page", 0)))
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("listing projects: %v", err)), nil
 			}
