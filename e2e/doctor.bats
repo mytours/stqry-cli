@@ -32,8 +32,10 @@ load "test_helper"
 
 @test "doctor --verbose shows duration in each check line" {
     run "$STQRY" doctor --verbose
+    assert_failure
     # Verbose mode shows duration as "{name} ({duration})" e.g. "Global config exists (0s)"
     assert_output_contains "Global config exists ("
+    assert_output_contains "API reachable ("
 }
 
 @test "doctor with valid config shows config checks passing" {
@@ -43,11 +45,13 @@ load "test_helper"
     assert_failure
     assert_output_contains "✓"
     assert_output_contains "Global config exists"
+    # Confirm it fails for the right reason (API unreachable), not a crash or config error
+    assert_output_contains "API reachable"
 }
 
 @test "doctor --help shows usage" {
     run "$STQRY" doctor --help
     assert_success
     assert_output_contains "doctor"
-    assert_output_contains "verbose"
+    assert_output_contains "--verbose"
 }
