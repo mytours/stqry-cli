@@ -313,6 +313,53 @@ func TestListProjectsAPIError(t *testing.T) {
 	}
 }
 
+// ---- connect ----
+
+func TestConnectTool(t *testing.T) {
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"projects":[],"meta":{"page":1,"pages":1,"per_page":25,"count":0}}`)
+	}))
+	defer mock.Close()
+
+	// Start in empty dir — no stqry.yaml, no global config.
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	s := stqrymcp.NewServer("")
+
+	// Without connect, list_projects should fail.
+	result := callTool(s, "list_projects", `{}`)
+	if !result.IsError {
+		t.Fatal("expected error before connect")
+	}
+
+	// After connect, list_projects should succeed.
+	result = callTool(s, "connect", fmt.Sprintf(`{"token":"tok","api_url":%q}`, mock.URL))
+	if result == nil || result.IsError {
+		t.Fatalf("connect failed: %s", toolText(result))
+	}
+
+	result = callTool(s, "list_projects", `{}`)
+	if result == nil || result.IsError {
+		t.Fatalf("list_projects failed after connect: %s", toolText(result))
+	}
+}
+
+func TestConnectToolInvalidURL(t *testing.T) {
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "connect", `{"token":"tok","api_url":"not-a-url"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error for invalid URL")
+	}
+	if !strings.Contains(toolText(result), "http or https") {
+		t.Errorf("expected helpful error, got: %s", toolText(result))
+	}
+}
+
 func TestListProjectsPagination(t *testing.T) {
 	var receivedPage, receivedPerPage string
 	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
