@@ -79,7 +79,7 @@ func registerConfigTools(s *server.MCPServer, flagSite string) {
 			if err := WriteProjectConfig(site.APIURL, site.Token); err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("writing config: %v", err)), nil
 			}
-			return mcpgo.NewToolResultText(fmt.Sprintf(`{"ok":true,"message":"switched to site %q"}`, siteName)), nil
+			return mcpgo.NewToolResultText(fmt.Sprintf(`{"ok":true,"message":"switched to site %s"}`, siteName)), nil
 		},
 	)
 }
