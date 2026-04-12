@@ -204,7 +204,13 @@ func checkCLIVersion(currentVersion string, releasesURL string, httpClient *http
 	var payload struct {
 		TagName string `json:"tag_name"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil || payload.TagName == "" {
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		r.status = statusWarn
+		r.message = "Could not parse GitHub release response"
+		r.detail = err.Error()
+		return r
+	}
+	if payload.TagName == "" {
 		r.status = statusWarn
 		r.message = "Could not parse GitHub release response"
 		return r
