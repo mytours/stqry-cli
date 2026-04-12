@@ -10,9 +10,68 @@ import (
 )
 
 func registerMediaTools(s *server.MCPServer, flagSite string, sess *Session) {
-	// Note: create_media (CreateMediaItem) is intentionally not exposed as an MCP tool.
-	// Media creation requires a multipart file upload, which is not suitable for the
-	// text-based MCP tool protocol. Use the `stqry media upload` CLI command instead.
+	// create_media: uploads a file and creates a new media item
+	s.AddTool(
+		mcpgo.NewTool("create_media",
+			mcpgo.WithDescription("Upload a file and create a new STQRY media item."),
+			mcpgo.WithString("file_path",
+				mcpgo.Required(),
+				mcpgo.Description("Absolute path to the file to upload"),
+			),
+			mcpgo.WithString("type",
+				mcpgo.Required(),
+				mcpgo.Description("Media item type: map, webpackage, animation, audio, image, video, webvideo, ar, data"),
+			),
+			mcpgo.WithString("name",
+				mcpgo.Description("Name for the media item"),
+			),
+		),
+		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+			filePath := req.GetString("file_path", "")
+			if filePath == "" {
+				return mcpgo.NewToolResultError("file_path is required"), nil
+			}
+			mediaType := req.GetString("type", "")
+			if mediaType == "" {
+				return mcpgo.NewToolResultError("type is required"), nil
+			}
+			name := req.GetString("name", "")
+
+			client, err := ResolveClient(flagSite, sess)
+			if err != nil {
+				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
+			}
+
+			uploadedFile, err := api.UploadFile(client, filePath, "", nil, nil)
+			if err != nil {
+				return mcpgo.NewToolResultError(fmt.Sprintf("uploading file: %v", err)), nil
+			}
+
+			uploadedFileID := ""
+			if id, ok := uploadedFile["id"].(string); ok {
+				uploadedFileID = id
+			} else if id, ok := uploadedFile["id"].(float64); ok {
+				uploadedFileID = fmt.Sprintf("%d", int(id))
+			}
+			if uploadedFileID == "" {
+				return mcpgo.NewToolResultError("upload succeeded but returned no file ID"), nil
+			}
+
+			fields := map[string]interface{}{
+				"type":                  mediaType,
+				"file_uploaded_file_id": uploadedFileID,
+			}
+			if name != "" {
+				fields["name"] = name
+			}
+
+			item, err := api.CreateMediaItem(client, fields)
+			if err != nil {
+				return mcpgo.NewToolResultError(fmt.Sprintf("creating media item: %v", err)), nil
+			}
+			return jsonResult(item)
+		},
+	)
 
 	// list_media: returns all media items for the configured site
 	s.AddTool(
