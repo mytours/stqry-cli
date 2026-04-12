@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -59,11 +60,15 @@ func TestClientPost(t *testing.T) {
 }
 
 func TestClientErrorResponse(t *testing.T) {
+	// The Rails public API returns errors as [{code, message}, ...]; see
+	// app/views/api/public/shared/_errors.json.jbuilder in mytours-web.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(403)
+		w.WriteHeader(422)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"errors": []interface{}{"Unauthorized"},
+			"errors": []interface{}{
+				map[string]interface{}{"code": "field_validation", "message": "type: is invalid or missing"},
+			},
 		})
 	}))
 	defer server.Close()
@@ -72,7 +77,10 @@ func TestClientErrorResponse(t *testing.T) {
 	var result map[string]interface{}
 	err := c.Get("/api/public/collections", nil, &result)
 	if err == nil {
-		t.Fatal("expected error for 403 response")
+		t.Fatal("expected error for 422 response")
+	}
+	if !strings.Contains(err.Error(), "type: is invalid or missing") {
+		t.Errorf("expected error message to include server-side message, got %q", err.Error())
 	}
 }
 

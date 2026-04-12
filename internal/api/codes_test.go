@@ -80,12 +80,11 @@ func TestCreateCode(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		codeFields, ok := body["code"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.code to be a map, got %T", body["code"])
+		if _, wrapped := body["code"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"code\": %v", body)
 		}
-		if codeFields["coupon_code"] != "NEWCODE" {
-			t.Errorf("expected code.coupon_code=NEWCODE, got %v", codeFields["coupon_code"])
+		if body["coupon_code"] != "NEWCODE" {
+			t.Errorf("expected coupon_code=NEWCODE, got %v", body["coupon_code"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
@@ -117,12 +116,11 @@ func TestUpdateCode(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		codeFields, ok := body["code"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.code to be a map, got %T", body["code"])
+		if _, wrapped := body["code"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"code\": %v", body)
 		}
-		if codeFields["coupon_code"] != "UPDATED" {
-			t.Errorf("expected code.coupon_code=UPDATED, got %v", codeFields["coupon_code"])
+		if body["coupon_code"] != "UPDATED" {
+			t.Errorf("expected coupon_code=UPDATED, got %v", body["coupon_code"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
