@@ -222,6 +222,21 @@ func TestCheckCLIVersion(t *testing.T) {
 			t.Errorf("expected warn for empty tag, got %s", r.status)
 		}
 	})
+
+	t.Run("invalid json response", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("not json"))
+		}))
+		defer srv.Close()
+
+		r := checkCLIVersion("v0.3.1", srv.URL, srv.Client())
+		if r.status != statusWarn {
+			t.Errorf("expected warn for invalid JSON, got %s", r.status)
+		}
+		if r.detail == "" {
+			t.Error("expected detail to contain decode error")
+		}
+	})
 }
 
 func TestCheckStatusSymbols(t *testing.T) {
