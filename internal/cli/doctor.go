@@ -39,7 +39,7 @@ func checkGlobalConfig(configPath string) checkResult {
 		r.detail = fmt.Sprintf("Looked for: %s", configPath)
 	} else {
 		r.status = statusPass
-		r.message = configPath
+		r.message = "Global config found"
 		r.detail = fmt.Sprintf("Path: %s", configPath)
 	}
 	r.duration = time.Since(start)
@@ -60,7 +60,7 @@ func checkDirectoryConfig(cwd string) checkResult {
 	} else {
 		r.status = statusPass
 		r.message = "stqry.yaml found"
-		r.detail = fmt.Sprintf("Loaded from directory above: %s", cwd)
+		r.detail = fmt.Sprintf("Searched from: %s", cwd)
 	}
 	r.duration = time.Since(start)
 	return r
@@ -75,7 +75,8 @@ func checkSiteResolved(globalCfg *config.GlobalConfig, flagSite string, dirCfg *
 	site, err := config.ResolveSite(globalCfg, flagSite, dirCfg)
 	if err != nil {
 		r.status = statusFail
-		r.message = err.Error()
+		r.message = "Site could not be resolved"
+		r.detail = err.Error()
 	} else {
 		r.status = statusPass
 		r.message = fmt.Sprintf("Site resolved → %s", site.APIURL)
