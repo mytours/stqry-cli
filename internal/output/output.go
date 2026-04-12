@@ -115,7 +115,10 @@ func FormatTranslatedString(ts map[string]interface{}) string {
 }
 
 func applyJQ(w io.Writer, expr string, data interface{}) error {
-	query, _ := gojq.Parse(expr) // already validated at parse time
+	query, err := gojq.Parse(expr)
+	if err != nil {
+		return fmt.Errorf("jq: parse: %w", err)
+	}
 	iter := query.Run(data)
 	enc := json.NewEncoder(w)
 	for {
@@ -126,7 +129,9 @@ func applyJQ(w io.Writer, expr string, data interface{}) error {
 		if err, ok := v.(error); ok {
 			return fmt.Errorf("jq: %w", err)
 		}
-		enc.Encode(v)
+		if err := enc.Encode(v); err != nil {
+			return fmt.Errorf("jq: encoding output: %w", err)
+		}
 	}
 	return nil
 }
