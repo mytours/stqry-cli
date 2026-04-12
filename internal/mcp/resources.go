@@ -26,7 +26,7 @@ func jsonResourceContents(uri string, v interface{}) ([]mcpgo.ResourceContents, 
 	}, nil
 }
 
-func registerResources(s *server.MCPServer, flagSite string) {
+func registerResources(s *server.MCPServer, flagSite string, sess *Session) {
 	// stqry://projects — list of all projects
 	s.AddResource(
 		mcpgo.NewResource(
@@ -36,7 +36,7 @@ func registerResources(s *server.MCPServer, flagSite string) {
 			mcpgo.WithMIMEType("application/json"),
 		),
 		func(ctx context.Context, req mcpgo.ReadResourceRequest) ([]mcpgo.ResourceContents, error) {
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return nil, fmt.Errorf("resolving client: %w", err)
 			}
@@ -60,7 +60,7 @@ func registerResources(s *server.MCPServer, flagSite string) {
 			mcpgo.WithMIMEType("application/json"),
 		),
 		func(ctx context.Context, req mcpgo.ReadResourceRequest) ([]mcpgo.ResourceContents, error) {
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return nil, fmt.Errorf("resolving client: %w", err)
 			}
@@ -84,7 +84,7 @@ func registerResources(s *server.MCPServer, flagSite string) {
 			mcpgo.WithMIMEType("application/json"),
 		),
 		func(ctx context.Context, req mcpgo.ReadResourceRequest) ([]mcpgo.ResourceContents, error) {
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return nil, fmt.Errorf("resolving client: %w", err)
 			}
@@ -108,7 +108,7 @@ func registerResources(s *server.MCPServer, flagSite string) {
 			mcpgo.WithMIMEType("application/json"),
 		),
 		func(ctx context.Context, req mcpgo.ReadResourceRequest) ([]mcpgo.ResourceContents, error) {
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return nil, fmt.Errorf("resolving client: %w", err)
 			}
@@ -132,7 +132,7 @@ func registerResources(s *server.MCPServer, flagSite string) {
 			mcpgo.WithMIMEType("application/json"),
 		),
 		func(ctx context.Context, req mcpgo.ReadResourceRequest) ([]mcpgo.ResourceContents, error) {
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return nil, fmt.Errorf("resolving client: %w", err)
 			}
@@ -161,7 +161,7 @@ func registerResources(s *server.MCPServer, flagSite string) {
 				return nil, fmt.Errorf("collection ID is required")
 			}
 			id := idVals[0]
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return nil, fmt.Errorf("resolving client: %w", err)
 			}
@@ -194,7 +194,7 @@ func registerResources(s *server.MCPServer, flagSite string) {
 				return nil, fmt.Errorf("screen ID is required")
 			}
 			id := idVals[0]
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return nil, fmt.Errorf("resolving client: %w", err)
 			}
