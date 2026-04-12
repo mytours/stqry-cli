@@ -485,9 +485,9 @@ func newSectionSubItemCmd(cmdName, apiPath, singularKey string) *cobra.Command {
 			add:   "  # Add a social link to a section\n  stqry screens sections social add --screen-id 42 --section-id 99 --social-network instagram --url https://instagram.com/example",
 		},
 		"hours": {
-			group: "  # List opening hours in a section\n  stqry screens sections hours list --screen-id 42 --section-id 99\n\n  # Add an opening hours entry\n  stqry screens sections hours add --screen-id 42 --section-id 99 --description \"Monday–Friday\" --time \"9:00–17:00\"",
+			group: "  # List opening hours in a section\n  stqry screens sections hours list --screen-id 42 --section-id 99\n\n  # Add an opening hours entry\n  stqry screens sections hours add --screen-id 42 --section-id 99 --description \"Monday-Friday\" --time \"9:00-17:00\"",
 			list:  "  # List opening hours in a section\n  stqry screens sections hours list --screen-id 42 --section-id 99",
-			add:   "  # Add an opening hours entry\n  stqry screens sections hours add --screen-id 42 --section-id 99 --description \"Monday–Friday\" --time \"9:00–17:00\"",
+			add:   "  # Add an opening hours entry\n  stqry screens sections hours add --screen-id 42 --section-id 99 --description \"Monday-Friday\" --time \"9:00-17:00\"",
 		},
 	}
 	if ex, ok := exampleMap[cmdName]; ok {
