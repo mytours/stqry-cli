@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mytours/stqry-cli/internal/config"
+	"github.com/spf13/cobra"
 )
 
 type checkStatus string
@@ -281,4 +282,83 @@ func doctorSymbol(s checkStatus) string {
 	default:
 		return "?"
 	}
+}
+
+// errDoctorFailed is a sentinel returned by the doctor command when checks fail.
+// It is silenced (not printed) by cobra; the caller's Execute() returns it so
+// the process can exit with code 1 without printing a redundant error line.
+var errDoctorFailed = fmt.Errorf("doctor checks failed")
+
+func newDoctorCmd() *cobra.Command {
+	var verbose bool
+	cmd := &cobra.Command{
+		Use:   "doctor",
+		Short: "Check config, API connectivity, and CLI version",
+		Long:  "doctor runs a series of diagnostic checks and reports pass/fail/skip for each.",
+		// Override root PersistentPreRunE so doctor can run without a valid config.
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+		// SilenceErrors prevents cobra from printing "Error: doctor checks failed".
+		// SilenceUsage prevents the usage block being shown on failure.
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if runDoctor(os.Stdout, verbose) {
+				return errDoctorFailed
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detail for each check")
+	return cmd
+}
+
+// runDoctor runs all checks, prints results, and returns true if any check failed.
+func runDoctor(w io.Writer, verbose bool) bool {
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+
+	// --- Config group ---
+	configPath := config.DefaultGlobalConfigPath()
+	var results []checkResult
+	results = append(results, checkGlobalConfig(configPath))
+
+	cwd, _ := os.Getwd()
+	results = append(results, checkDirectoryConfig(cwd))
+
+	// Load config gracefully — no hard failure if absent.
+	globalCfg, _ := config.LoadGlobalConfig(configPath)
+	if globalCfg == nil {
+		globalCfg = &config.GlobalConfig{Sites: make(map[string]*config.Site)}
+	}
+	dirCfg, _ := config.FindDirectoryConfig(cwd)
+
+	siteResult := checkSiteResolved(globalCfg, flagSite, dirCfg)
+	results = append(results, siteResult)
+
+	// --- API group (only if site resolved) ---
+	if siteResult.status == statusPass {
+		site, _ := config.ResolveSite(globalCfg, flagSite, dirCfg)
+		results = append(results, checkAPIReachable(site.APIURL, httpClient))
+		results = append(results, checkTokenValid(site.APIURL, site.Token, httpClient))
+		results = append(results, checkRegion(site.APIURL))
+	} else {
+		results = append(results,
+			checkResult{group: "API", name: "API reachable", status: statusSkip, message: "No site resolved"},
+			checkResult{group: "API", name: "Token valid", status: statusSkip, message: "No site resolved"},
+			checkResult{group: "API", name: "Region", status: statusSkip, message: "No site resolved"},
+		)
+	}
+
+	// --- Version group ---
+	results = append(results, checkCLIVersion(version, defaultGitHubReleasesURL, httpClient))
+
+	printDoctorResults(w, results, verbose)
+
+	for _, r := range results {
+		if r.status == statusFail {
+			return true
+		}
+	}
+	return false
 }
