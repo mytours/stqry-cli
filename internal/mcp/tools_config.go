@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -28,9 +29,9 @@ func WriteProjectConfig(apiURL, token string) error {
 func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 	s.AddTool(
 		mcpgo.NewTool("connect",
-			mcpgo.WithDescription("Connect to a STQRY site for this session using a token and API URL. "+
-				"Read these from stqry.yaml in your project directory. "+
-				"Credentials are held in memory and cleared when the MCP server restarts."),
+			mcpgo.WithDescription("Store site credentials in this session. "+
+				"Credentials are held in memory and cleared when the MCP server restarts. "+
+				"If you have a stqry.yaml file in the project directory, pass the token and api_url from it here."),
 			mcpgo.WithString("token",
 				mcpgo.Required(),
 				mcpgo.Description("The STQRY API token"),
@@ -41,8 +42,8 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			token := req.GetString("token", "")
-			apiURL := req.GetString("api_url", "")
+			token := strings.TrimSpace(req.GetString("token", ""))
+			apiURL := strings.TrimSpace(req.GetString("api_url", ""))
 			if token == "" || apiURL == "" {
 				return mcpgo.NewToolResultError("token and api_url are required"), nil
 			}
@@ -60,7 +61,9 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 
 	s.AddTool(
 		mcpgo.NewTool("configure_project",
-			mcpgo.WithDescription("Write stqry.yaml in the current directory with API credentials. Use this to configure a project to connect to STQRY."),
+			mcpgo.WithDescription("Configure a STQRY project by storing credentials in this session. "+
+				"Also attempts to write stqry.yaml to the current directory for future use "+
+				"(this may fail in read-only environments and is not fatal)."),
 			mcpgo.WithString("api_url",
 				mcpgo.Required(),
 				mcpgo.Description("The STQRY API URL, e.g. https://api.stqry.com or https://api-us.stqry.com"),
@@ -71,8 +74,8 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			apiURL := req.GetString("api_url", "")
-			token := req.GetString("token", "")
+			apiURL := strings.TrimSpace(req.GetString("api_url", ""))
+			token := strings.TrimSpace(req.GetString("token", ""))
 			if apiURL == "" || token == "" {
 				return mcpgo.NewToolResultError("api_url and token are required"), nil
 			}
@@ -119,7 +122,7 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			if !ok {
 				return mcpgo.NewToolResultError(fmt.Sprintf("site %q not found. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>` to add it", siteName, siteName)), nil
 			}
-			sess.Set(site)
+			sess.Set(&config.Site{Token: site.Token, APIURL: site.APIURL})
 			return jsonResult(map[string]interface{}{
 				"ok":      true,
 				"message": fmt.Sprintf("switched to site %s", siteName),
