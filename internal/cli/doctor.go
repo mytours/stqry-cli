@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -167,6 +168,57 @@ func checkRegion(apiURL string) checkResult {
 	}
 	r.message = fmt.Sprintf("Region: %s", host)
 	r.detail = fmt.Sprintf("Full URL: %s", apiURL)
+	return r
+}
+
+const defaultGitHubReleasesURL = "https://api.github.com/repos/mytours/stqry-cli/releases/latest"
+
+func checkCLIVersion(currentVersion string, releasesURL string, httpClient *http.Client) checkResult {
+	start := time.Now()
+	r := checkResult{group: "Version", name: "CLI version"}
+
+	if currentVersion == "dev" {
+		r.status = statusInfo
+		r.message = "Running development build, skipping version check"
+		r.duration = time.Since(start)
+		return r
+	}
+
+	if releasesURL == "" {
+		releasesURL = defaultGitHubReleasesURL
+	}
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 10 * time.Second}
+	}
+
+	resp, err := httpClient.Get(releasesURL)
+	r.duration = time.Since(start)
+	if err != nil {
+		r.status = statusWarn
+		r.message = "Could not check version (GitHub unreachable)"
+		r.detail = err.Error()
+		return r
+	}
+	defer resp.Body.Close()
+
+	var payload struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil || payload.TagName == "" {
+		r.status = statusWarn
+		r.message = "Could not parse GitHub release response"
+		return r
+	}
+
+	if payload.TagName == currentVersion {
+		r.status = statusPass
+		r.message = fmt.Sprintf("CLI is up to date (%s)", currentVersion)
+		r.detail = fmt.Sprintf("Current: %s = Latest: %s", currentVersion, payload.TagName)
+	} else {
+		r.status = statusFail
+		r.message = fmt.Sprintf("Update available: %s → %s", currentVersion, payload.TagName)
+		r.detail = fmt.Sprintf("Current: %s → Latest: %s\nRun: brew upgrade stqry (or download from GitHub releases)", currentVersion, payload.TagName)
+	}
 	return r
 }
 

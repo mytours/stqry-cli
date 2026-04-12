@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -163,6 +164,64 @@ func TestCheckRegion(t *testing.T) {
 			t.Errorf("checkRegion(%q): expected message to contain %q, got %q", tt.apiURL, tt.wantMsg, r.message)
 		}
 	}
+}
+
+func TestCheckCLIVersion(t *testing.T) {
+	t.Run("dev build skips check", func(t *testing.T) {
+		r := checkCLIVersion("dev", "", nil)
+		if r.status != statusInfo {
+			t.Errorf("expected info for dev build, got %s", r.status)
+		}
+		if !contains(r.message, "development") {
+			t.Errorf("expected message to mention development build, got: %s", r.message)
+		}
+	})
+
+	t.Run("up to date", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			json.NewEncoder(w).Encode(map[string]string{"tag_name": "v0.3.1"})
+		}))
+		defer srv.Close()
+
+		r := checkCLIVersion("v0.3.1", srv.URL, srv.Client())
+		if r.status != statusPass {
+			t.Errorf("expected pass, got %s: %s", r.status, r.message)
+		}
+	})
+
+	t.Run("update available", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			json.NewEncoder(w).Encode(map[string]string{"tag_name": "v0.3.2"})
+		}))
+		defer srv.Close()
+
+		r := checkCLIVersion("v0.3.1", srv.URL, srv.Client())
+		if r.status != statusFail {
+			t.Errorf("expected fail (update available), got %s", r.status)
+		}
+		if !contains(r.detail, "v0.3.2") {
+			t.Errorf("expected detail to contain latest version, got: %s", r.detail)
+		}
+	})
+
+	t.Run("github unreachable", func(t *testing.T) {
+		r := checkCLIVersion("v0.3.1", "http://127.0.0.1:1", http.DefaultClient)
+		if r.status != statusWarn {
+			t.Errorf("expected warn for unreachable GitHub, got %s", r.status)
+		}
+	})
+
+	t.Run("malformed response", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			json.NewEncoder(w).Encode(map[string]string{"tag_name": ""})
+		}))
+		defer srv.Close()
+
+		r := checkCLIVersion("v0.3.1", srv.URL, srv.Client())
+		if r.status != statusWarn {
+			t.Errorf("expected warn for empty tag, got %s", r.status)
+		}
+	})
 }
 
 func TestCheckStatusSymbols(t *testing.T) {
