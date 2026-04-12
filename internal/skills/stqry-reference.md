@@ -174,7 +174,7 @@ stqry projects get <id>                  Get a single project
 
 ### `stqry codes`
 
-Manage QR / NFC codes.
+Manage redemption codes.
 
 ```
 stqry codes list                         List codes
