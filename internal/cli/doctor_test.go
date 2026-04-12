@@ -204,8 +204,8 @@ func TestCheckCLIVersion(t *testing.T) {
 		defer srv.Close()
 
 		r := checkCLIVersion("v0.3.1", srv.URL, srv.Client())
-		if r.status != statusFail {
-			t.Errorf("expected fail (update available), got %s", r.status)
+		if r.status != statusWarn {
+			t.Errorf("expected warn (update available), got %s", r.status)
 		}
 		if !contains(r.detail, "v0.3.2") {
 			t.Errorf("expected detail to contain latest version, got: %s", r.detail)
