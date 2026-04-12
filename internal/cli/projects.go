@@ -12,6 +12,11 @@ func newProjectsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "projects",
 		Short: "Manage projects",
+		Example: `  # List all projects
+  stqry projects list
+
+  # Get a project by ID
+  stqry projects get 1`,
 	}
 
 	cmd.AddCommand(newProjectsListCmd())
@@ -26,6 +31,11 @@ func newProjectsListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all projects",
+		Example: `  # List all projects
+  stqry projects list
+
+  # List using a specific site
+  stqry projects list --site mysite`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -64,7 +74,12 @@ func newProjectsGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a project by ID",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Get a project by ID
+  stqry projects get 1
+
+  # Get project details as JSON
+  stqry projects get 1 --json`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			project, err := api.GetProject(activeClient, args[0])
 			if err != nil {
