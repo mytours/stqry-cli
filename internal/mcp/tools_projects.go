@@ -9,7 +9,7 @@ import (
 	"github.com/mytours/stqry-cli/internal/api"
 )
 
-func registerProjectTools(s *server.MCPServer, flagSite string) {
+func registerProjectTools(s *server.MCPServer, flagSite string, sess *Session) {
 	// list_projects: returns all projects for the configured site
 	s.AddTool(
 		mcpgo.NewTool("list_projects",
@@ -22,7 +22,7 @@ func registerProjectTools(s *server.MCPServer, flagSite string) {
 			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -51,7 +51,7 @@ func registerProjectTools(s *server.MCPServer, flagSite string) {
 			if id == "" {
 				return mcpgo.NewToolResultError("id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
