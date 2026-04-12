@@ -26,10 +26,10 @@ func GetCode(c *Client, id string) (map[string]interface{}, error) {
 	return resp, nil
 }
 
-// CreateCode creates a new code.
+// CreateCode creates a new code. Fields are sent flat; see CreateScreen for why.
 func CreateCode(c *Client, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
-	if err := c.Post("/api/public/codes", map[string]interface{}{"code": fields}, &resp); err != nil {
+	if err := c.Post("/api/public/codes", fields, &resp); err != nil {
 		return nil, err
 	}
 	if code, ok := resp["code"].(map[string]interface{}); ok {
@@ -41,7 +41,7 @@ func CreateCode(c *Client, fields map[string]interface{}) (map[string]interface{
 // UpdateCode updates an existing code.
 func UpdateCode(c *Client, id string, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
-	if err := c.Patch(fmt.Sprintf("/api/public/codes/%s", id), map[string]interface{}{"code": fields}, &resp); err != nil {
+	if err := c.Patch(fmt.Sprintf("/api/public/codes/%s", id), fields, &resp); err != nil {
 		return nil, err
 	}
 	if code, ok := resp["code"].(map[string]interface{}); ok {
