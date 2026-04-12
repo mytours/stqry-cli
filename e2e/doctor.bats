@@ -1,10 +1,6 @@
 #!/usr/bin/env bats
 load "test_helper"
 
-# Note: tests that assert exit 0 (all checks passing) require a live API server
-# and are not included. The happy-path exit code is covered by e2e/collections.bats
-# patterns; here we verify behaviour under the most common support scenario (no/bad config).
-
 @test "doctor exits 1 with no config" {
     # No create_global_config — config is absent
     run "$STQRY" doctor
@@ -54,4 +50,28 @@ load "test_helper"
     assert_success
     assert_output_contains "doctor"
     assert_output_contains "--verbose"
+}
+
+# Happy-path tests: replay proxy serves cassettes so all API checks pass.
+# The binary exits 0 only when every check is pass/warn/info (no fail).
+
+@test "doctor exits 0 when all checks pass" {
+    create_global_config
+    create_directory_config
+    run "$STQRY" doctor --site=testsite
+    assert_success
+    assert_output_contains "✓"
+    assert_output_contains "Global config exists"
+    assert_output_contains "API reachable"
+    assert_output_contains "Token valid"
+}
+
+@test "doctor --verbose exits 0 and shows durations" {
+    create_global_config
+    create_directory_config
+    run "$STQRY" doctor --verbose --site=testsite
+    assert_success
+    assert_output_contains "Global config exists ("
+    assert_output_contains "API reachable ("
+    assert_output_contains "Token valid ("
 }
