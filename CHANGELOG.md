@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `select_site` MCP tool — switch to a named site from global config mid-session
+
+### Fixed
+- `stqry completion zsh` no longer requires a configured site
+- Renamed "Manage QR/NFC codes" to "Manage redemption codes"
+
+### Documentation
+- MCP server setup documented in README (Claude Code + Claude Desktop)
+
 ## [0.2.0] - 2026-04-12
 
 ### Added

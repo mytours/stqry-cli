@@ -131,6 +131,75 @@ func TestConfigureProjectInvalidURL(t *testing.T) {
 	}
 }
 
+// ---- select_site ----
+
+func TestSelectSiteTool(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	// Write a global config with a named site.
+	globalCfgPath := filepath.Join(dir, "config.yaml")
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+	globalCfg := &config.GlobalConfig{
+		Sites: map[string]*config.Site{
+			"mysite": {Token: "tok-abc", APIURL: "https://api.example.com"},
+		},
+	}
+	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "select_site", `{"site_name":"mysite"}`)
+	if result == nil {
+		t.Fatal("expected a result")
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %s", toolText(result))
+	}
+
+	// stqry.yaml should now contain the site credentials.
+	data, err := os.ReadFile(filepath.Join(dir, "stqry.yaml"))
+	if err != nil {
+		t.Fatal("stqry.yaml not written")
+	}
+	if !bytes.Contains(data, []byte("tok-abc")) {
+		t.Errorf("expected token in stqry.yaml, got: %s", data)
+	}
+}
+
+func TestSelectSiteNotFound(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+	// No global config — site won't exist.
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "select_site", `{"site_name":"unknown"}`)
+	if result == nil {
+		t.Fatal("expected a result")
+	}
+	if !result.IsError {
+		t.Fatal("expected error for unknown site")
+	}
+}
+
+func TestSelectSiteMissingSiteName(t *testing.T) {
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "select_site", `{"site_name":""}`)
+	if result == nil {
+		t.Fatal("expected a result")
+	}
+	if !result.IsError {
+		t.Fatal("expected error when site_name is empty")
+	}
+}
+
 // ---- ResolveClient ----
 
 func TestResolveClientFromDirConfig(t *testing.T) {

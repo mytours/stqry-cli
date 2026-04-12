@@ -54,4 +54,35 @@ func registerConfigTools(s *server.MCPServer, flagSite string) {
 			return mcpgo.NewToolResultText(`{"ok":true,"message":"stqry.yaml written successfully"}`), nil
 		},
 	)
+
+	s.AddTool(
+		mcpgo.NewTool("select_site",
+			mcpgo.WithDescription("Switch to a named site from global config (~/.config/stqry/config.yaml). Use this when the user says which site they want to work on."),
+			mcpgo.WithString("site_name",
+				mcpgo.Required(),
+				mcpgo.Description("The site name as configured via `stqry config add-site`"),
+			),
+		),
+		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+			siteName := req.GetString("site_name", "")
+			if siteName == "" {
+				return mcpgo.NewToolResultError("site_name is required"), nil
+			}
+			globalCfg, err := config.LoadGlobalConfig(config.DefaultGlobalConfigPath())
+			if err != nil {
+				return mcpgo.NewToolResultError(fmt.Sprintf("loading global config: %v", err)), nil
+			}
+			site, ok := globalCfg.Sites[siteName]
+			if !ok {
+				return mcpgo.NewToolResultError(fmt.Sprintf("site %q not found. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>` to add it", siteName, siteName)), nil
+			}
+			if err := WriteProjectConfig(site.APIURL, site.Token); err != nil {
+				return mcpgo.NewToolResultError(fmt.Sprintf("writing config: %v", err)), nil
+			}
+			return jsonResult(map[string]interface{}{
+				"ok":      true,
+				"message": fmt.Sprintf("switched to site %s", siteName),
+			})
+		},
+	)
 }
