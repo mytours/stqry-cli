@@ -27,6 +27,11 @@ func newCollectionsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "collections",
 		Short: "Manage collections",
+		Example: `  # List all collections
+  stqry collections list
+
+  # Create a tour collection
+  stqry collections create --name city-tour --type tour`,
 	}
 
 	cmd.AddCommand(newCollectionsListCmd())
@@ -46,6 +51,14 @@ func newCollectionsListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List collections",
+		Example: `  # List all collections
+  stqry collections list
+
+  # Search for collections matching a keyword
+  stqry collections list --q "museum"
+
+  # List using a specific site, paginated
+  stqry collections list --site mysite --page 2 --per-page 25`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -83,7 +96,12 @@ func newCollectionsGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a collection",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Get a collection by ID
+  stqry collections get 42
+
+  # Get collection details as JSON
+  stqry collections get 42 --json`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			col, err := api.GetCollection(activeClient, args[0])
 			if err != nil {
@@ -101,6 +119,11 @@ func newCollectionsCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a collection",
+		Example: `  # Create a list collection
+  stqry collections create --name highlights --type list
+
+  # Create a tour with a localised title
+  stqry collections create --name city-tour --type tour --title "City Tour" --lang en`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateCollectionType(collectionType); err != nil {
 				return err
@@ -141,7 +164,12 @@ func newCollectionsUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <id>",
 		Short: "Update a collection",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Rename a collection
+  stqry collections update 42 --name new-name
+
+  # Update the title in French
+  stqry collections update 42 --title "Tour de ville" --lang fr`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fields := map[string]interface{}{}
 			if name != "" {
@@ -174,7 +202,9 @@ func newCollectionsDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Delete a collection",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Delete a collection
+  stqry collections delete 42`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := api.DeleteCollection(activeClient, args[0]); err != nil {
 				printer.PrintError(err)
@@ -190,6 +220,11 @@ func newCollectionsItemsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "items",
 		Short: "Manage collection items",
+		Example: `  # List items in a collection
+  stqry collections items list 42
+
+  # Add a screen to a collection
+  stqry collections items add 42 --item-type Screen --item-id 99`,
 	}
 
 	cmd.AddCommand(newCollectionsItemsListCmd())
@@ -204,7 +239,9 @@ func newCollectionsItemsListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list <collection-id>",
 		Short: "List items in a collection",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # List all items in a collection
+  stqry collections items list 42`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			items, meta, err := api.ListCollectionItems(activeClient, args[0], nil)
 			if err != nil {
@@ -227,7 +264,12 @@ func newCollectionsItemsAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <collection-id>",
 		Short: "Add an item to a collection",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Add a screen to a collection
+  stqry collections items add 42 --item-type Screen --item-id 99
+
+  # Add to a specific site
+  stqry collections items add 42 --item-type Screen --item-id 99 --site mysite`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fields := map[string]interface{}{
 				"item_type": itemType,
@@ -254,7 +296,9 @@ func newCollectionsItemsRemoveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "remove <collection-id> <item-id>",
 		Short: "Remove an item from a collection",
-		Args:  cobra.ExactArgs(2),
+		Example: `  # Remove an item from a collection
+  stqry collections items remove 42 99`,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := api.DeleteCollectionItem(activeClient, args[0], args[1]); err != nil {
 				printer.PrintError(err)
@@ -270,7 +314,9 @@ func newCollectionsItemsReorderCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "reorder <collection-id> <item-id>...",
 		Short: "Reorder items in a collection",
-		Args:  cobra.MinimumNArgs(2),
+		Example: `  # Reorder items in a collection (IDs in desired order)
+  stqry collections items reorder 42 99 100 101`,
+		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			collectionID := args[0]
 			itemIDs := args[1:]
