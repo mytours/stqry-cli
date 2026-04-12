@@ -94,10 +94,21 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 				return mcpgo.NewToolResultError("api_url must be a valid http or https URL (e.g. https://api.stqry.com)"), nil
 			}
-			if err := WriteProjectConfig(apiURL, token); err != nil {
-				return mcpgo.NewToolResultError(fmt.Sprintf("writing config: %v", err)), nil
+			site := &config.Site{Token: token, APIURL: apiURL}
+			sess.Set(site)
+
+			// Best-effort disk write — not fatal if CWD is read-only.
+			writeErr := WriteProjectConfig(apiURL, token)
+			if writeErr != nil {
+				return jsonResult(map[string]interface{}{
+					"ok":      true,
+					"message": fmt.Sprintf("connected (note: could not write stqry.yaml: %v)", writeErr),
+				})
 			}
-			return mcpgo.NewToolResultText(`{"ok":true,"message":"stqry.yaml written successfully"}`), nil
+			return jsonResult(map[string]interface{}{
+				"ok":      true,
+				"message": "stqry.yaml written successfully",
+			})
 		},
 	)
 
