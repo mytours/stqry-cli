@@ -488,7 +488,9 @@ func TestCreateMediaMissingFilePath(t *testing.T) {
 func TestCreateMediaMissingType(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "f.mp4")
-	_ = os.WriteFile(filePath, []byte("x"), 0600)
+	if err := os.WriteFile(filePath, []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	s := stqrymcp.NewServer("")
 	result := callTool(s, "create_media", fmt.Sprintf(`{"file_path":%q,"type":""}`, filePath))
 	if result == nil || !result.IsError {
@@ -497,11 +499,19 @@ func TestCreateMediaMissingType(t *testing.T) {
 }
 
 func TestCreateMediaBadFilePath(t *testing.T) {
-	// Set up a real-looking server so the tool gets past auth.
-	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// presigned will never be called since the file open fails first
-		http.NotFound(w, r)
-	}))
+	mux := http.NewServeMux()
+	var mock *httptest.Server
+
+	// Presign responds successfully; the error should come from the file open.
+	mux.HandleFunc("/api/public/uploaded_files/presigned", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"url":    mock.URL + "/upload",
+			"fields": map[string]string{"key": "uploads/nonexistent.mp4"},
+		})
+	})
+
+	mock = httptest.NewServer(mux)
 	defer mock.Close()
 
 	dir := t.TempDir()
