@@ -25,7 +25,7 @@ func WriteProjectConfig(apiURL, token string) error {
 	return config.SaveDirectoryConfig(cwd, cfg)
 }
 
-func registerConfigTools(s *server.MCPServer, flagSite string) {
+func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 	s.AddTool(
 		mcpgo.NewTool("configure_project",
 			mcpgo.WithDescription("Write stqry.yaml in the current directory with API credentials. Use this to configure a project to connect to STQRY."),

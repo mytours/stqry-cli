@@ -13,8 +13,16 @@ import (
 )
 
 // ResolveClient resolves the STQRY API client using the standard resolution order:
-// --site flag → STQRY_SITE env var → stqry.yaml in CWD → global config.
-func ResolveClient(flagSite string) (*api.Client, error) {
+// in-memory session → --site flag → STQRY_SITE env var → stqry.yaml in CWD → global config.
+func ResolveClient(flagSite string, sess *Session) (*api.Client, error) {
+	// 1. In-memory session (set by connect or select_site tools).
+	if sess != nil {
+		if site := sess.Get(); site != nil {
+			return api.NewClient(site.APIURL, site.Token), nil
+		}
+	}
+
+	// 2–5. Existing resolution chain.
 	globalCfg, err := config.LoadGlobalConfig(config.DefaultGlobalConfigPath())
 	if err != nil {
 		return nil, fmt.Errorf("loading global config: %w", err)
@@ -29,7 +37,11 @@ func ResolveClient(flagSite string) (*api.Client, error) {
 	}
 	site, err := config.ResolveSite(globalCfg, flagSite, dirCfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(
+			"no site configured. Read stqry.yaml from your project and call connect(token, api_url), "+
+				"or call select_site(name) to use a named site from global config (~/.config/stqry/config.yaml): %w",
+			err,
+		)
 	}
 	return api.NewClient(site.APIURL, site.Token), nil
 }
@@ -61,17 +73,18 @@ func paginationQuery(page, perPage int) map[string]string {
 
 // NewServer creates the MCP server with all tools and resources registered.
 func NewServer(flagSite string) *server.MCPServer {
+	sess := NewSession()
 	s := server.NewMCPServer("STQRY", "1.0.0",
 		server.WithToolCapabilities(true),
 		server.WithResourceCapabilities(true, false),
 	)
-	registerConfigTools(s, flagSite)
-	registerProjectTools(s, flagSite)
-	registerCollectionTools(s, flagSite)
-	registerScreenTools(s, flagSite)
-	registerMediaTools(s, flagSite)
-	registerCodeTools(s, flagSite)
-	registerResources(s, flagSite)
+	registerConfigTools(s, flagSite, sess)
+	registerProjectTools(s, flagSite, sess)
+	registerCollectionTools(s, flagSite, sess)
+	registerScreenTools(s, flagSite, sess)
+	registerMediaTools(s, flagSite, sess)
+	registerCodeTools(s, flagSite, sess)
+	registerResources(s, flagSite, sess)
 	return s
 }
 
