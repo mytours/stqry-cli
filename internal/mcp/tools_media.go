@@ -9,6 +9,14 @@ import (
 	"github.com/mytours/stqry-cli/internal/api"
 )
 
+// validMediaTypes mirrors MediaItem::MEDIA_ITEM_SUBTYPES_SHORT in mytours-web
+// (app/models/media_item.rb). Keep in sync if new subtypes are added.
+// Also mirrored in internal/cli/media.go — update both together.
+var validMediaTypes = map[string]bool{
+	"map": true, "webpackage": true, "animation": true, "audio": true,
+	"image": true, "video": true, "webvideo": true, "ar": true, "data": true,
+}
+
 func registerMediaTools(s *server.MCPServer, flagSite string, sess *Session) {
 	// create_media: uploads a file and creates a new media item
 	s.AddTool(
@@ -34,10 +42,6 @@ func registerMediaTools(s *server.MCPServer, flagSite string, sess *Session) {
 			mediaType := req.GetString("type", "")
 			if mediaType == "" {
 				return mcpgo.NewToolResultError("type is required"), nil
-			}
-			validMediaTypes := map[string]bool{
-				"map": true, "webpackage": true, "animation": true, "audio": true,
-				"image": true, "video": true, "webvideo": true, "ar": true, "data": true,
 			}
 			if !validMediaTypes[mediaType] {
 				return mcpgo.NewToolResultError(fmt.Sprintf(
