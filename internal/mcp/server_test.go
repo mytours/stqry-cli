@@ -474,3 +474,146 @@ func TestCreateMediaInvalidType(t *testing.T) {
 		t.Errorf("expected helpful error mentioning invalid type, got: %s", toolText(result))
 	}
 }
+
+// ---- create_media ----
+
+func TestCreateMediaMissingFilePath(t *testing.T) {
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "create_media", `{"file_path":"","type":"video"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error for missing file_path")
+	}
+}
+
+func TestCreateMediaMissingType(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "f.mp4")
+	_ = os.WriteFile(filePath, []byte("x"), 0600)
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "create_media", fmt.Sprintf(`{"file_path":%q,"type":""}`, filePath))
+	if result == nil || !result.IsError {
+		t.Fatal("expected error for missing type")
+	}
+}
+
+func TestCreateMediaBadFilePath(t *testing.T) {
+	// Set up a real-looking server so the tool gets past auth.
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// presigned will never be called since the file open fails first
+		http.NotFound(w, r)
+	}))
+	defer mock.Close()
+
+	dir := t.TempDir()
+	cfg := &config.DirectoryConfig{Token: "tok", APIURL: mock.URL}
+	if err := config.SaveDirectoryConfig(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "create_media", `{"file_path":"/nonexistent/file.mp4","type":"video"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error for non-existent file path")
+	}
+}
+
+func TestCreateMediaHappyPath(t *testing.T) {
+	// Build temp file to upload.
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "test.mp4")
+	if err := os.WriteFile(filePath, []byte("fake video content"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// The mock server URL is referenced in the presigned handler closure,
+	// so we declare the variable first and assign after NewServer.
+	mux := http.NewServeMux()
+	var mock *httptest.Server
+
+	mux.HandleFunc("/api/public/uploaded_files/presigned", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"url":    mock.URL + "/upload",
+			"fields": map[string]string{"key": "uploads/test.mp4"},
+		})
+	})
+	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("/api/public/uploaded_files/process_enqueue", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"job_id": "job-media"})
+	})
+	mux.HandleFunc("/api/public/uploaded_files/process_status/job-media", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":        "complete",
+			"uploaded_file": map[string]interface{}{"id": "uf-123"},
+		})
+	})
+	mux.HandleFunc("/api/public/media_items", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"media_item": map[string]interface{}{"id": "mi-456", "type": "video"},
+		})
+	})
+
+	mock = httptest.NewServer(mux)
+	defer mock.Close()
+
+	dir := t.TempDir()
+	cfg := &config.DirectoryConfig{Token: "tok", APIURL: mock.URL}
+	if err := config.SaveDirectoryConfig(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "create_media", fmt.Sprintf(
+		`{"file_path":%q,"type":"video","name":"Test Video"}`, filePath,
+	))
+	if result == nil || result.IsError {
+		t.Fatalf("create_media failed: %s", toolText(result))
+	}
+	if !strings.Contains(toolText(result), "mi-456") {
+		t.Errorf("expected media item id in response, got: %s", toolText(result))
+	}
+}
+
+func TestCreateMediaUploadError(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "bad.mp4")
+	if err := os.WriteFile(filePath, []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Presigned returns an error (API returns 500).
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"errors":[{"code":"server_error"}]}`, http.StatusInternalServerError)
+	}))
+	defer mock.Close()
+
+	dir := t.TempDir()
+	cfg := &config.DirectoryConfig{Token: "tok", APIURL: mock.URL}
+	if err := config.SaveDirectoryConfig(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "create_media", fmt.Sprintf(`{"file_path":%q,"type":"video"}`, filePath))
+	if result == nil || !result.IsError {
+		t.Fatal("expected error when upload API returns 500")
+	}
+}
