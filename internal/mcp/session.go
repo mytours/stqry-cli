@@ -8,7 +8,7 @@ import (
 
 // Session holds in-memory site credentials for the duration of the MCP server process.
 type Session struct {
-	mu   sync.Mutex
+	mu   sync.RWMutex
 	site *config.Site
 }
 
@@ -26,7 +26,7 @@ func (s *Session) Set(site *config.Site) {
 
 // Get returns the active site, or nil if none is set.
 func (s *Session) Get() *config.Site {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.site
 }
