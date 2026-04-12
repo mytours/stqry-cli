@@ -13,6 +13,8 @@ func newSetupCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Interactive setup wizard",
+		Example: `  # Install Claude Code skill files into this project
+  stqry setup claude`,
 	}
 	cmd.AddCommand(newSetupClaudeCmd())
 	return cmd
@@ -25,6 +27,11 @@ func newSetupClaudeCmd() *cobra.Command {
 		Use:   "claude",
 		Short: "Install Claude Code skill files",
 		Long:  "Install STQRY CLI skill files into the Claude Code commands directory for AI-assisted workflows.",
+		Example: `  # Install skills into .claude/commands/ for this project
+  stqry setup claude
+
+  # Install skills globally into ~/.claude/commands/
+  stqry setup claude --global`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Determine target directory.
 			var targetDir string

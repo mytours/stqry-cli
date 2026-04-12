@@ -28,6 +28,11 @@ func newScreensCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "screens",
 		Short: "Manage screens",
+		Example: `  # List all screens
+  stqry screens list
+
+  # Create a story screen
+  stqry screens create --name welcome --type story`,
 	}
 
 	cmd.AddCommand(newScreensListCmd())
@@ -49,6 +54,14 @@ func newScreensListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List screens",
+		Example: `  # List all screens
+  stqry screens list
+
+  # Search for screens by name
+  stqry screens list --q "welcome"
+
+  # List using a specific site, paginated
+  stqry screens list --site mysite --page 2 --per-page 25`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -89,6 +102,11 @@ func newScreensGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a screen by ID",
+		Example: `  # Get a screen by ID
+  stqry screens get 42
+
+  # Get screen details as JSON
+  stqry screens get 42 --json`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			screen, err := api.GetScreen(activeClient, args[0])
@@ -108,6 +126,11 @@ func newScreensCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new screen",
+		Example: `  # Create a story screen
+  stqry screens create --name welcome --type story
+
+  # Create a web screen with a localised title
+  stqry screens create --name map-view --type web --title "Map View" --lang en`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateScreenType(screenType); err != nil {
 				return err
@@ -150,6 +173,11 @@ func newScreensUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <id>",
 		Short: "Update a screen",
+		Example: `  # Rename a screen
+  stqry screens update 42 --name new-name
+
+  # Update the title in English
+  stqry screens update 42 --title "Welcome Screen" --lang en`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fields := map[string]interface{}{}
@@ -186,6 +214,8 @@ func newScreensDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Delete a screen",
+		Example: `  # Delete a screen
+  stqry screens delete 42`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return api.DeleteScreen(activeClient, args[0])
@@ -199,6 +229,11 @@ func newSectionsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sections",
 		Short: "Manage story sections",
+		Example: `  # List sections for a screen
+  stqry screens sections list 42
+
+  # Add a text section to a screen
+  stqry screens sections add 42 --type text`,
 	}
 
 	cmd.AddCommand(newSectionsListCmd())
@@ -225,6 +260,8 @@ func newSectionsListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list <screen-id>",
 		Short: "List story sections for a screen",
+		Example: `  # List all sections for a screen
+  stqry screens sections list 42`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sections, meta, err := api.ListStorySections(activeClient, args[0], nil)
@@ -251,6 +288,8 @@ func newSectionsGetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <section-id>",
 		Short: "Get a story section by ID",
+		Example: `  # Get a section by ID
+  stqry screens sections get 99 --screen-id 42`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if screenID == "" {
@@ -277,6 +316,11 @@ func newSectionsAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <screen-id>",
 		Short: "Add a story section to a screen",
+		Example: `  # Add a text section to a screen
+  stqry screens sections add 42 --type text
+
+  # Add a titled gallery section in French
+  stqry screens sections add 42 --type gallery --title "Galerie" --lang fr`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if sectionType == "" {
@@ -316,6 +360,11 @@ func newSectionsUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <section-id>",
 		Short: "Update a story section",
+		Example: `  # Update a section's title
+  stqry screens sections update 99 --screen-id 42 --title "About"
+
+  # Update title in French
+  stqry screens sections update 99 --screen-id 42 --title "À propos" --lang fr`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if screenID == "" {
@@ -356,6 +405,8 @@ func newSectionsRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "remove <section-id>",
 		Short: "Remove a story section",
+		Example: `  # Remove a section from a screen
+  stqry screens sections remove 99 --screen-id 42`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if screenID == "" {
@@ -376,6 +427,8 @@ func newSectionsReorderCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "reorder <screen-id> <section-id>...",
 		Short: "Reorder story sections",
+		Example: `  # Reorder sections on a screen (specify section IDs in desired order)
+  stqry screens sections reorder 42 99 100 101`,
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			screenID := args[0]
@@ -399,6 +452,55 @@ func newSectionSubItemCmd(cmdName, apiPath, singularKey string) *cobra.Command {
 	cmd.AddCommand(newSubItemAddCmd(cmdName, apiPath, singularKey))
 	cmd.AddCommand(newSubItemUpdateCmd(cmdName, apiPath, singularKey))
 	cmd.AddCommand(newSubItemRemoveCmd(cmdName, apiPath))
+
+	type subItemExamples struct {
+		group string
+		list  string
+		add   string
+	}
+	exampleMap := map[string]subItemExamples{
+		"badges": {
+			group: "  # List badges in a section\n  stqry screens sections badges list --screen-id 42 --section-id 99\n\n  # Add a badge to a section\n  stqry screens sections badges add --screen-id 42 --section-id 99 --badge-id 7",
+			list:  "  # List badges in a section\n  stqry screens sections badges list --screen-id 42 --section-id 99",
+			add:   "  # Add a badge to a section\n  stqry screens sections badges add --screen-id 42 --section-id 99 --badge-id 7",
+		},
+		"links": {
+			group: "  # List links in a section\n  stqry screens sections links list --screen-id 42 --section-id 99\n\n  # Add a web link to a section\n  stqry screens sections links add --screen-id 42 --section-id 99 --link-type web --url https://example.com --label \"Visit Site\"",
+			list:  "  # List links in a section\n  stqry screens sections links list --screen-id 42 --section-id 99",
+			add:   "  # Add a web link to a section\n  stqry screens sections links add --screen-id 42 --section-id 99 --link-type web --url https://example.com --label \"Visit Site\"",
+		},
+		"media": {
+			group: "  # List media items in a section\n  stqry screens sections media list --screen-id 42 --section-id 99\n\n  # Add a media item to a section\n  stqry screens sections media add --screen-id 42 --section-id 99 --media-item-id 55",
+			list:  "  # List media items in a section\n  stqry screens sections media list --screen-id 42 --section-id 99",
+			add:   "  # Add a media item to a section\n  stqry screens sections media add --screen-id 42 --section-id 99 --media-item-id 55",
+		},
+		"prices": {
+			group: "  # List price items in a section\n  stqry screens sections prices list --screen-id 42 --section-id 99\n\n  # Add a price to a section\n  stqry screens sections prices add --screen-id 42 --section-id 99 --price-cents 1500 --price-currency USD --description \"Adult\"",
+			list:  "  # List price items in a section\n  stqry screens sections prices list --screen-id 42 --section-id 99",
+			add:   "  # Add a price to a section\n  stqry screens sections prices add --screen-id 42 --section-id 99 --price-cents 1500 --price-currency USD --description \"Adult\"",
+		},
+		"social": {
+			group: "  # List social items in a section\n  stqry screens sections social list --screen-id 42 --section-id 99\n\n  # Add a social link to a section\n  stqry screens sections social add --screen-id 42 --section-id 99 --social-network instagram --url https://instagram.com/example",
+			list:  "  # List social items in a section\n  stqry screens sections social list --screen-id 42 --section-id 99",
+			add:   "  # Add a social link to a section\n  stqry screens sections social add --screen-id 42 --section-id 99 --social-network instagram --url https://instagram.com/example",
+		},
+		"hours": {
+			group: "  # List opening hours in a section\n  stqry screens sections hours list --screen-id 42 --section-id 99\n\n  # Add an opening hours entry\n  stqry screens sections hours add --screen-id 42 --section-id 99 --description \"Monday-Friday\" --time \"9:00-17:00\"",
+			list:  "  # List opening hours in a section\n  stqry screens sections hours list --screen-id 42 --section-id 99",
+			add:   "  # Add an opening hours entry\n  stqry screens sections hours add --screen-id 42 --section-id 99 --description \"Monday-Friday\" --time \"9:00-17:00\"",
+		},
+	}
+	if ex, ok := exampleMap[cmdName]; ok {
+		cmd.Example = ex.group
+		for _, sub := range cmd.Commands() {
+			switch sub.Name() {
+			case "list":
+				sub.Example = ex.list
+			case "add":
+				sub.Example = ex.add
+			}
+		}
+	}
 
 	return cmd
 }
