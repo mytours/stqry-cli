@@ -17,7 +17,7 @@ Projects
                     └── Sections
                           └── Sub-items (hours, links, badges, prices, social, media)
 Media Items  (standalone, attached to screens or sections)
-Codes        (QR / NFC codes linked to collections or screens)
+Codes        (redemption codes linked to collections or screens)
 ```
 
 - **Projects** — top-level organisational units; each project belongs to one site.
@@ -27,7 +27,7 @@ Codes        (QR / NFC codes linked to collections or screens)
 - **Sections** — content blocks within a screen (text, image, audio, video, etc.).
 - **Sub-items** — structured data attached to a section: hours, links, badges, prices, social handles, media.
 - **Media Items** — images, audio, video, and documents. Can be uploaded and attached independently.
-- **Codes** — QR or NFC codes that deep-link into collections or screens.
+- **Codes** — redemption codes that deep-link into collections or screens.
 
 ---
 
