@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-12
+
+### Added
+- `connect(token, api_url)` MCP tool — stores credentials in-memory for the session; no disk writes required
+- `create_media` MCP tool — uploads a file and creates a new media item
+- `Session.Clear()` for future deauthentication support
+- Media type validation in `create_media` (rejects unknown types with a helpful error)
+- Absolute path enforcement for `create_media` `file_path` parameter
+
+### Fixed
+- `select_site` and `configure_project` now store credentials in-memory first; disk write is best-effort and non-fatal (fixes failure when MCP server CWD is `/`)
+- `ResolveClient` checks session before disk config; returns a helpful error guiding Claude to call `connect()` when nothing is configured
+- `select_site` trims whitespace from `site_name` parameter
+- `connect` correctly rejects empty or whitespace-only `token` and `api_url`
+- `validMediaTypes` consolidated into a single definition in `internal/api` (was duplicated across `cli` and `mcp` packages)
+
 ## [0.3.0] - 2026-04-12
 
 ### Added
