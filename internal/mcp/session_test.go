@@ -1,6 +1,7 @@
 package mcp_test
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/mytours/stqry-cli/internal/config"
@@ -25,4 +26,16 @@ func TestSessionGetSetSite(t *testing.T) {
 	if got.Token != "tok" {
 		t.Errorf("expected token tok, got %s", got.Token)
 	}
+}
+
+func TestSessionConcurrent(t *testing.T) {
+	sess := stqrymcp.NewSession()
+	site := &config.Site{Token: "tok", APIURL: "https://api.example.com"}
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(2)
+		go func() { defer wg.Done(); sess.Set(site) }()
+		go func() { defer wg.Done(); _ = sess.Get() }()
+	}
+	wg.Wait()
 }
