@@ -55,7 +55,13 @@ func newMediaListCmd() *cobra.Command {
   stqry media list --q "banner"
 
   # List using a specific site
-  stqry media list --site mysite`,
+  stqry media list --site mysite
+
+  # Filter with built-in jq (no external jq needed)
+  stqry media list --jq '.[].name'
+
+  # Pipe to external jq (alternative)
+  stqry media list --quiet | jq '.[].id'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -103,7 +109,10 @@ func newMediaGetCmd() *cobra.Command {
   stqry media get 55
 
   # Get media item details as JSON
-  stqry media get 55 --json`,
+  stqry media get 55 --json
+
+  # Filter a specific field
+  stqry media get 55 --jq '.name'`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			item, err := api.GetMediaItem(activeClient, args[0])
