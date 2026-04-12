@@ -228,6 +228,35 @@ func checkCLIVersion(currentVersion string, releasesURL string, httpClient *http
 	return r
 }
 
+func printDoctorResults(w io.Writer, results []checkResult, verbose bool) {
+	var currentGroup string
+	for _, r := range results {
+		if r.group != currentGroup {
+			if currentGroup != "" {
+				fmt.Fprintln(w)
+			}
+			fmt.Fprintf(w, "%s\n", r.group)
+			currentGroup = r.group
+		}
+
+		sym := doctorSymbol(r.status)
+		if verbose {
+			fmt.Fprintf(w, "  %s %s (%s)\n", sym, r.name, r.duration.Round(time.Millisecond))
+			if r.detail != "" {
+				for _, line := range strings.Split(r.detail, "\n") {
+					fmt.Fprintf(w, "    %s\n", line)
+				}
+			}
+		} else {
+			fmt.Fprintf(w, "  %s %s", sym, r.name)
+			if r.message != "" {
+				fmt.Fprintf(w, " (%s)", r.message)
+			}
+			fmt.Fprintln(w)
+		}
+	}
+}
+
 // hostFromURL extracts just the host portion of a URL.
 func hostFromURL(rawURL string) string {
 	u, err := url.Parse(rawURL)

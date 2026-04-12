@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/mytours/stqry-cli/internal/config"
@@ -255,5 +257,54 @@ func TestCheckStatusSymbols(t *testing.T) {
 		if got := doctorSymbol(tt.status); got != tt.want {
 			t.Errorf("doctorSymbol(%q) = %q, want %q", tt.status, got, tt.want)
 		}
+	}
+}
+
+func TestPrintDoctorResults(t *testing.T) {
+	results := []checkResult{
+		{group: "Config", name: "Global config exists", status: statusPass, message: "~/.config/stqry/config.yaml"},
+		{group: "Config", name: "Directory config found", status: statusFail, message: "Not found"},
+		{group: "API", name: "API reachable", status: statusPass, message: "api-us.stqry.com"},
+		{group: "API", name: "Region", status: statusInfo, message: "Region: us"},
+	}
+
+	var buf bytes.Buffer
+	printDoctorResults(&buf, results, false)
+	out := buf.String()
+
+	if !contains(out, "Config") {
+		t.Error("expected Config group header")
+	}
+	if !contains(out, "API") {
+		t.Error("expected API group header")
+	}
+	if !contains(out, "✓") {
+		t.Error("expected pass symbol")
+	}
+	if !contains(out, "✗") {
+		t.Error("expected fail symbol")
+	}
+	if strings.Count(out, "Config\n") != 1 {
+		t.Errorf("expected Config header exactly once, got:\n%s", out)
+	}
+}
+
+func TestPrintDoctorResultsVerbose(t *testing.T) {
+	results := []checkResult{
+		{
+			group:   "Config",
+			name:    "Global config exists",
+			status:  statusPass,
+			message: "~/.config/stqry/config.yaml",
+			detail:  "Path: /Users/glen/.config/stqry/config.yaml",
+		},
+	}
+
+	var buf bytes.Buffer
+	printDoctorResults(&buf, results, true)
+	out := buf.String()
+
+	if !contains(out, "Path: /Users/glen") {
+		t.Errorf("expected detail line in verbose output, got:\n%s", out)
 	}
 }
