@@ -300,6 +300,8 @@ func newDoctorCmd() *cobra.Command {
 		Use:   "doctor",
 		Short: "Check config, API connectivity, and CLI version",
 		Long:  "doctor runs a series of diagnostic checks and reports pass/fail/skip for each.",
+		Example: `  # Run all health checks
+  stqry doctor`,
 		// Override root PersistentPreRunE so doctor can run without a valid config.
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil
