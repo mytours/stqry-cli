@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -71,6 +73,74 @@ func TestCheckSiteResolved(t *testing.T) {
 			t.Errorf("expected fail, got %s", r.status)
 		}
 	})
+}
+
+func TestCheckAPIReachable(t *testing.T) {
+	t.Run("server responds", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		r := checkAPIReachable(srv.URL, srv.Client())
+		if r.status != statusPass {
+			t.Errorf("expected pass, got %s: %s", r.status, r.message)
+		}
+	})
+
+	t.Run("server unreachable", func(t *testing.T) {
+		r := checkAPIReachable("http://127.0.0.1:1", http.DefaultClient)
+		if r.status != statusFail {
+			t.Errorf("expected fail, got %s", r.status)
+		}
+	})
+}
+
+func TestCheckTokenValid(t *testing.T) {
+	t.Run("valid token returns 200", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		r := checkTokenValid(srv.URL, "good-token", srv.Client())
+		if r.status != statusPass {
+			t.Errorf("expected pass, got %s: %s", r.status, r.message)
+		}
+	})
+
+	t.Run("invalid token returns 401", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+		}))
+		defer srv.Close()
+
+		r := checkTokenValid(srv.URL, "bad-token", srv.Client())
+		if r.status != statusFail {
+			t.Errorf("expected fail, got %s: %s", r.status, r.message)
+		}
+	})
+}
+
+func TestCheckRegion(t *testing.T) {
+	tests := []struct {
+		apiURL     string
+		wantMsg    string
+		wantStatus checkStatus
+	}{
+		{"https://api-us.stqry.com", "us", statusInfo},
+		{"https://api-eu.stqry.com", "eu", statusInfo},
+		{"https://custom.example.com", "custom.example.com", statusInfo},
+	}
+	for _, tt := range tests {
+		r := checkRegion(tt.apiURL)
+		if r.status != tt.wantStatus {
+			t.Errorf("checkRegion(%q): expected %s, got %s", tt.apiURL, tt.wantStatus, r.status)
+		}
+		if !contains(r.message, tt.wantMsg) {
+			t.Errorf("checkRegion(%q): expected message to contain %q, got %q", tt.apiURL, tt.wantMsg, r.message)
+		}
+	}
 }
 
 func TestCheckStatusSymbols(t *testing.T) {

@@ -2,7 +2,11 @@ package cli
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/mytours/stqry-cli/internal/config"
@@ -84,6 +88,94 @@ func checkSiteResolved(globalCfg *config.GlobalConfig, flagSite string, dirCfg *
 	}
 	r.duration = time.Since(start)
 	return r
+}
+
+func checkAPIReachable(baseURL string, httpClient *http.Client) checkResult {
+	start := time.Now()
+	r := checkResult{group: "API", name: "API reachable"}
+
+	if _, err := url.ParseRequestURI(baseURL); err != nil {
+		r.status = statusFail
+		r.message = fmt.Sprintf("Malformed API URL: %s", baseURL)
+		r.duration = time.Since(start)
+		return r
+	}
+
+	resp, err := httpClient.Get(baseURL)
+	r.duration = time.Since(start)
+	if err != nil {
+		r.status = statusFail
+		r.message = fmt.Sprintf("Cannot reach %s: %v", baseURL, err)
+		return r
+	}
+	resp.Body.Close()
+
+	host := hostFromURL(baseURL)
+	r.status = statusPass
+	r.message = fmt.Sprintf("Reachable (%s)", host)
+	r.detail = fmt.Sprintf("URL: %s → HTTP %d", baseURL, resp.StatusCode)
+	return r
+}
+
+func checkTokenValid(baseURL, token string, httpClient *http.Client) checkResult {
+	start := time.Now()
+	r := checkResult{group: "API", name: "Token valid"}
+
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v3/collections?per_page=1"
+	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	if err != nil {
+		r.status = statusFail
+		r.message = fmt.Sprintf("Building request: %v", err)
+		r.duration = time.Since(start)
+		return r
+	}
+	req.Header.Set("X-Api-Token", token)
+
+	resp, err := httpClient.Do(req)
+	r.duration = time.Since(start)
+	if err != nil {
+		r.status = statusFail
+		r.message = fmt.Sprintf("Request failed: %v", err)
+		return r
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		r.status = statusFail
+		r.message = fmt.Sprintf("Token rejected (HTTP %d)", resp.StatusCode)
+		r.detail = fmt.Sprintf("GET /api/v3/collections → HTTP %d", resp.StatusCode)
+		return r
+	}
+
+	r.status = statusPass
+	r.message = "Token accepted"
+	r.detail = fmt.Sprintf("GET /api/v3/collections → HTTP %d", resp.StatusCode)
+	return r
+}
+
+func checkRegion(apiURL string) checkResult {
+	r := checkResult{group: "API", name: "Region", status: statusInfo}
+	host := hostFromURL(apiURL)
+	if strings.HasPrefix(host, "api-") {
+		parts := strings.SplitN(host, ".", 2)
+		region := strings.TrimPrefix(parts[0], "api-")
+		r.message = fmt.Sprintf("Region: %s", region)
+		r.detail = fmt.Sprintf("Full URL: %s", apiURL)
+		return r
+	}
+	r.message = fmt.Sprintf("Region: %s", host)
+	r.detail = fmt.Sprintf("Full URL: %s", apiURL)
+	return r
+}
+
+// hostFromURL extracts just the host portion of a URL.
+func hostFromURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Host == "" {
+		return rawURL
+	}
+	return u.Host
 }
 
 func doctorSymbol(s checkStatus) string {
