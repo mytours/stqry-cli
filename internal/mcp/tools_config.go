@@ -110,7 +110,7 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			siteName := req.GetString("site_name", "")
+			siteName := strings.TrimSpace(req.GetString("site_name", ""))
 			if siteName == "" {
 				return mcpgo.NewToolResultError("site_name is required"), nil
 			}
