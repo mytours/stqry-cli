@@ -392,6 +392,29 @@ func TestConnectToolInvalidURL(t *testing.T) {
 	}
 }
 
+func TestConnectMissingParams(t *testing.T) {
+	s := stqrymcp.NewServer("")
+
+	cases := []struct {
+		name string
+		args string
+	}{
+		{"empty token", `{"token":"","api_url":"https://api.stqry.com"}`},
+		{"whitespace-only token", `{"token":"   ","api_url":"https://api.stqry.com"}`},
+		{"empty api_url", `{"token":"tok","api_url":""}`},
+		{"whitespace-only api_url", `{"token":"tok","api_url":"   "}`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := callTool(s, "connect", tc.args)
+			if result == nil || !result.IsError {
+				t.Fatalf("expected error for %s", tc.name)
+			}
+		})
+	}
+}
+
 func TestConfigureProjectSetsSession(t *testing.T) {
 	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -499,23 +522,10 @@ func TestCreateMediaMissingType(t *testing.T) {
 }
 
 func TestCreateMediaBadFilePath(t *testing.T) {
-	mux := http.NewServeMux()
-	var mock *httptest.Server
-
-	// Presign responds successfully; the error should come from the file open.
-	mux.HandleFunc("/api/public/uploaded_files/presigned", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"url":    mock.URL + "/upload",
-			"fields": map[string]string{"key": "uploads/nonexistent.mp4"},
-		})
-	})
-
-	mock = httptest.NewServer(mux)
-	defer mock.Close()
-
+	// /nonexistent/file.mp4 is absolute but the file does not exist — the error
+	// should come from the file open, before any HTTP call is made.
 	dir := t.TempDir()
-	cfg := &config.DirectoryConfig{Token: "tok", APIURL: mock.URL}
+	cfg := &config.DirectoryConfig{Token: "tok", APIURL: "https://api.example.com"}
 	if err := config.SaveDirectoryConfig(dir, cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -596,6 +606,26 @@ func TestCreateMediaHappyPath(t *testing.T) {
 	}
 	if !strings.Contains(toolText(result), "mi-456") {
 		t.Errorf("expected media item id in response, got: %s", toolText(result))
+	}
+}
+
+func TestCreateMediaRelativeFilePath(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.DirectoryConfig{Token: "tok", APIURL: "https://api.example.com"}
+	if err := config.SaveDirectoryConfig(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "create_media", `{"file_path":"relative/path/file.mp4","type":"video"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error for relative file path")
+	}
+	if !strings.Contains(toolText(result), "absolute") {
+		t.Errorf("expected error mentioning absolute path, got: %s", toolText(result))
 	}
 }
 

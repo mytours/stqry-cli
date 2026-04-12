@@ -30,3 +30,10 @@ func (s *Session) Get() *config.Site {
 	defer s.mu.RUnlock()
 	return s.site
 }
+
+// Clear removes the active site credentials from the session.
+func (s *Session) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.site = nil
+}

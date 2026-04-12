@@ -28,6 +28,18 @@ func TestSessionGetSetSite(t *testing.T) {
 	}
 }
 
+func TestSessionClear(t *testing.T) {
+	sess := stqrymcp.NewSession()
+	sess.Set(&config.Site{Token: "tok", APIURL: "https://api.example.com"})
+	if sess.Get() == nil {
+		t.Fatal("expected site after Set")
+	}
+	sess.Clear()
+	if sess.Get() != nil {
+		t.Error("expected nil site after Clear")
+	}
+}
+
 func TestSessionConcurrent(t *testing.T) {
 	sess := stqrymcp.NewSession()
 	site := &config.Site{Token: "tok", APIURL: "https://api.example.com"}

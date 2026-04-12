@@ -2,6 +2,14 @@ package api
 
 import "fmt"
 
+// ValidMediaTypes lists the allowed media item subtypes. Mirrors
+// MediaItem::MEDIA_ITEM_SUBTYPES_SHORT in mytours-web (app/models/media_item.rb).
+// Update here if new subtypes are added upstream.
+var ValidMediaTypes = []string{
+	"map", "webpackage", "animation", "audio",
+	"image", "video", "webvideo", "ar", "data",
+}
+
 // ListMediaItems returns a paginated list of media items.
 func ListMediaItems(c *Client, query map[string]string) ([]map[string]interface{}, *PaginationMeta, error) {
 	var resp struct {

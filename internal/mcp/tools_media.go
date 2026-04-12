@@ -3,19 +3,21 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/mytours/stqry-cli/internal/api"
 )
 
-// validMediaTypes mirrors MediaItem::MEDIA_ITEM_SUBTYPES_SHORT in mytours-web
-// (app/models/media_item.rb). Keep in sync if new subtypes are added.
-// Also mirrored in internal/cli/media.go — update both together.
-var validMediaTypes = map[string]bool{
-	"map": true, "webpackage": true, "animation": true, "audio": true,
-	"image": true, "video": true, "webvideo": true, "ar": true, "data": true,
-}
+// validMediaTypes is a fast-lookup set built from api.ValidMediaTypes.
+var validMediaTypes = func() map[string]bool {
+	m := make(map[string]bool, len(api.ValidMediaTypes))
+	for _, t := range api.ValidMediaTypes {
+		m[t] = true
+	}
+	return m
+}()
 
 func registerMediaTools(s *server.MCPServer, flagSite string, sess *Session) {
 	// create_media: uploads a file and creates a new media item
@@ -38,6 +40,9 @@ func registerMediaTools(s *server.MCPServer, flagSite string, sess *Session) {
 			filePath := req.GetString("file_path", "")
 			if filePath == "" {
 				return mcpgo.NewToolResultError("file_path is required"), nil
+			}
+			if !filepath.IsAbs(filePath) {
+				return mcpgo.NewToolResultError("file_path must be an absolute path (e.g. /home/user/file.mp4)"), nil
 			}
 			mediaType := req.GetString("type", "")
 			if mediaType == "" {
