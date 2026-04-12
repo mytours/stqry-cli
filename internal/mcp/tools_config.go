@@ -27,20 +27,6 @@ func WriteProjectConfig(apiURL, token string) error {
 
 func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 	s.AddTool(
-		mcpgo.NewTool("debug_env",
-			mcpgo.WithDescription("Dump environment variables and working directory for debugging. Remove before release."),
-		),
-		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			cwd, _ := os.Getwd()
-			env := os.Environ()
-			return jsonResult(map[string]interface{}{
-				"cwd": cwd,
-				"env": env,
-			})
-		},
-	)
-
-	s.AddTool(
 		mcpgo.NewTool("connect",
 			mcpgo.WithDescription("Connect to a STQRY site for this session using a token and API URL. "+
 				"Read these from stqry.yaml in your project directory. "+
