@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-12
+
+### Added
+- `stqry doctor` command — diagnostics for config, API connectivity, and version currency
+  - Checks config file presence and validity
+  - Checks API reachability and authentication
+  - Checks whether the CLI is up to date (compares against the latest GitHub release)
+  - `--verbose` flag for detailed per-check output; machine-readable `--output json`
+- `run_doctor` MCP tool — exposes the same diagnostics to AI agents
+- `internal/buildinfo` package — version variable injected at build time via `-ldflags`
+
 ## [0.3.1] - 2026-04-12
 
 ### Added
