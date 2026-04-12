@@ -57,7 +57,7 @@ func SaveGlobalConfig(cfg *GlobalConfig, path string) error {
 	if err != nil {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
 
 func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
@@ -87,7 +87,7 @@ func SaveDirectoryConfig(dir string, cfg *DirectoryConfig) error {
 	if err != nil {
 		return fmt.Errorf("marshaling dir config: %w", err)
 	}
-	return os.WriteFile(filepath.Join(dir, "stqry.yaml"), data, 0644)
+	return os.WriteFile(filepath.Join(dir, "stqry.yaml"), data, 0600)
 }
 
 func ResolveSite(global *GlobalConfig, flagSite string, dirCfg *DirectoryConfig) (*Site, error) {
@@ -96,6 +96,15 @@ func ResolveSite(global *GlobalConfig, flagSite string, dirCfg *DirectoryConfig)
 		site, ok := global.Sites[flagSite]
 		if !ok {
 			return nil, fmt.Errorf("site %q not found in config. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>`", flagSite, flagSite)
+		}
+		return site, nil
+	}
+
+	// STQRY_SITE environment variable.
+	if envSite := os.Getenv("STQRY_SITE"); envSite != "" {
+		site, ok := global.Sites[envSite]
+		if !ok {
+			return nil, fmt.Errorf("site %q (from STQRY_SITE) not found in config", envSite)
 		}
 		return site, nil
 	}
