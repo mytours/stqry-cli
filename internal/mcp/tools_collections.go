@@ -14,13 +14,19 @@ func registerCollectionTools(s *server.MCPServer, flagSite string) {
 	s.AddTool(
 		mcpgo.NewTool("list_collections",
 			mcpgo.WithDescription("List all collections for the configured STQRY site."),
+			mcpgo.WithNumber("page",
+				mcpgo.Description("Page number (1-based, default: 1)"),
+			),
+			mcpgo.WithNumber("per_page",
+				mcpgo.Description("Items per page (default: 25)"),
+			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 			client, err := ResolveClient(flagSite)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
-			items, meta, err := api.ListCollections(client, nil)
+			items, meta, err := api.ListCollections(client, paginationQuery(req.GetInt("page", 0), req.GetInt("per_page", 0)))
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("listing collections: %v", err)), nil
 			}
@@ -152,6 +158,12 @@ func registerCollectionTools(s *server.MCPServer, flagSite string) {
 				mcpgo.Required(),
 				mcpgo.Description("The collection ID"),
 			),
+			mcpgo.WithNumber("page",
+				mcpgo.Description("Page number (1-based, default: 1)"),
+			),
+			mcpgo.WithNumber("per_page",
+				mcpgo.Description("Items per page (default: 25)"),
+			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 			collectionID := req.GetString("collection_id", "")
@@ -162,7 +174,7 @@ func registerCollectionTools(s *server.MCPServer, flagSite string) {
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
-			items, meta, err := api.ListCollectionItems(client, collectionID, nil)
+			items, meta, err := api.ListCollectionItems(client, collectionID, paginationQuery(req.GetInt("page", 0), req.GetInt("per_page", 0)))
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("listing collection items: %v", err)), nil
 			}

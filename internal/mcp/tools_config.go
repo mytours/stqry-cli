@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
@@ -42,6 +43,10 @@ func registerConfigTools(s *server.MCPServer, flagSite string) {
 			token := req.GetString("token", "")
 			if apiURL == "" || token == "" {
 				return mcpgo.NewToolResultError("api_url and token are required"), nil
+			}
+			parsed, err := url.Parse(apiURL)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+				return mcpgo.NewToolResultError("api_url must be a valid http or https URL (e.g. https://api.stqry.com)"), nil
 			}
 			if err := WriteProjectConfig(apiURL, token); err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("writing config: %v", err)), nil

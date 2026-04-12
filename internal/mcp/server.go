@@ -1,8 +1,10 @@
 package mcp
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -34,11 +36,27 @@ func ResolveClient(flagSite string) (*api.Client, error) {
 
 // jsonResult marshals v to a JSON tool result, or an error result on failure.
 func jsonResult(v interface{}) (*mcpgo.CallToolResult, error) {
-	data, err := marshalJSON(v)
+	data, err := json.Marshal(v)
 	if err != nil {
 		return mcpgo.NewToolResultError(fmt.Sprintf("serializing result: %v", err)), nil
 	}
 	return mcpgo.NewToolResultText(string(data)), nil
+}
+
+// paginationQuery builds a query map from optional page/per_page values.
+// Returns nil if neither is set (preserves existing nil-passthrough behaviour).
+func paginationQuery(page, perPage int) map[string]string {
+	if page == 0 && perPage == 0 {
+		return nil
+	}
+	q := make(map[string]string, 2)
+	if page > 0 {
+		q["page"] = strconv.Itoa(page)
+	}
+	if perPage > 0 {
+		q["per_page"] = strconv.Itoa(perPage)
+	}
+	return q
 }
 
 // NewServer creates the MCP server with all tools and resources registered.

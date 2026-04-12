@@ -25,13 +25,19 @@ func registerScreenCRUD(s *server.MCPServer, flagSite string) {
 	s.AddTool(
 		mcpgo.NewTool("list_screens",
 			mcpgo.WithDescription("List all screens for the configured STQRY site."),
+			mcpgo.WithNumber("page",
+				mcpgo.Description("Page number (1-based, default: 1)"),
+			),
+			mcpgo.WithNumber("per_page",
+				mcpgo.Description("Items per page (default: 25)"),
+			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 			client, err := ResolveClient(flagSite)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
-			items, meta, err := api.ListScreens(client, nil)
+			items, meta, err := api.ListScreens(client, paginationQuery(req.GetInt("page", 0), req.GetInt("per_page", 0)))
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("listing screens: %v", err)), nil
 			}
@@ -165,6 +171,12 @@ func registerSectionCRUD(s *server.MCPServer, flagSite string) {
 				mcpgo.Required(),
 				mcpgo.Description("The screen ID"),
 			),
+			mcpgo.WithNumber("page",
+				mcpgo.Description("Page number (1-based, default: 1)"),
+			),
+			mcpgo.WithNumber("per_page",
+				mcpgo.Description("Items per page (default: 25)"),
+			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 			screenID := req.GetString("screen_id", "")
@@ -175,7 +187,7 @@ func registerSectionCRUD(s *server.MCPServer, flagSite string) {
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
-			items, meta, err := api.ListStorySections(client, screenID, nil)
+			items, meta, err := api.ListStorySections(client, screenID, paginationQuery(req.GetInt("page", 0), req.GetInt("per_page", 0)))
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("listing sections: %v", err)), nil
 			}

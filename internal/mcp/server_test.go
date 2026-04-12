@@ -2,13 +2,50 @@ package mcp_test
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	mcpgo "github.com/mark3labs/mcp-go/mcp"
+	mcpserver "github.com/mark3labs/mcp-go/server"
 	"github.com/mytours/stqry-cli/internal/config"
 	stqrymcp "github.com/mytours/stqry-cli/internal/mcp"
 )
+
+// callTool sends a tools/call JSON-RPC message to the server and returns the result.
+func callTool(s *mcpserver.MCPServer, name string, args string) *mcpgo.CallToolResult {
+	msg := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":%q,"arguments":%s}}`, name, args)
+	resp := s.HandleMessage(context.Background(), json.RawMessage(msg))
+	jsonResp, ok := resp.(mcpgo.JSONRPCResponse)
+	if !ok {
+		return nil
+	}
+	result, ok := jsonResp.Result.(*mcpgo.CallToolResult)
+	if !ok {
+		return nil
+	}
+	return result
+}
+
+// toolText returns the text content from the first content item of a CallToolResult.
+func toolText(r *mcpgo.CallToolResult) string {
+	if r == nil || len(r.Content) == 0 {
+		return ""
+	}
+	text, ok := r.Content[0].(mcpgo.TextContent)
+	if !ok {
+		return ""
+	}
+	return text.Text
+}
+
+// ---- configure_project ----
 
 func TestConfigureProjectTool(t *testing.T) {
 	dir := t.TempDir()
@@ -33,6 +70,69 @@ func TestConfigureProjectTool(t *testing.T) {
 	}
 }
 
+func TestConfigureProjectViaHandleMessage(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "configure_project", `{"api_url":"https://api.example.com","token":"tok123"}`)
+	if result == nil {
+		t.Fatal("expected a result")
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %s", toolText(result))
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "stqry.yaml"))
+	if err != nil {
+		t.Fatal("stqry.yaml not written")
+	}
+	if !bytes.Contains(data, []byte("tok123")) {
+		t.Error("expected token in stqry.yaml")
+	}
+}
+
+func TestConfigureProjectMissingParams(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "configure_project", `{"api_url":"","token":""}`)
+	if result == nil {
+		t.Fatal("expected a result")
+	}
+	if !result.IsError {
+		t.Fatal("expected an error result for missing params")
+	}
+}
+
+func TestConfigureProjectInvalidURL(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+
+	for _, badURL := range []string{"not-a-url", "ftp://wrong-scheme.com", "http://"} {
+		result := callTool(s, "configure_project", fmt.Sprintf(`{"api_url":%q,"token":"tok"}`, badURL))
+		if result == nil {
+			t.Fatalf("expected a result for URL %q", badURL)
+		}
+		if !result.IsError {
+			t.Errorf("expected error for invalid URL %q", badURL)
+		}
+		if !strings.Contains(toolText(result), "http or https") {
+			t.Errorf("expected helpful error message for URL %q, got: %s", badURL, toolText(result))
+		}
+	}
+}
+
+// ---- ResolveClient ----
+
 func TestResolveClientFromDirConfig(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &config.DirectoryConfig{Token: "mytoken", APIURL: "https://api.example.com"}
@@ -49,5 +149,102 @@ func TestResolveClientFromDirConfig(t *testing.T) {
 	}
 	if client.Token != "mytoken" {
 		t.Errorf("expected mytoken, got %s", client.Token)
+	}
+}
+
+// ---- list_projects ----
+
+func TestListProjectsHappyPath(t *testing.T) {
+	// Start a mock API server that returns a well-formed projects response.
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/public/projects" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"projects":[{"id":"42","name":"Test Project"}],"meta":{"page":1,"pages":1,"per_page":25,"count":1}}`)
+	}))
+	defer mock.Close()
+
+	dir := t.TempDir()
+	cfg := &config.DirectoryConfig{Token: "tok", APIURL: mock.URL}
+	if err := config.SaveDirectoryConfig(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "list_projects", `{}`)
+	if result == nil {
+		t.Fatal("expected a result")
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %s", toolText(result))
+	}
+	if !strings.Contains(toolText(result), "Test Project") {
+		t.Errorf("expected project name in response, got: %s", toolText(result))
+	}
+}
+
+func TestListProjectsAPIError(t *testing.T) {
+	// Mock server returns a 500 error.
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"errors":[{"code":"server_error","message":"internal error"}]}`, http.StatusInternalServerError)
+	}))
+	defer mock.Close()
+
+	dir := t.TempDir()
+	cfg := &config.DirectoryConfig{Token: "tok", APIURL: mock.URL}
+	if err := config.SaveDirectoryConfig(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "list_projects", `{}`)
+	if result == nil {
+		t.Fatal("expected a result")
+	}
+	if !result.IsError {
+		t.Fatal("expected an error result when API returns 500")
+	}
+}
+
+func TestListProjectsPagination(t *testing.T) {
+	var receivedPage, receivedPerPage string
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedPage = r.URL.Query().Get("page")
+		receivedPerPage = r.URL.Query().Get("per_page")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"projects":[],"meta":{"page":2,"pages":3,"per_page":10,"count":25}}`)
+	}))
+	defer mock.Close()
+
+	dir := t.TempDir()
+	cfg := &config.DirectoryConfig{Token: "tok", APIURL: mock.URL}
+	if err := config.SaveDirectoryConfig(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "list_projects", `{"page":2,"per_page":10}`)
+	if result == nil {
+		t.Fatal("expected a result")
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %s", toolText(result))
+	}
+	if receivedPage != "2" {
+		t.Errorf("expected page=2 forwarded to API, got %q", receivedPage)
+	}
+	if receivedPerPage != "10" {
+		t.Errorf("expected per_page=10 forwarded to API, got %q", receivedPerPage)
 	}
 }

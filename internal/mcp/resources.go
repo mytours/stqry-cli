@@ -2,24 +2,18 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/mytours/stqry-cli/internal/api"
 )
 
-// extractIDFromURI strips the given prefix from the URI and returns the remainder.
-// e.g. extractIDFromURI("stqry://collections/42", "stqry://collections/") → "42"
-func extractIDFromURI(uri, prefix string) string {
-	return strings.TrimPrefix(uri, prefix)
-}
-
 // jsonResourceContents marshals v and returns it as a single-element
 // []mcp.ResourceContents slice, or an error on marshalling failure.
 func jsonResourceContents(uri string, v interface{}) ([]mcpgo.ResourceContents, error) {
-	data, err := marshalJSON(v)
+	data, err := json.Marshal(v)
 	if err != nil {
 		return nil, fmt.Errorf("serializing resource: %w", err)
 	}
@@ -81,6 +75,30 @@ func registerResources(s *server.MCPServer, flagSite string) {
 		},
 	)
 
+	// stqry://screens — list of all screens
+	s.AddResource(
+		mcpgo.NewResource(
+			"stqry://screens",
+			"Screens",
+			mcpgo.WithResourceDescription("All STQRY screens for the configured site."),
+			mcpgo.WithMIMEType("application/json"),
+		),
+		func(ctx context.Context, req mcpgo.ReadResourceRequest) ([]mcpgo.ResourceContents, error) {
+			client, err := ResolveClient(flagSite)
+			if err != nil {
+				return nil, fmt.Errorf("resolving client: %w", err)
+			}
+			screens, meta, err := api.ListScreens(client, nil)
+			if err != nil {
+				return nil, fmt.Errorf("listing screens: %w", err)
+			}
+			return jsonResourceContents(req.Params.URI, map[string]interface{}{
+				"screens": screens,
+				"meta":    meta,
+			})
+		},
+	)
+
 	// stqry://media — list of all media items
 	s.AddResource(
 		mcpgo.NewResource(
@@ -138,10 +156,11 @@ func registerResources(s *server.MCPServer, flagSite string) {
 			mcpgo.WithTemplateMIMEType("application/json"),
 		),
 		func(ctx context.Context, req mcpgo.ReadResourceRequest) ([]mcpgo.ResourceContents, error) {
-			id := extractIDFromURI(req.Params.URI, "stqry://collections/")
-			if id == "" {
+			idVals, _ := req.Params.Arguments["id"].([]string)
+			if len(idVals) == 0 || idVals[0] == "" {
 				return nil, fmt.Errorf("collection ID is required")
 			}
+			id := idVals[0]
 			client, err := ResolveClient(flagSite)
 			if err != nil {
 				return nil, fmt.Errorf("resolving client: %w", err)
@@ -170,10 +189,11 @@ func registerResources(s *server.MCPServer, flagSite string) {
 			mcpgo.WithTemplateMIMEType("application/json"),
 		),
 		func(ctx context.Context, req mcpgo.ReadResourceRequest) ([]mcpgo.ResourceContents, error) {
-			id := extractIDFromURI(req.Params.URI, "stqry://screens/")
-			if id == "" {
+			idVals, _ := req.Params.Arguments["id"].([]string)
+			if len(idVals) == 0 || idVals[0] == "" {
 				return nil, fmt.Errorf("screen ID is required")
 			}
+			id := idVals[0]
 			client, err := ResolveClient(flagSite)
 			if err != nil {
 				return nil, fmt.Errorf("resolving client: %w", err)
@@ -187,8 +207,8 @@ func registerResources(s *server.MCPServer, flagSite string) {
 				return nil, fmt.Errorf("listing story sections: %w", err)
 			}
 			return jsonResourceContents(req.Params.URI, map[string]interface{}{
-				"screen":          screen,
-				"story_sections":  sections,
+				"screen":         screen,
+				"story_sections": sections,
 			})
 		},
 	)
