@@ -72,7 +72,8 @@ func checkDirectoryConfig(cwd string) checkResult {
 	return r
 }
 
-func checkSiteResolved(globalCfg *config.GlobalConfig, flagSite string, dirCfg *config.DirectoryConfig) checkResult {
+// checkSiteResolved returns the check result and the resolved site (nil on failure).
+func checkSiteResolved(globalCfg *config.GlobalConfig, flagSite string, dirCfg *config.DirectoryConfig) (checkResult, *config.Site) {
 	start := time.Now()
 	r := checkResult{
 		group: "Config",
@@ -89,7 +90,7 @@ func checkSiteResolved(globalCfg *config.GlobalConfig, flagSite string, dirCfg *
 		r.detail = fmt.Sprintf("API URL: %s", site.APIURL)
 	}
 	r.duration = time.Since(start)
-	return r
+	return r, site
 }
 
 func checkAPIReachable(baseURL string, httpClient *http.Client) checkResult {
@@ -323,25 +324,36 @@ func runDoctor(w io.Writer, verbose bool) bool {
 	var results []checkResult
 	results = append(results, checkGlobalConfig(configPath))
 
-	cwd, _ := os.Getwd()
-	results = append(results, checkDirectoryConfig(cwd))
+	cwd, cwdErr := os.Getwd()
+	if cwdErr != nil {
+		results = append(results, checkResult{
+			group:  "Config",
+			name:   "Directory config found",
+			status: statusFail,
+			detail: fmt.Sprintf("Could not determine working directory: %v", cwdErr),
+		})
+	} else {
+		results = append(results, checkDirectoryConfig(cwd))
+	}
 
 	// Load config gracefully — no hard failure if absent.
 	globalCfg, _ := config.LoadGlobalConfig(configPath)
 	if globalCfg == nil {
 		globalCfg = &config.GlobalConfig{Sites: make(map[string]*config.Site)}
 	}
-	dirCfg, _ := config.FindDirectoryConfig(cwd)
+	var dirCfg *config.DirectoryConfig
+	if cwd != "" {
+		dirCfg, _ = config.FindDirectoryConfig(cwd)
+	}
 
-	siteResult := checkSiteResolved(globalCfg, flagSite, dirCfg)
+	siteResult, resolvedSite := checkSiteResolved(globalCfg, flagSite, dirCfg)
 	results = append(results, siteResult)
 
 	// --- API group (only if site resolved) ---
 	if siteResult.status == statusPass {
-		site, _ := config.ResolveSite(globalCfg, flagSite, dirCfg)
-		results = append(results, checkAPIReachable(site.APIURL, httpClient))
-		results = append(results, checkTokenValid(site.APIURL, site.Token, httpClient))
-		results = append(results, checkRegion(site.APIURL))
+		results = append(results, checkAPIReachable(resolvedSite.APIURL, httpClient))
+		results = append(results, checkTokenValid(resolvedSite.APIURL, resolvedSite.Token, httpClient))
+		results = append(results, checkRegion(resolvedSite.APIURL))
 	} else {
 		results = append(results,
 			checkResult{group: "API", name: "API reachable", status: statusSkip, message: "No site resolved"},

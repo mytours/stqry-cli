@@ -63,17 +63,23 @@ func TestCheckSiteResolved(t *testing.T) {
 				"prod": {Token: "tok", APIURL: "https://api-us.stqry.com"},
 			},
 		}
-		r := checkSiteResolved(global, "prod", nil)
+		r, site := checkSiteResolved(global, "prod", nil)
 		if r.status != statusPass {
 			t.Errorf("expected pass, got %s: %s", r.status, r.message)
+		}
+		if site == nil || site.APIURL != "https://api-us.stqry.com" {
+			t.Errorf("expected resolved site with correct APIURL, got %v", site)
 		}
 	})
 
 	t.Run("no site available", func(t *testing.T) {
 		global := &config.GlobalConfig{Sites: map[string]*config.Site{}}
-		r := checkSiteResolved(global, "", nil)
+		r, site := checkSiteResolved(global, "", nil)
 		if r.status != statusFail {
 			t.Errorf("expected fail, got %s", r.status)
+		}
+		if site != nil {
+			t.Errorf("expected nil site on failure, got %v", site)
 		}
 	})
 }
