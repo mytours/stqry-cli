@@ -1,3 +1,6 @@
+// Check functions in this file are intentionally parallel to the exported versions
+// in internal/doctor/doctor.go (used by the MCP tool). If you fix a bug here,
+// mirror the fix there too.
 package cli
 
 import (

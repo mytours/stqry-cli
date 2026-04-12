@@ -1,3 +1,7 @@
+// Package doctor contains the exported check logic for the stqry doctor command.
+// The check functions here are intentionally parallel to the unexported versions in
+// internal/cli/doctor.go (which are tested there). If you fix a bug in one copy,
+// mirror the fix in the other.
 package doctor
 
 import (
