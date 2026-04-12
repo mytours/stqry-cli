@@ -58,7 +58,13 @@ func newCollectionsListCmd() *cobra.Command {
   stqry collections list --q "museum"
 
   # List using a specific site, paginated
-  stqry collections list --site mysite --page 2 --per-page 25`,
+  stqry collections list --site mysite --page 2 --per-page 25
+
+  # Filter with built-in jq (no external jq needed)
+  stqry collections list --jq '.[].name'
+
+  # Pipe to external jq (alternative)
+  stqry collections list --quiet | jq '.[].id'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -100,7 +106,10 @@ func newCollectionsGetCmd() *cobra.Command {
   stqry collections get 42
 
   # Get collection details as JSON
-  stqry collections get 42 --json`,
+  stqry collections get 42 --json
+
+  # Filter a specific field
+  stqry collections get 42 --jq '.name'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			col, err := api.GetCollection(activeClient, args[0])
@@ -240,7 +249,13 @@ func newCollectionsItemsListCmd() *cobra.Command {
 		Use:   "list <collection-id>",
 		Short: "List items in a collection",
 		Example: `  # List all items in a collection
-  stqry collections items list 42`,
+  stqry collections items list 42
+
+  # Filter with built-in jq (no external jq needed)
+  stqry collections items list 42 --jq '.[].item_id'
+
+  # Pipe to external jq (alternative)
+  stqry collections items list 42 --quiet | jq '.[].id'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			items, meta, err := api.ListCollectionItems(activeClient, args[0], nil)

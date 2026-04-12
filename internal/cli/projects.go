@@ -35,7 +35,13 @@ func newProjectsListCmd() *cobra.Command {
   stqry projects list
 
   # List using a specific site
-  stqry projects list --site mysite`,
+  stqry projects list --site mysite
+
+  # Filter with built-in jq (no external jq needed)
+  stqry projects list --jq '.[].name'
+
+  # Pipe to external jq (alternative)
+  stqry projects list --quiet | jq '.[].id'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -78,7 +84,10 @@ func newProjectsGetCmd() *cobra.Command {
   stqry projects get 1
 
   # Get project details as JSON
-  stqry projects get 1 --json`,
+  stqry projects get 1 --json
+
+  # Filter a specific field
+  stqry projects get 1 --jq '.name'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			project, err := api.GetProject(activeClient, args[0])
