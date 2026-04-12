@@ -33,3 +33,15 @@ func TestVersionShortFlag(t *testing.T) {
 		t.Errorf("expected version output to start with \"stqry \", got %q", got)
 	}
 }
+
+func TestCompletionDoesNotRequireSite(t *testing.T) {
+	cmd := newRootCmd()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cmd.SetArgs([]string{"completion", "zsh"})
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("completion zsh should not require a site, got: %v", err)
+	}
+}
