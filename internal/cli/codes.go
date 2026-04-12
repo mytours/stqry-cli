@@ -12,7 +12,7 @@ import (
 func newCodesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "codes",
-		Short: "Manage QR/NFC codes",
+		Short: "Manage redemption codes",
 	}
 
 	cmd.AddCommand(newCodesListCmd())

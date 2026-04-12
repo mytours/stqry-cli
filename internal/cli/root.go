@@ -36,7 +36,7 @@ func skipSiteResolution(cmd *cobra.Command) bool {
 	}
 	name := sub.Name()
 	switch name {
-	case "config", "help", "mcp", "setup":
+	case "completion", "config", "help", "mcp", "setup":
 		return true
 	}
 	return false

@@ -57,17 +57,53 @@ stqry media create --file=./photo.jpg --type=image --name=photo.jpg
 
 ## AI Agent Integration
 
-Set up Claude AI agent integration for the current site:
+### Skill Files (Claude Code)
+
+Install STQRY workflow skills into Claude Code:
 
 ```bash
-stqry setup claude
+stqry setup claude          # current project
+stqry setup claude --global # all projects
 ```
 
-Set up Claude AI agent integration globally:
+### MCP Server
 
-```bash
-stqry setup claude --global
+`stqry mcp serve` starts an MCP server over stdio, letting AI assistants
+read and manage STQRY content directly.
+
+**Claude Code** — add to `.claude/settings.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "stqry": {
+      "command": "stqry",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
 ```
+
+The server picks up `stqry.yaml` from the project directory automatically.
+
+**Claude Desktop** — add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "stqry": {
+      "command": "stqry",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+No site is hardcoded. At the start of each conversation, tell Claude which
+project to connect to:
+
+- *"Use my site called mysite"* — if you've added it via `stqry config add-site`
+- *"My token is `abc123`, region is US"* — Claude will configure it for you
 
 ## Output Formats
 
