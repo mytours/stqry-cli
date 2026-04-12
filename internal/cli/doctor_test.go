@@ -94,6 +94,13 @@ func TestCheckAPIReachable(t *testing.T) {
 			t.Errorf("expected fail, got %s", r.status)
 		}
 	})
+
+	t.Run("malformed URL", func(t *testing.T) {
+		r := checkAPIReachable("not-a-url", http.DefaultClient)
+		if r.status != statusFail {
+			t.Errorf("expected fail, got %s", r.status)
+		}
+	})
 }
 
 func TestCheckTokenValid(t *testing.T) {
@@ -111,11 +118,26 @@ func TestCheckTokenValid(t *testing.T) {
 
 	t.Run("invalid token returns 401", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("X-Api-Token") == "" {
+				t.Error("expected X-Api-Token header to be set")
+			}
 			w.WriteHeader(http.StatusUnauthorized)
 		}))
 		defer srv.Close()
 
 		r := checkTokenValid(srv.URL, "bad-token", srv.Client())
+		if r.status != statusFail {
+			t.Errorf("expected fail, got %s: %s", r.status, r.message)
+		}
+	})
+
+	t.Run("forbidden token returns 403", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		defer srv.Close()
+
+		r := checkTokenValid(srv.URL, "low-priv-token", srv.Client())
 		if r.status != statusFail {
 			t.Errorf("expected fail, got %s: %s", r.status, r.message)
 		}
