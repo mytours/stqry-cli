@@ -109,12 +109,6 @@ func newScreensCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a new screen",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if name == "" {
-				return fmt.Errorf("--name is required")
-			}
-			if screenType == "" {
-				return fmt.Errorf("--type is required (one of: %s)", strings.Join(validScreenTypes, ", "))
-			}
 			if err := validateScreenType(screenType); err != nil {
 				return err
 			}
@@ -142,6 +136,8 @@ func newScreensCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&name, "name", "", "Screen name (required)")
 	cmd.Flags().StringVar(&screenType, "type", "", fmt.Sprintf("Screen type (required; one of: %s)", strings.Join(validScreenTypes, ", ")))
 	cmd.Flags().StringVar(&title, "title", "", "Screen title")
+	cmd.MarkFlagRequired("name")
+	cmd.MarkFlagRequired("type")
 
 	return cmd
 }

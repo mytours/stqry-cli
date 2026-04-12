@@ -110,9 +110,6 @@ func newMediaCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a media item (optionally uploading a file)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if mediaType == "" {
-				return fmt.Errorf("--type is required (one of: %s)", strings.Join(validMediaTypes, ", "))
-			}
 			if err := validateMediaType(mediaType); err != nil {
 				return err
 			}
@@ -132,6 +129,8 @@ func newMediaCreateCmd() *cobra.Command {
 						pct := float64(written) / float64(total) * 100
 						fmt.Printf("\rUploading: %.0f%%", pct)
 					}
+				}, func(msg string) {
+					fmt.Printf("\nProcessing: %s", msg)
 				})
 				fmt.Println()
 				if err != nil {
@@ -166,6 +165,7 @@ func newMediaCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&filePath, "file", "", "Path to file to upload")
 	cmd.Flags().StringVar(&mediaType, "type", "", fmt.Sprintf("Media item type (required; one of: %s)", strings.Join(validMediaTypes, ", ")))
 	cmd.Flags().StringVar(&name, "name", "", "Media item name")
+	cmd.MarkFlagRequired("type")
 
 	return cmd
 }
@@ -238,6 +238,8 @@ func newMediaUploadCmd() *cobra.Command {
 					pct := float64(written) / float64(total) * 100
 					fmt.Printf("\rUploading: %.0f%%", pct)
 				}
+			}, func(msg string) {
+				fmt.Printf("\nProcessing: %s", msg)
 			})
 			fmt.Println()
 			if err != nil {

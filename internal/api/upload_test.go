@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -75,7 +76,7 @@ func TestUploadFile(t *testing.T) {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":       "complete",
 			"pct_complete": 100,
-			"message":      "",
+			"message":      "File processed successfully",
 			"uploaded_file": map[string]interface{}{
 				"id":   "uf-abc",
 				"name": "test-video.mp4",
@@ -89,9 +90,12 @@ func TestUploadFile(t *testing.T) {
 	c := NewClient(server.URL, "test-token")
 
 	var lastWritten, lastTotal int64
+	var statusMessages []string
 	result, err := UploadFile(c, filePath, server.URL, func(written, total int64) {
 		lastWritten = written
 		lastTotal = total
+	}, func(msg string) {
+		statusMessages = append(statusMessages, msg)
 	})
 	if err != nil {
 		t.Fatalf("UploadFile: %v", err)
@@ -113,6 +117,11 @@ func TestUploadFile(t *testing.T) {
 		t.Error("expected onProgress to be called")
 	}
 	_ = lastWritten
+
+	// onStatus callback should have been called with the server message.
+	if len(statusMessages) != 1 || statusMessages[0] != "File processed successfully" {
+		t.Errorf("expected onStatus called with processing message, got %v", statusMessages)
+	}
 }
 
 // TestUploadFileSetsContentLength verifies that the S3 POST sends an explicit
@@ -156,7 +165,7 @@ func TestUploadFileSetsContentLength(t *testing.T) {
 
 	c := NewClient(server.URL, "test-token")
 	// Pass a non-nil onProgress to exercise the progressReader wrapping path.
-	_, err := UploadFile(c, filePath, server.URL, func(written, total int64) {})
+	_, err := UploadFile(c, filePath, server.URL, func(written, total int64) {}, nil)
 	if err != nil {
 		t.Fatalf("UploadFile: %v", err)
 	}
@@ -203,7 +212,7 @@ func TestUploadFileError(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient(server.URL, "test-token")
-	_, err := UploadFile(c, filePath, server.URL, nil)
+	_, err := UploadFile(c, filePath, server.URL, nil, nil)
 	if err == nil {
 		t.Fatal("expected error for transcoder_invalid_file status")
 	}
@@ -251,10 +260,11 @@ func TestUploadFileSlowS3(t *testing.T) {
 	c := NewClient(server.URL, "test-token")
 	// Tighten the main client to a budget much smaller than the /upload
 	// handler's sleep. Presign/enqueue/status handlers respond instantly on
-	// localhost so they still fit comfortably.
-	c.HTTPClient.Timeout = 200 * time.Millisecond
+	// localhost so they still fit comfortably. Use a 10x margin (50ms vs 500ms)
+	// to reduce flakiness under heavy CI load.
+	c.HTTPClient.Timeout = 50 * time.Millisecond
 
-	result, err := UploadFile(c, filePath, server.URL, nil)
+	result, err := UploadFile(c, filePath, server.URL, nil, nil)
 	if err != nil {
 		t.Fatalf("UploadFile: %v", err)
 	}
@@ -300,7 +310,7 @@ func TestUploadFileSidekiqFailed(t *testing.T) {
 	// Use a short deadline so the test doesn't take forever if the fix regresses.
 	done := make(chan error, 1)
 	go func() {
-		_, err := UploadFile(c, filePath, server.URL, nil)
+		_, err := UploadFile(c, filePath, server.URL, nil, nil)
 		done <- err
 	}()
 
@@ -309,7 +319,7 @@ func TestUploadFileSidekiqFailed(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for failed status")
 		}
-		if !contains(err.Error(), "failed") && !contains(err.Error(), "not found") {
+		if !strings.Contains(err.Error(), "failed") && !strings.Contains(err.Error(), "not found") {
 			t.Errorf("expected error to mention the failure, got %q", err.Error())
 		}
 	case <-time.After(10 * time.Second):

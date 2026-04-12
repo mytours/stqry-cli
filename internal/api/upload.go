@@ -61,7 +61,10 @@ func (pr *progressReader) Read(p []byte) (int, error) {
 //
 // Returns the uploaded_file map when complete.
 // s3BaseURL is only used in tests; pass "" in production.
-func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(written, total int64)) (map[string]interface{}, error) {
+// onStatus, if non-nil, is called with each new server-side processing message
+// during the polling phase. Callers are responsible for rendering these (e.g.
+// printing to stdout), so that library code does not write to stdout directly.
+func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(written, total int64), onStatus func(string)) (map[string]interface{}, error) {
 	basename := filepath.Base(filePath)
 
 	// Step 1: Presign.
@@ -139,7 +142,9 @@ func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(wr
 	// the 30 s budget has to cover the entire body write plus reading S3's
 	// response headers, and real users have hit "Client.Timeout exceeded while
 	// awaiting headers" on ~6 MB files.
-	uploadClient := &http.Client{Timeout: uploadClientTimeout}
+	// Inherit the transport from the parent client so that any custom proxy,
+	// TLS, or middleware configuration is preserved for the S3 request too.
+	uploadClient := &http.Client{Timeout: uploadClientTimeout, Transport: c.HTTPClient.Transport}
 	uploadResp, err := uploadClient.Do(uploadReq)
 	if err != nil {
 		return nil, fmt.Errorf("uploading to S3: %w", err)
@@ -176,9 +181,11 @@ func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(wr
 			return nil, fmt.Errorf("polling status: %w", err)
 		}
 
-		if status.Message != "" && status.Message != lastMessage && onProgress != nil {
-			fmt.Printf("Processing: %s\n", status.Message)
+		if status.Message != "" && status.Message != lastMessage {
 			lastMessage = status.Message
+			if onStatus != nil {
+				onStatus(status.Message)
+			}
 		}
 
 		switch status.Status {
