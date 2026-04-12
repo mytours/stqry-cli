@@ -337,3 +337,65 @@ func TestPrintDoctorResultsVerbose(t *testing.T) {
 		t.Errorf("expected detail line in verbose output, got:\n%s", out)
 	}
 }
+
+func TestDoctorCmd_NoConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("STQRY_CONFIG_HOME", filepath.Join(tmpDir, ".config", "stqry"))
+
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"doctor"})
+	_ = cmd.Execute()
+
+	w.Close()
+	os.Stdout = origStdout
+
+	outBytes := make([]byte, 8192)
+	n, _ := r.Read(outBytes)
+	r.Close()
+	out := string(outBytes[:n])
+
+	if !contains(out, "Config") {
+		t.Errorf("expected Config section in output, got:\n%s", out)
+	}
+	if !contains(out, "✗") {
+		t.Errorf("expected at least one fail symbol, got:\n%s", out)
+	}
+	if !contains(out, "Global config exists") {
+		t.Errorf("expected global config check in output, got:\n%s", out)
+	}
+}
+
+func TestDoctorCmd_APISkipped_WhenNoConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("STQRY_CONFIG_HOME", filepath.Join(tmpDir, ".config", "stqry"))
+
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"doctor"})
+	_ = cmd.Execute()
+
+	w.Close()
+	os.Stdout = origStdout
+
+	outBytes := make([]byte, 8192)
+	n, _ := r.Read(outBytes)
+	r.Close()
+	out := string(outBytes[:n])
+
+	// API checks should be skipped (shown with "-") when no site is configured
+	if !contains(out, "API") {
+		t.Errorf("expected API section in output, got:\n%s", out)
+	}
+	if !contains(out, "-") {
+		t.Errorf("expected skip symbol for API checks, got:\n%s", out)
+	}
+}

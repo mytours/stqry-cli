@@ -102,6 +102,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(newCodesCmd())
 	rootCmd.AddCommand(newSetupCmd())
 	rootCmd.AddCommand(newMCPCmd())
+	rootCmd.AddCommand(newDoctorCmd())
 
 	return rootCmd
 }
