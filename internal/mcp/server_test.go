@@ -255,6 +255,34 @@ func TestResolveClientNoConfigError(t *testing.T) {
 	}
 }
 
+func TestResolveClientSessionPriorityOverDisk(t *testing.T) {
+	// Write a stqry.yaml with a different token.
+	dir := t.TempDir()
+	diskCfg := &config.DirectoryConfig{Token: "disk-tok", APIURL: "https://disk.example.com"}
+	if err := config.SaveDirectoryConfig(dir, diskCfg); err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	// Session holds a different token and URL.
+	sess := stqrymcp.NewSession()
+	sess.Set(&config.Site{Token: "session-tok", APIURL: "https://session.example.com"})
+
+	client, err := stqrymcp.ResolveClient("", sess)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Session must take priority over the disk config.
+	if client.Token != "session-tok" {
+		t.Errorf("expected session-tok to win over disk-tok, got %s", client.Token)
+	}
+	if client.BaseURL != "https://session.example.com" {
+		t.Errorf("expected session APIURL to win over disk APIURL, got %s", client.BaseURL)
+	}
+}
+
 // ---- list_projects ----
 
 func TestListProjectsHappyPath(t *testing.T) {
@@ -444,30 +472,5 @@ func TestCreateMediaInvalidType(t *testing.T) {
 	}
 	if !strings.Contains(toolText(result), "invalid type") {
 		t.Errorf("expected helpful error mentioning invalid type, got: %s", toolText(result))
-	}
-}
-
-func TestResolveClientSessionPriorityOverDisk(t *testing.T) {
-	// Write a stqry.yaml with a different token.
-	dir := t.TempDir()
-	diskCfg := &config.DirectoryConfig{Token: "disk-tok", APIURL: "https://disk.example.com"}
-	if err := config.SaveDirectoryConfig(dir, diskCfg); err != nil {
-		t.Fatal(err)
-	}
-	orig, _ := os.Getwd()
-	defer os.Chdir(orig)
-	os.Chdir(dir)
-
-	// Session holds a different token.
-	sess := stqrymcp.NewSession()
-	sess.Set(&config.Site{Token: "session-tok", APIURL: "https://session.example.com"})
-
-	client, err := stqrymcp.ResolveClient("", sess)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	// Session must take priority over the disk config.
-	if client.Token != "session-tok" {
-		t.Errorf("expected session-tok to win over disk-tok, got %s", client.Token)
 	}
 }
