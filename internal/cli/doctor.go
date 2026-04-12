@@ -227,7 +227,7 @@ func checkCLIVersion(currentVersion string, releasesURL string, httpClient *http
 		r.message = fmt.Sprintf("CLI is up to date (%s)", currentVersion)
 		r.detail = fmt.Sprintf("Current: %s = Latest: %s", currentVersion, payload.TagName)
 	} else {
-		r.status = statusFail
+		r.status = statusWarn
 		r.message = fmt.Sprintf("Update available: %s → %s", currentVersion, payload.TagName)
 		r.detail = fmt.Sprintf("Current: %s → Latest: %s\nRun: brew upgrade stqry (or download from GitHub releases)", currentVersion, payload.TagName)
 	}
