@@ -79,8 +79,8 @@ func TestListStorySections(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"story_sections": []interface{}{
-				map[string]interface{}{"id": "10", "section_type": "info"},
-				map[string]interface{}{"id": "11", "section_type": "gallery"},
+				map[string]interface{}{"id": "10", "type": "info"},
+				map[string]interface{}{"id": "11", "type": "gallery"},
 			},
 			"meta": map[string]interface{}{"page": 1, "pages": 1, "per_page": 30, "count": 2},
 		})
@@ -95,8 +95,8 @@ func TestListStorySections(t *testing.T) {
 	if len(sections) != 2 {
 		t.Errorf("expected 2 sections, got %d", len(sections))
 	}
-	if sections[1]["section_type"] != "gallery" {
-		t.Errorf("unexpected section_type: %v", sections[1]["section_type"])
+	if sections[1]["type"] != "gallery" {
+		t.Errorf("unexpected type: %v", sections[1]["type"])
 	}
 	if meta == nil {
 		t.Error("expected non-nil meta")
@@ -193,23 +193,27 @@ func TestCreateScreen(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		screenFields, ok := body["screen"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.screen to be a map, got %T", body["screen"])
+		// The public API expects fields flat at the top level, not wrapped
+		// under a "screen" key. See app/controllers/api/public/screens_controller.rb.
+		if _, wrapped := body["screen"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"screen\": %v", body)
 		}
-		if screenFields["name"] != "New Screen" {
-			t.Errorf("expected screen.name=New Screen, got %v", screenFields["name"])
+		if body["name"] != "New Screen" {
+			t.Errorf("expected name=New Screen, got %v", body["name"])
+		}
+		if body["type"] != "story" {
+			t.Errorf("expected type=story, got %v", body["type"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"screen": map[string]interface{}{"id": "99", "name": "New Screen"},
+			"screen": map[string]interface{}{"id": "99", "name": "New Screen", "type": "story"},
 		})
 	}))
 	defer server.Close()
 
 	c := NewClient(server.URL, "test-token")
-	screen, err := CreateScreen(c, map[string]interface{}{"name": "New Screen"})
+	screen, err := CreateScreen(c, map[string]interface{}{"name": "New Screen", "type": "story"})
 	if err != nil {
 		t.Fatalf("CreateScreen: %v", err)
 	}
@@ -230,12 +234,11 @@ func TestUpdateScreen(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		screenFields, ok := body["screen"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.screen to be a map, got %T", body["screen"])
+		if _, wrapped := body["screen"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"screen\": %v", body)
 		}
-		if screenFields["name"] != "Updated" {
-			t.Errorf("expected screen.name=Updated, got %v", screenFields["name"])
+		if body["name"] != "Updated" {
+			t.Errorf("expected name=Updated, got %v", body["name"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -283,7 +286,7 @@ func TestGetStorySection(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"story_section": map[string]interface{}{"id": "10", "section_type": "info"},
+			"story_section": map[string]interface{}{"id": "10", "type": "info"},
 		})
 	}))
 	defer server.Close()
@@ -293,8 +296,8 @@ func TestGetStorySection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetStorySection: %v", err)
 	}
-	if section["section_type"] != "info" {
-		t.Errorf("expected section_type=info, got %v", section["section_type"])
+	if section["type"] != "info" {
+		t.Errorf("expected type=info, got %v", section["type"])
 	}
 }
 
@@ -310,28 +313,27 @@ func TestCreateStorySection(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		sectionFields, ok := body["story_section"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.story_section to be a map, got %T", body["story_section"])
+		if _, wrapped := body["story_section"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"story_section\": %v", body)
 		}
-		if sectionFields["section_type"] != "gallery" {
-			t.Errorf("expected section_type=gallery, got %v", sectionFields["section_type"])
+		if body["type"] != "media_group" {
+			t.Errorf("expected type=media_group, got %v", body["type"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"story_section": map[string]interface{}{"id": "12", "section_type": "gallery"},
+			"story_section": map[string]interface{}{"id": "12", "type": "media_group"},
 		})
 	}))
 	defer server.Close()
 
 	c := NewClient(server.URL, "test-token")
-	section, err := CreateStorySection(c, "42", map[string]interface{}{"section_type": "gallery"})
+	section, err := CreateStorySection(c, "42", map[string]interface{}{"type": "media_group"})
 	if err != nil {
 		t.Fatalf("CreateStorySection: %v", err)
 	}
-	if section["section_type"] != "gallery" {
-		t.Errorf("expected section_type=gallery, got %v", section["section_type"])
+	if section["type"] != "media_group" {
+		t.Errorf("expected type=media_group, got %v", section["type"])
 	}
 }
 
@@ -347,27 +349,26 @@ func TestUpdateStorySection(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		sectionFields, ok := body["story_section"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.story_section to be a map, got %T", body["story_section"])
+		if _, wrapped := body["story_section"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"story_section\": %v", body)
 		}
-		if sectionFields["section_type"] != "video" {
-			t.Errorf("expected section_type=video, got %v", sectionFields["section_type"])
+		if body["position"] != float64(3) {
+			t.Errorf("expected position=3, got %v", body["position"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"story_section": map[string]interface{}{"id": "10", "section_type": "video"},
+			"story_section": map[string]interface{}{"id": "10", "position": 3},
 		})
 	}))
 	defer server.Close()
 
 	c := NewClient(server.URL, "test-token")
-	section, err := UpdateStorySection(c, "42", "10", map[string]interface{}{"section_type": "video"})
+	section, err := UpdateStorySection(c, "42", "10", map[string]interface{}{"position": 3})
 	if err != nil {
 		t.Fatalf("UpdateStorySection: %v", err)
 	}
-	if section["section_type"] != "video" {
-		t.Errorf("expected section_type=video, got %v", section["section_type"])
+	if section["position"] != float64(3) {
+		t.Errorf("expected position=3, got %v", section["position"])
 	}
 }
 
@@ -435,12 +436,11 @@ func TestCreateSectionSubItem(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		itemFields, ok := body["badge_item"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.badge_item to be a map, got %T", body["badge_item"])
+		if _, wrapped := body["badge_item"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"badge_item\": %v", body)
 		}
-		if itemFields["badge_id"] != "badge-xyz" {
-			t.Errorf("expected badge_id=badge-xyz, got %v", itemFields["badge_id"])
+		if body["badge_id"] != "badge-xyz" {
+			t.Errorf("expected badge_id=badge-xyz, got %v", body["badge_id"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
@@ -472,12 +472,11 @@ func TestUpdateSectionSubItem(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		itemFields, ok := body["badge_item"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.badge_item to be a map, got %T", body["badge_item"])
+		if _, wrapped := body["badge_item"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"badge_item\": %v", body)
 		}
-		if itemFields["badge_id"] != "badge-updated" {
-			t.Errorf("expected badge_id=badge-updated, got %v", itemFields["badge_id"])
+		if body["badge_id"] != "badge-updated" {
+			t.Errorf("expected badge_id=badge-updated, got %v", body["badge_id"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
