@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "dev"
-
 var (
+	version = "dev"
+
 	flagSite   string
 	flagLang   string
 	flagJSON   bool
@@ -86,7 +86,6 @@ func newRootCmd() *cobra.Command {
 	}
 
 	rootCmd.SetVersionTemplate("stqry {{.Version}}\n")
-	rootCmd.Flags().BoolP("version", "v", false, "Print version information")
 
 	// Global flags.
 	rootCmd.PersistentFlags().StringVar(&flagSite, "site", "", "Site name to use (overrides directory config)")
