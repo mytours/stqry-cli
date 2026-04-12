@@ -122,9 +122,7 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			if !ok {
 				return mcpgo.NewToolResultError(fmt.Sprintf("site %q not found. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>` to add it", siteName, siteName)), nil
 			}
-			if err := WriteProjectConfig(site.APIURL, site.Token); err != nil {
-				return mcpgo.NewToolResultError(fmt.Sprintf("writing config: %v", err)), nil
-			}
+			sess.Set(site)
 			return jsonResult(map[string]interface{}{
 				"ok":      true,
 				"message": fmt.Sprintf("switched to site %s", siteName),
