@@ -364,6 +364,32 @@ func TestConnectToolInvalidURL(t *testing.T) {
 	}
 }
 
+func TestConfigureProjectSetsSession(t *testing.T) {
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"projects":[],"meta":{"page":1,"pages":1,"per_page":25,"count":0}}`)
+	}))
+	defer mock.Close()
+
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "configure_project", fmt.Sprintf(`{"api_url":%q,"token":"tok123"}`, mock.URL))
+	if result == nil || result.IsError {
+		t.Fatalf("configure_project failed: %s", toolText(result))
+	}
+
+	// Session should be set — list_projects should work without reading stqry.yaml.
+	result = callTool(s, "list_projects", `{}`)
+	if result == nil || result.IsError {
+		t.Fatalf("list_projects failed after configure_project: %s", toolText(result))
+	}
+}
+
 func TestListProjectsPagination(t *testing.T) {
 	var receivedPage, receivedPerPage string
 	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
