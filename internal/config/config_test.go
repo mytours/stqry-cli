@@ -167,6 +167,22 @@ func TestResolveSite(t *testing.T) {
 	}
 }
 
+func TestResolveSiteEnvVar(t *testing.T) {
+	t.Setenv("STQRY_SITE", "env-site")
+	global := &GlobalConfig{
+		Sites: map[string]*Site{
+			"env-site": {Token: "tok", APIURL: "https://api.example.com"},
+		},
+	}
+	site, err := ResolveSite(global, "", &DirectoryConfig{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if site.Token != "tok" {
+		t.Errorf("expected tok, got %s", site.Token)
+	}
+}
+
 func TestSaveGlobalConfig(t *testing.T) {
 	dir := t.TempDir()
 	globalPath := filepath.Join(dir, "config.yaml")
