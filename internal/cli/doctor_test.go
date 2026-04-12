@@ -263,29 +263,58 @@ func TestCheckStatusSymbols(t *testing.T) {
 func TestPrintDoctorResults(t *testing.T) {
 	results := []checkResult{
 		{group: "Config", name: "Global config exists", status: statusPass, message: "~/.config/stqry/config.yaml"},
-		{group: "Config", name: "Directory config found", status: statusFail, message: "Not found"},
+		{group: "Config", name: "Directory config found", status: statusFail, message: ""},
 		{group: "API", name: "API reachable", status: statusPass, message: "api-us.stqry.com"},
-		{group: "API", name: "Region", status: statusInfo, message: "Region: us"},
+		{group: "API", name: "Region", status: statusInfo, message: "us"},
+		{group: "Version", name: "CLI version", status: statusSkip, message: ""},
+		{group: "Version", name: "CLI update", status: statusWarn, message: "v0.3.2 available"},
 	}
 
 	var buf bytes.Buffer
 	printDoctorResults(&buf, results, false)
 	out := buf.String()
 
-	if !contains(out, "Config") {
-		t.Error("expected Config group header")
+	// Group headers appear
+	if !contains(out, "Config\n") {
+		t.Errorf("expected Config group header, got:\n%s", out)
 	}
-	if !contains(out, "API") {
-		t.Error("expected API group header")
+	if !contains(out, "API\n") {
+		t.Errorf("expected API group header, got:\n%s", out)
 	}
-	if !contains(out, "✓") {
-		t.Error("expected pass symbol")
+	if !contains(out, "Version\n") {
+		t.Errorf("expected Version group header, got:\n%s", out)
 	}
-	if !contains(out, "✗") {
-		t.Error("expected fail symbol")
-	}
+	// Config header appears exactly once
 	if strings.Count(out, "Config\n") != 1 {
 		t.Errorf("expected Config header exactly once, got:\n%s", out)
+	}
+	// All symbols appear
+	if !contains(out, "✓") {
+		t.Errorf("expected pass symbol, got:\n%s", out)
+	}
+	if !contains(out, "✗") {
+		t.Errorf("expected fail symbol, got:\n%s", out)
+	}
+	if !contains(out, "-") {
+		t.Errorf("expected skip symbol, got:\n%s", out)
+	}
+	if !contains(out, "⚠") {
+		t.Errorf("expected warn symbol, got:\n%s", out)
+	}
+	// Message content appears in parens
+	if !contains(out, "~/.config/stqry/config.yaml") {
+		t.Errorf("expected path message in output, got:\n%s", out)
+	}
+	if !contains(out, "api-us.stqry.com") {
+		t.Errorf("expected host in output, got:\n%s", out)
+	}
+	// Check name appears
+	if !contains(out, "Global config exists") {
+		t.Errorf("expected check name in output, got:\n%s", out)
+	}
+	// Empty message produces no parens
+	if contains(out, "Directory config found ()") {
+		t.Errorf("empty message should not produce empty parens, got:\n%s", out)
 	}
 }
 
