@@ -12,6 +12,7 @@ func TestCheckStatusSymbols(t *testing.T) {
 		{statusSkip, "-"},
 		{statusInfo, "ℹ"},
 		{statusWarn, "⚠"},
+		{checkStatus("bogus"), "?"},
 	}
 	for _, tt := range tests {
 		if got := doctorSymbol(tt.status); got != tt.want {
