@@ -13,6 +13,11 @@ func newCodesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "codes",
 		Short: "Manage redemption codes",
+		Example: `  # List all redemption codes
+  stqry codes list
+
+  # Create a redemption code
+  stqry codes create --coupon-code WELCOME10 --linked-type Collection --linked-id 42 --project-id 1`,
 	}
 
 	cmd.AddCommand(newCodesListCmd())
@@ -30,6 +35,11 @@ func newCodesListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all codes",
+		Example: `  # List all redemption codes
+  stqry codes list
+
+  # List using a specific site
+  stqry codes list --site mysite`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -68,7 +78,12 @@ func newCodesGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a code by ID",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Get a code by ID
+  stqry codes get 10
+
+  # Get code details as JSON
+  stqry codes get 10 --json`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			code, err := api.GetCode(activeClient, args[0])
 			if err != nil {
@@ -86,6 +101,11 @@ func newCodesCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new code",
+		Example: `  # Create a basic redemption code
+  stqry codes create --coupon-code WELCOME10 --linked-type Collection --linked-id 42 --project-id 1
+
+  # Create a code with validity dates and a redemption limit
+  stqry codes create --coupon-code SUMMER25 --linked-type Collection --linked-id 42 --project-id 1 --valid-from 2025-06-01 --valid-to 2025-08-31 --max-redemptions 100`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if couponCode == "" {
 				return fmt.Errorf("--coupon-code is required")
@@ -142,7 +162,12 @@ func newCodesUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <id>",
 		Short: "Update an existing code",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Update the coupon code value
+  stqry codes update 10 --coupon-code NEWCODE
+
+  # Set an expiry date and a redemption cap
+  stqry codes update 10 --valid-to 2025-12-31 --max-redemptions 50`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fields := map[string]interface{}{}
 
@@ -183,7 +208,9 @@ func newCodesDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Delete a code by ID",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Delete a redemption code
+  stqry codes delete 10`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := api.DeleteCode(activeClient, args[0]); err != nil {
 				return err

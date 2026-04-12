@@ -46,6 +46,14 @@ func newRootCmd() *cobra.Command {
 		Use:   "stqry",
 		Short: "STQRY CLI — manage your STQRY sites",
 		Long:  "stqry is a command-line tool for managing STQRY content: sites, collections, screens, media, and more.",
+		Example: `  # Show version
+  stqry --version
+
+  # List all collections on the default site
+  stqry collections list
+
+  # Use a specific site for any command
+  stqry --site mysite collections list`,
 		Version: buildinfo.Version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// 1. Initialise printer.
