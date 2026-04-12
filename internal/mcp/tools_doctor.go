@@ -14,7 +14,9 @@ func registerDoctorTools(s *server.MCPServer, cliVersion string) {
 		mcpgo.NewTool("run_doctor",
 			mcpgo.WithDescription(
 				"Run STQRY CLI diagnostics: checks config validity, API connectivity, and CLI version. "+
-					"Call this first when you suspect connectivity or authentication issues.",
+					"Uses the site currently configured via stqry.yaml or global config — does not accept a site parameter. "+
+					"Call this first when you suspect connectivity or authentication issues. "+
+					"Check the top-level any_failed field for a quick pass/fail summary.",
 			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
@@ -27,6 +29,10 @@ func registerDoctorTools(s *server.MCPServer, cliVersion string) {
 				Message    string `json:"message,omitempty"`
 				Detail     string `json:"detail,omitempty"`
 				DurationMS int64  `json:"duration_ms"`
+			}
+			type jsonResponse struct {
+				AnyFailed bool        `json:"any_failed"`
+				Checks    []jsonCheck `json:"checks"`
 			}
 
 			var checks []jsonCheck
@@ -41,7 +47,7 @@ func registerDoctorTools(s *server.MCPServer, cliVersion string) {
 				})
 			}
 
-			out, err := jsonResult(checks)
+			out, err := jsonResult(jsonResponse{AnyFailed: result.AnyFailed, Checks: checks})
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("serialising results: %v", err)), nil
 			}
