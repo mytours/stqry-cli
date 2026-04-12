@@ -212,12 +212,42 @@ func TestResolveClientFromDirConfig(t *testing.T) {
 	defer os.Chdir(orig)
 	os.Chdir(dir)
 
-	client, err := stqrymcp.ResolveClient("")
+	client, err := stqrymcp.ResolveClient("", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if client.Token != "mytoken" {
 		t.Errorf("expected mytoken, got %s", client.Token)
+	}
+}
+
+func TestResolveClientFromSession(t *testing.T) {
+	sess := stqrymcp.NewSession()
+	sess.Set(&config.Site{Token: "session-tok", APIURL: "https://api.example.com"})
+
+	client, err := stqrymcp.ResolveClient("", sess)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if client.Token != "session-tok" {
+		t.Errorf("expected session-tok, got %s", client.Token)
+	}
+}
+
+func TestResolveClientNoConfigError(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_SITE", "")
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	_, err := stqrymcp.ResolveClient("", nil)
+	if err == nil {
+		t.Fatal("expected error when nothing configured")
+	}
+	if !strings.Contains(err.Error(), "connect(") {
+		t.Errorf("expected helpful error mentioning connect(), got: %v", err)
 	}
 }
 

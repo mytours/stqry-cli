@@ -9,7 +9,7 @@ import (
 	"github.com/mytours/stqry-cli/internal/api"
 )
 
-func registerCodeTools(s *server.MCPServer, flagSite string) {
+func registerCodeTools(s *server.MCPServer, flagSite string, sess *Session) {
 	// list_codes: returns all codes for the configured site
 	s.AddTool(
 		mcpgo.NewTool("list_codes",
@@ -22,7 +22,7 @@ func registerCodeTools(s *server.MCPServer, flagSite string) {
 			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -51,7 +51,7 @@ func registerCodeTools(s *server.MCPServer, flagSite string) {
 			if id == "" {
 				return mcpgo.NewToolResultError("id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -78,7 +78,7 @@ func registerCodeTools(s *server.MCPServer, flagSite string) {
 			if !ok || fields == nil {
 				return mcpgo.NewToolResultError("fields is required and must be an object"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -113,7 +113,7 @@ func registerCodeTools(s *server.MCPServer, flagSite string) {
 			if !ok || fields == nil {
 				return mcpgo.NewToolResultError("fields is required and must be an object"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -139,7 +139,7 @@ func registerCodeTools(s *server.MCPServer, flagSite string) {
 			if id == "" {
 				return mcpgo.NewToolResultError("id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}

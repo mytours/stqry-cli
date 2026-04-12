@@ -9,18 +9,18 @@ import (
 	"github.com/mytours/stqry-cli/internal/api"
 )
 
-func registerScreenTools(s *server.MCPServer, flagSite string) {
-	registerScreenCRUD(s, flagSite)
-	registerSectionCRUD(s, flagSite)
-	registerSubItemTools(s, flagSite, "list_badge_items", "create_badge_item", "update_badge_item", "delete_badge_item", "badge_items", "badge_item", "badge_items")
-	registerSubItemTools(s, flagSite, "list_link_items", "create_link_item", "update_link_item", "delete_link_item", "link_items", "link_item", "link_items")
-	registerSubItemTools(s, flagSite, "list_section_media", "create_section_media", "update_section_media", "delete_section_media", "media_items", "media_item", "section media attachments")
-	registerSubItemTools(s, flagSite, "list_price_items", "create_price_item", "update_price_item", "delete_price_item", "price_items", "price_item", "price_items")
-	registerSubItemTools(s, flagSite, "list_social_items", "create_social_item", "update_social_item", "delete_social_item", "social_items", "social_item", "social_items")
-	registerSubItemTools(s, flagSite, "list_opening_times", "create_opening_time", "update_opening_time", "delete_opening_time", "opening_time_items", "opening_time_item", "opening_time_items")
+func registerScreenTools(s *server.MCPServer, flagSite string, sess *Session) {
+	registerScreenCRUD(s, flagSite, sess)
+	registerSectionCRUD(s, flagSite, sess)
+	registerSubItemTools(s, flagSite, sess, "list_badge_items", "create_badge_item", "update_badge_item", "delete_badge_item", "badge_items", "badge_item", "badge_items")
+	registerSubItemTools(s, flagSite, sess, "list_link_items", "create_link_item", "update_link_item", "delete_link_item", "link_items", "link_item", "link_items")
+	registerSubItemTools(s, flagSite, sess, "list_section_media", "create_section_media", "update_section_media", "delete_section_media", "media_items", "media_item", "section media attachments")
+	registerSubItemTools(s, flagSite, sess, "list_price_items", "create_price_item", "update_price_item", "delete_price_item", "price_items", "price_item", "price_items")
+	registerSubItemTools(s, flagSite, sess, "list_social_items", "create_social_item", "update_social_item", "delete_social_item", "social_items", "social_item", "social_items")
+	registerSubItemTools(s, flagSite, sess, "list_opening_times", "create_opening_time", "update_opening_time", "delete_opening_time", "opening_time_items", "opening_time_item", "opening_time_items")
 }
 
-func registerScreenCRUD(s *server.MCPServer, flagSite string) {
+func registerScreenCRUD(s *server.MCPServer, flagSite string, sess *Session) {
 	// list_screens: returns all screens for the configured site
 	s.AddTool(
 		mcpgo.NewTool("list_screens",
@@ -33,7 +33,7 @@ func registerScreenCRUD(s *server.MCPServer, flagSite string) {
 			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -62,7 +62,7 @@ func registerScreenCRUD(s *server.MCPServer, flagSite string) {
 			if id == "" {
 				return mcpgo.NewToolResultError("id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -89,7 +89,7 @@ func registerScreenCRUD(s *server.MCPServer, flagSite string) {
 			if !ok || fields == nil {
 				return mcpgo.NewToolResultError("fields is required and must be an object"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -124,7 +124,7 @@ func registerScreenCRUD(s *server.MCPServer, flagSite string) {
 			if !ok || fields == nil {
 				return mcpgo.NewToolResultError("fields is required and must be an object"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -150,7 +150,7 @@ func registerScreenCRUD(s *server.MCPServer, flagSite string) {
 			if id == "" {
 				return mcpgo.NewToolResultError("id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -162,7 +162,7 @@ func registerScreenCRUD(s *server.MCPServer, flagSite string) {
 	)
 }
 
-func registerSectionCRUD(s *server.MCPServer, flagSite string) {
+func registerSectionCRUD(s *server.MCPServer, flagSite string, sess *Session) {
 	// list_sections: returns all story sections for a screen
 	s.AddTool(
 		mcpgo.NewTool("list_sections",
@@ -183,7 +183,7 @@ func registerSectionCRUD(s *server.MCPServer, flagSite string) {
 			if screenID == "" {
 				return mcpgo.NewToolResultError("screen_id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -220,7 +220,7 @@ func registerSectionCRUD(s *server.MCPServer, flagSite string) {
 			if id == "" {
 				return mcpgo.NewToolResultError("id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -255,7 +255,7 @@ func registerSectionCRUD(s *server.MCPServer, flagSite string) {
 			if !ok || fields == nil {
 				return mcpgo.NewToolResultError("fields is required and must be an object"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -298,7 +298,7 @@ func registerSectionCRUD(s *server.MCPServer, flagSite string) {
 			if !ok || fields == nil {
 				return mcpgo.NewToolResultError("fields is required and must be an object"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -332,7 +332,7 @@ func registerSectionCRUD(s *server.MCPServer, flagSite string) {
 			if id == "" {
 				return mcpgo.NewToolResultError("id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -344,7 +344,7 @@ func registerSectionCRUD(s *server.MCPServer, flagSite string) {
 	)
 }
 
-func registerSubItemTools(s *server.MCPServer, flagSite string, listTool, createTool, updateTool, deleteTool, apiPath, singularKey, humanName string) {
+func registerSubItemTools(s *server.MCPServer, flagSite string, sess *Session, listTool, createTool, updateTool, deleteTool, apiPath, singularKey, humanName string) {
 	// list sub-items for a section
 	s.AddTool(
 		mcpgo.NewTool(listTool,
@@ -367,7 +367,7 @@ func registerSubItemTools(s *server.MCPServer, flagSite string, listTool, create
 			if sectionID == "" {
 				return mcpgo.NewToolResultError("section_id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -412,7 +412,7 @@ func registerSubItemTools(s *server.MCPServer, flagSite string, listTool, create
 			if !ok || fields == nil {
 				return mcpgo.NewToolResultError("fields is required and must be an object"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -463,7 +463,7 @@ func registerSubItemTools(s *server.MCPServer, flagSite string, listTool, create
 			if !ok || fields == nil {
 				return mcpgo.NewToolResultError("fields is required and must be an object"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
@@ -505,7 +505,7 @@ func registerSubItemTools(s *server.MCPServer, flagSite string, listTool, create
 			if id == "" {
 				return mcpgo.NewToolResultError("id is required"), nil
 			}
-			client, err := ResolveClient(flagSite)
+			client, err := ResolveClient(flagSite, sess)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
