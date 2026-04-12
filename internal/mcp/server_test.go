@@ -446,3 +446,28 @@ func TestCreateMediaInvalidType(t *testing.T) {
 		t.Errorf("expected helpful error mentioning invalid type, got: %s", toolText(result))
 	}
 }
+
+func TestResolveClientSessionPriorityOverDisk(t *testing.T) {
+	// Write a stqry.yaml with a different token.
+	dir := t.TempDir()
+	diskCfg := &config.DirectoryConfig{Token: "disk-tok", APIURL: "https://disk.example.com"}
+	if err := config.SaveDirectoryConfig(dir, diskCfg); err != nil {
+		t.Fatal(err)
+	}
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+
+	// Session holds a different token.
+	sess := stqrymcp.NewSession()
+	sess.Set(&config.Site{Token: "session-tok", APIURL: "https://session.example.com"})
+
+	client, err := stqrymcp.ResolveClient("", sess)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Session must take priority over the disk config.
+	if client.Token != "session-tok" {
+		t.Errorf("expected session-tok to win over disk-tok, got %s", client.Token)
+	}
+}
