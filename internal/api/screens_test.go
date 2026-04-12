@@ -79,8 +79,8 @@ func TestListStorySections(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"story_sections": []interface{}{
-				map[string]interface{}{"id": "10", "section_type": "info"},
-				map[string]interface{}{"id": "11", "section_type": "gallery"},
+				map[string]interface{}{"id": "10", "type": "info"},
+				map[string]interface{}{"id": "11", "type": "gallery"},
 			},
 			"meta": map[string]interface{}{"page": 1, "pages": 1, "per_page": 30, "count": 2},
 		})
@@ -95,8 +95,8 @@ func TestListStorySections(t *testing.T) {
 	if len(sections) != 2 {
 		t.Errorf("expected 2 sections, got %d", len(sections))
 	}
-	if sections[1]["section_type"] != "gallery" {
-		t.Errorf("unexpected section_type: %v", sections[1]["section_type"])
+	if sections[1]["type"] != "gallery" {
+		t.Errorf("unexpected type: %v", sections[1]["type"])
 	}
 	if meta == nil {
 		t.Error("expected non-nil meta")
@@ -286,7 +286,7 @@ func TestGetStorySection(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"story_section": map[string]interface{}{"id": "10", "section_type": "info"},
+			"story_section": map[string]interface{}{"id": "10", "type": "info"},
 		})
 	}))
 	defer server.Close()
@@ -296,8 +296,8 @@ func TestGetStorySection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetStorySection: %v", err)
 	}
-	if section["section_type"] != "info" {
-		t.Errorf("expected section_type=info, got %v", section["section_type"])
+	if section["type"] != "info" {
+		t.Errorf("expected type=info, got %v", section["type"])
 	}
 }
 

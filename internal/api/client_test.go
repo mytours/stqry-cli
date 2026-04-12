@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -78,18 +79,9 @@ func TestClientErrorResponse(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for 422 response")
 	}
-	if !contains(err.Error(), "type: is invalid or missing") {
+	if !strings.Contains(err.Error(), "type: is invalid or missing") {
 		t.Errorf("expected error message to include server-side message, got %q", err.Error())
 	}
-}
-
-func contains(s, sub string) bool {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }
 
 func TestClientQueryParams(t *testing.T) {
