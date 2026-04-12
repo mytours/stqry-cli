@@ -35,6 +35,11 @@ func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage CLI configuration",
+		Example: `  # Add a US site to global config
+  stqry config add-site --name mysite --token abc123 --region us
+
+  # See all configured sites
+  stqry config list-sites`,
 	}
 
 	cmd.AddCommand(newConfigAddSiteCmd())
@@ -53,6 +58,11 @@ func newConfigAddSiteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add-site",
 		Short: "Add a site to global config",
+		Example: `  # Add a US-region site
+  stqry config add-site --name mysite --token abc123 --region us
+
+  # Add a site with a custom API URL (e.g. staging)
+  stqry config add-site --name staging --token xyz --api-url https://api-staging.example.com`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if name == "" {
 				return fmt.Errorf("--name is required")
@@ -98,7 +108,9 @@ func newConfigRemoveSiteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "remove-site <name>",
 		Short: "Remove a site from global config",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Remove a site from global config
+  stqry config remove-site mysite`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 
@@ -127,7 +139,12 @@ func newConfigEditSiteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "edit-site <name>",
 		Short: "Update an existing site's fields",
-		Args:  cobra.ExactArgs(1),
+		Example: `  # Update the API token for a site
+  stqry config edit-site mysite --token newtoken123
+
+  # Point a site at a different API URL
+  stqry config edit-site mysite --api-url https://api-eu.stqry.com`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 
@@ -165,6 +182,8 @@ func newConfigListSitesCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list-sites",
 		Short: "List all configured sites",
+		Example: `  # Show all configured sites
+  stqry config list-sites`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(globalConfig.Sites) == 0 {
 				if !flagQuiet && !flagJSON {
@@ -202,6 +221,11 @@ func newConfigInitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Create stqry.yaml in the current directory",
+		Example: `  # Pin current directory to a configured site
+  stqry config init --name mysite
+
+  # Initialise with inline credentials (no global config entry needed)
+  stqry config init --token abc123 --region eu`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
