@@ -84,23 +84,26 @@ func TestCreateCollection(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		colFields, ok := body["collection"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.collection to be a map, got %T", body["collection"])
+		// Rails public API expects flat params; see collections_controller.rb.
+		if _, wrapped := body["collection"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"collection\": %v", body)
 		}
-		if colFields["name"] != "new-col" {
-			t.Errorf("expected collection.name=new-col, got %v", colFields["name"])
+		if body["name"] != "new-col" {
+			t.Errorf("expected name=new-col, got %v", body["name"])
+		}
+		if body["type"] != "list" {
+			t.Errorf("expected type=list, got %v", body["type"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"collection": map[string]interface{}{"id": 99, "name": "new-col"},
+			"collection": map[string]interface{}{"id": 99, "name": "new-col", "type": "list"},
 		})
 	}))
 	defer server.Close()
 
 	c := NewClient(server.URL, "test-token")
-	col, err := CreateCollection(c, map[string]interface{}{"name": "new-col"})
+	col, err := CreateCollection(c, map[string]interface{}{"name": "new-col", "type": "list"})
 	if err != nil {
 		t.Fatalf("CreateCollection: %v", err)
 	}
@@ -156,12 +159,11 @@ func TestUpdateCollection(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		colFields, ok := body["collection"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.collection to be a map, got %T", body["collection"])
+		if _, wrapped := body["collection"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"collection\": %v", body)
 		}
-		if colFields["name"] != "updated-col" {
-			t.Errorf("expected collection.name=updated-col, got %v", colFields["name"])
+		if body["name"] != "updated-col" {
+			t.Errorf("expected name=updated-col, got %v", body["name"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -211,15 +213,14 @@ func TestCreateCollectionItem(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		itemFields, ok := body["collection_item"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.collection_item to be a map, got %T", body["collection_item"])
+		if _, wrapped := body["collection_item"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"collection_item\": %v", body)
 		}
-		if itemFields["item_type"] != "Screen" {
-			t.Errorf("expected item_type=Screen, got %v", itemFields["item_type"])
+		if body["item_type"] != "Screen" {
+			t.Errorf("expected item_type=Screen, got %v", body["item_type"])
 		}
-		if itemFields["item_id"] != "10" {
-			t.Errorf("expected item_id=10, got %v", itemFields["item_id"])
+		if body["item_id"] != "10" {
+			t.Errorf("expected item_id=10, got %v", body["item_id"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
@@ -251,12 +252,11 @@ func TestUpdateCollectionItem(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		itemFields, ok := body["collection_item"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("expected body.collection_item to be a map, got %T", body["collection_item"])
+		if _, wrapped := body["collection_item"]; wrapped {
+			t.Errorf("expected flat body, got body wrapped under \"collection_item\": %v", body)
 		}
-		if itemFields["position"] != float64(3) {
-			t.Errorf("expected position=3, got %v", itemFields["position"])
+		if body["position"] != float64(3) {
+			t.Errorf("expected position=3, got %v", body["position"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{

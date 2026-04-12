@@ -37,6 +37,13 @@ RECORDER_PID=""
 if [ -d "$CASSETTES_DIR" ] && [ -f "$RECORDER" ]; then
     # Only start the proxy if there are actual cassette files
     if ls "$CASSETTES_DIR"/*.json &>/dev/null 2>&1; then
+        # Kill any stale process already holding the port (e.g. from a crashed run).
+        STALE_PID=$(lsof -ti :"$REPLAY_PORT" 2>/dev/null || true)
+        if [ -n "$STALE_PID" ]; then
+            echo "Killing stale process on port $REPLAY_PORT (PID $STALE_PID)..."
+            kill "$STALE_PID" 2>/dev/null || true
+            sleep 0.2
+        fi
         echo "Starting replay proxy on port $REPLAY_PORT..."
         "$RECORDER" --mode=replay --port="$REPLAY_PORT" --cassettes="$CASSETTES_DIR" &
         RECORDER_PID=$!

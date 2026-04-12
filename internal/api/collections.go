@@ -34,10 +34,11 @@ func GetCollection(c *Client, id string) (map[string]interface{}, error) {
 	return resp, nil
 }
 
-// CreateCollection creates a new collection.
+// CreateCollection creates a new collection. Fields are sent flat; see
+// CreateScreen for why.
 func CreateCollection(c *Client, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
-	if err := c.Post("/api/public/collections", map[string]interface{}{"collection": fields}, &resp); err != nil {
+	if err := c.Post("/api/public/collections", fields, &resp); err != nil {
 		return nil, err
 	}
 	if col, ok := resp["collection"].(map[string]interface{}); ok {
@@ -49,7 +50,7 @@ func CreateCollection(c *Client, fields map[string]interface{}) (map[string]inte
 // UpdateCollection updates an existing collection.
 func UpdateCollection(c *Client, id string, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
-	if err := c.Patch(fmt.Sprintf("/api/public/collections/%s", id), map[string]interface{}{"collection": fields}, &resp); err != nil {
+	if err := c.Patch(fmt.Sprintf("/api/public/collections/%s", id), fields, &resp); err != nil {
 		return nil, err
 	}
 	if col, ok := resp["collection"].(map[string]interface{}); ok {
@@ -80,7 +81,7 @@ func ListCollectionItems(c *Client, collectionID string, query map[string]string
 func CreateCollectionItem(c *Client, collectionID string, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
 	path := fmt.Sprintf("/api/public/collections/%s/collection_items", collectionID)
-	if err := c.Post(path, map[string]interface{}{"collection_item": fields}, &resp); err != nil {
+	if err := c.Post(path, fields, &resp); err != nil {
 		return nil, err
 	}
 	if item, ok := resp["collection_item"].(map[string]interface{}); ok {
@@ -93,7 +94,7 @@ func CreateCollectionItem(c *Client, collectionID string, fields map[string]inte
 func UpdateCollectionItem(c *Client, collectionID, itemID string, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
 	path := fmt.Sprintf("/api/public/collections/%s/collection_items/%s", collectionID, itemID)
-	if err := c.Patch(path, map[string]interface{}{"collection_item": fields}, &resp); err != nil {
+	if err := c.Patch(path, fields, &resp); err != nil {
 		return nil, err
 	}
 	if item, ok := resp["collection_item"].(map[string]interface{}); ok {

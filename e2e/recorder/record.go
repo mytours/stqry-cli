@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -63,10 +64,17 @@ func (p *recordProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	proxyReq.Header.Del("Host")
 
-	// Execute the upstream request.
-	client := &http.Client{Timeout: 30 * time.Second}
+	// Execute the upstream request. TLS verification is skipped so that local
+	// dev servers with self-signed or mkcert certificates work without extra setup.
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+		},
+	}
 	resp, err := client.Do(proxyReq)
 	if err != nil {
+		fmt.Printf("Upstream error: %s %s → %v\n", r.Method, upstream.String(), err)
 		http.Error(w, fmt.Sprintf("upstream request failed: %v", err), http.StatusBadGateway)
 		return
 	}

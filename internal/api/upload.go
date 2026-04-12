@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+// uploadClientTimeout is the total request budget for the S3 POST in the
+// upload flow. It is deliberately much larger than Client.HTTPClient's 30 s
+// default, because the timer covers body write + S3 commit + response
+// headers, and a medium-size file on a slow connection can easily exceed 30 s.
+const uploadClientTimeout = 10 * time.Minute
+
 // PresignResponse holds the presigned S3 URL and form fields.
 type PresignResponse struct {
 	URL    string            `json:"url"`
@@ -55,7 +61,10 @@ func (pr *progressReader) Read(p []byte) (int, error) {
 //
 // Returns the uploaded_file map when complete.
 // s3BaseURL is only used in tests; pass "" in production.
-func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(written, total int64)) (map[string]interface{}, error) {
+// onStatus, if non-nil, is called with each new server-side processing message
+// during the polling phase. Callers are responsible for rendering these (e.g.
+// printing to stdout), so that library code does not write to stdout directly.
+func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(written, total int64), onStatus func(string)) (map[string]interface{}, error) {
 	basename := filepath.Base(filePath)
 
 	// Step 1: Presign.
@@ -119,9 +128,24 @@ func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(wr
 	if err != nil {
 		return nil, fmt.Errorf("creating upload request: %w", err)
 	}
+	// Explicitly set Content-Length because http.NewRequest only auto-detects
+	// it for *bytes.Reader / *bytes.Buffer / *strings.Reader, and wrapping the
+	// reader in progressReader hides that concrete type. Without this the
+	// request goes out with Transfer-Encoding: chunked, which real AWS S3
+	// rejects with 411 Length Required.
+	uploadReq.ContentLength = totalSize
 	uploadReq.Header.Set("Content-Type", mw.FormDataContentType())
 
-	uploadResp, err := c.HTTPClient.Do(uploadReq)
+	// Use a dedicated HTTP client with a much longer total timeout for the S3
+	// upload. c.HTTPClient has a 30 s Client.Timeout which is fine for normal
+	// API calls but too tight for multi-megabyte uploads on slow connections —
+	// the 30 s budget has to cover the entire body write plus reading S3's
+	// response headers, and real users have hit "Client.Timeout exceeded while
+	// awaiting headers" on ~6 MB files.
+	// Inherit the transport from the parent client so that any custom proxy,
+	// TLS, or middleware configuration is preserved for the S3 request too.
+	uploadClient := &http.Client{Timeout: uploadClientTimeout, Transport: c.HTTPClient.Transport}
+	uploadResp, err := uploadClient.Do(uploadReq)
 	if err != nil {
 		return nil, fmt.Errorf("uploading to S3: %w", err)
 	}
@@ -132,21 +156,24 @@ func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(wr
 		return nil, fmt.Errorf("S3 upload failed with status %d", uploadResp.StatusCode)
 	}
 
-	// Build s3_url: presign.URL + key field value.
+	// Step 3: Enqueue. The Rails job passes s3_url straight to
+	// S3Utils.download which calls fog files.get(remote_path) — remote_path
+	// must be the S3 object key, not a full URL. See
+	// app/sidekiq/uploaded_file_process.rb and
+	// spec/sidekiq/uploaded_file_process_spec.rb in mytours-web.
 	key := presign.Fields["key"]
-	s3URL := presign.URL + "/" + key
 	if key == "" {
-		s3URL = presign.URL
+		return nil, fmt.Errorf("presign response missing key field")
 	}
-
-	// Step 3: Enqueue.
 	var enqueue EnqueueResponse
-	if err := c.Post("/api/public/uploaded_files/process_enqueue", map[string]interface{}{"s3_url": s3URL}, &enqueue); err != nil {
+	if err := c.Post("/api/public/uploaded_files/process_enqueue", map[string]interface{}{"s3_url": key}, &enqueue); err != nil {
 		return nil, fmt.Errorf("enqueue: %w", err)
 	}
 
-	// Step 4: Poll for completion.
+	// Step 4: Poll for completion. Surface progress messages so the user can
+	// see what stage the server-side job is in.
 	deadline := time.Now().Add(5 * time.Minute)
+	var lastMessage string
 	for time.Now().Before(deadline) {
 		var status ProcessStatusResponse
 		path := fmt.Sprintf("/api/public/uploaded_files/process_status/%s", enqueue.JobID)
@@ -154,10 +181,17 @@ func UploadFile(c *Client, filePath string, s3BaseURL string, onProgress func(wr
 			return nil, fmt.Errorf("polling status: %w", err)
 		}
 
+		if status.Message != "" && status.Message != lastMessage {
+			lastMessage = status.Message
+			if onStatus != nil {
+				onStatus(status.Message)
+			}
+		}
+
 		switch status.Status {
 		case "complete":
 			return status.UploadedFile, nil
-		case "error", "transcoder_error", "transcoder_invalid_file":
+		case "failed", "error", "transcoder_error", "transcoder_invalid_file", "interrupted":
 			msg := status.Message
 			if msg == "" {
 				msg = status.Status

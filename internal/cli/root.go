@@ -11,6 +11,8 @@ import (
 )
 
 var (
+	version = "dev"
+
 	flagSite   string
 	flagLang   string
 	flagJSON   bool
@@ -45,6 +47,7 @@ func newRootCmd() *cobra.Command {
 		Use:   "stqry",
 		Short: "STQRY CLI — manage your STQRY sites",
 		Long:  "stqry is a command-line tool for managing STQRY content: sites, collections, screens, media, and more.",
+		Version: version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// 1. Initialise printer.
 			printer = &output.Printer{JSON: flagJSON, Quiet: flagQuiet}
@@ -81,6 +84,8 @@ func newRootCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	rootCmd.SetVersionTemplate("stqry {{.Version}}\n")
 
 	// Global flags.
 	rootCmd.PersistentFlags().StringVar(&flagSite, "site", "", "Site name to use (overrides directory config)")
