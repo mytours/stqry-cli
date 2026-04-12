@@ -24,6 +24,9 @@ type DirectoryConfig struct {
 }
 
 func DefaultGlobalConfigPath() string {
+	if dir := os.Getenv("STQRY_CONFIG_HOME"); dir != "" {
+		return filepath.Join(dir, "config.yaml")
+	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "stqry", "config.yaml")
 }

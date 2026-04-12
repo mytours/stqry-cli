@@ -26,10 +26,11 @@ func GetMediaItem(c *Client, id string) (map[string]interface{}, error) {
 	return resp, nil
 }
 
-// CreateMediaItem creates a new media item.
+// CreateMediaItem creates a new media item. Fields are sent flat; see
+// CreateScreen for why.
 func CreateMediaItem(c *Client, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
-	if err := c.Post("/api/public/media_items", map[string]interface{}{"media_item": fields}, &resp); err != nil {
+	if err := c.Post("/api/public/media_items", fields, &resp); err != nil {
 		return nil, err
 	}
 	if item, ok := resp["media_item"].(map[string]interface{}); ok {
@@ -41,7 +42,7 @@ func CreateMediaItem(c *Client, fields map[string]interface{}) (map[string]inter
 // UpdateMediaItem updates an existing media item.
 func UpdateMediaItem(c *Client, id string, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
-	if err := c.Patch(fmt.Sprintf("/api/public/media_items/%s", id), map[string]interface{}{"media_item": fields}, &resp); err != nil {
+	if err := c.Patch(fmt.Sprintf("/api/public/media_items/%s", id), fields, &resp); err != nil {
 		return nil, err
 	}
 	if item, ok := resp["media_item"].(map[string]interface{}); ok {
