@@ -424,3 +424,25 @@ func TestListProjectsPagination(t *testing.T) {
 		t.Errorf("expected per_page=10 forwarded to API, got %q", receivedPerPage)
 	}
 }
+
+func TestCreateMediaInvalidType(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "file.mp4")
+	if err := os.WriteFile(filePath, []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "create_media", fmt.Sprintf(
+		`{"file_path":%q,"type":"invalid_type"}`, filePath,
+	))
+	if result == nil {
+		t.Fatal("expected a result")
+	}
+	if !result.IsError {
+		t.Fatal("expected error for invalid type")
+	}
+	if !strings.Contains(toolText(result), "invalid type") {
+		t.Errorf("expected helpful error mentioning invalid type, got: %s", toolText(result))
+	}
+}

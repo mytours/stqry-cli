@@ -35,6 +35,16 @@ func registerMediaTools(s *server.MCPServer, flagSite string, sess *Session) {
 			if mediaType == "" {
 				return mcpgo.NewToolResultError("type is required"), nil
 			}
+			validMediaTypes := map[string]bool{
+				"map": true, "webpackage": true, "animation": true, "audio": true,
+				"image": true, "video": true, "webvideo": true, "ar": true, "data": true,
+			}
+			if !validMediaTypes[mediaType] {
+				return mcpgo.NewToolResultError(fmt.Sprintf(
+					"invalid type %q: must be one of map, webpackage, animation, audio, image, video, webvideo, ar, data",
+					mediaType,
+				)), nil
+			}
 			name := req.GetString("name", "")
 
 			client, err := ResolveClient(flagSite, sess)
