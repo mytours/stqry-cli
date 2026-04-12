@@ -134,17 +134,22 @@ func TestConfigureProjectInvalidURL(t *testing.T) {
 // ---- select_site ----
 
 func TestSelectSiteTool(t *testing.T) {
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"projects":[],"meta":{"page":1,"pages":1,"per_page":25,"count":0}}`)
+	}))
+	defer mock.Close()
+
 	dir := t.TempDir()
 	orig, _ := os.Getwd()
 	defer os.Chdir(orig)
 	os.Chdir(dir)
 
-	// Write a global config with a named site.
 	globalCfgPath := filepath.Join(dir, "config.yaml")
 	t.Setenv("STQRY_CONFIG_HOME", dir)
 	globalCfg := &config.GlobalConfig{
 		Sites: map[string]*config.Site{
-			"mysite": {Token: "tok-abc", APIURL: "https://api.example.com"},
+			"mysite": {Token: "tok-abc", APIURL: mock.URL},
 		},
 	}
 	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
@@ -153,20 +158,19 @@ func TestSelectSiteTool(t *testing.T) {
 
 	s := stqrymcp.NewServer("")
 	result := callTool(s, "select_site", `{"site_name":"mysite"}`)
-	if result == nil {
-		t.Fatal("expected a result")
-	}
-	if result.IsError {
+	if result == nil || result.IsError {
 		t.Fatalf("expected success, got error: %s", toolText(result))
 	}
 
-	// stqry.yaml should now contain the site credentials.
-	data, err := os.ReadFile(filepath.Join(dir, "stqry.yaml"))
-	if err != nil {
-		t.Fatal("stqry.yaml not written")
+	// Session should now be set — list_projects should work.
+	result = callTool(s, "list_projects", `{}`)
+	if result == nil || result.IsError {
+		t.Fatalf("list_projects failed after select_site: %s", toolText(result))
 	}
-	if !bytes.Contains(data, []byte("tok-abc")) {
-		t.Errorf("expected token in stqry.yaml, got: %s", data)
+
+	// No stqry.yaml should have been written to disk.
+	if _, err := os.Stat(filepath.Join(dir, "stqry.yaml")); !os.IsNotExist(err) {
+		t.Error("select_site should not write stqry.yaml to disk")
 	}
 }
 
