@@ -108,6 +108,7 @@ func checkAPIReachable(baseURL string, httpClient *http.Client) checkResult {
 		r.message = fmt.Sprintf("Cannot reach %s: %v", baseURL, err)
 		return r
 	}
+	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
 
 	host := hostFromURL(baseURL)
