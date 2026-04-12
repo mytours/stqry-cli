@@ -3,6 +3,8 @@ package output
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -72,5 +74,63 @@ func TestFormatTranslatedString(t *testing.T) {
 	result := FormatTranslatedString(ts)
 	if result == "" {
 		t.Error("expected non-empty result")
+	}
+}
+
+func TestApplyJQ_List(t *testing.T) {
+	rows := []interface{}{
+		map[string]interface{}{"id": 1.0, "name": "alpha"},
+		map[string]interface{}{"id": 2.0, "name": "beta"},
+	}
+	var buf bytes.Buffer
+	err := applyJQ(&buf, ".[].name", rows)
+	if err != nil {
+		t.Fatalf("applyJQ: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, `"alpha"`) {
+		t.Errorf("expected alpha in output, got: %s", out)
+	}
+	if !strings.Contains(out, `"beta"`) {
+		t.Errorf("expected beta in output, got: %s", out)
+	}
+}
+
+func TestApplyJQ_RuntimeError(t *testing.T) {
+	// .foo on an array is a jq runtime error
+	rows := []interface{}{1.0, 2.0}
+	var buf bytes.Buffer
+	err := applyJQ(&buf, ".foo", rows)
+	if err == nil {
+		t.Fatal("expected error for .foo on array")
+	}
+	if !strings.HasPrefix(err.Error(), "jq:") {
+		t.Errorf("expected error to start with 'jq:', got: %s", err)
+	}
+}
+
+func TestPrinterPrintList_JQ(t *testing.T) {
+	rows := []map[string]interface{}{
+		{"id": 1.0, "name": "alpha"},
+		{"id": 2.0, "name": "beta"},
+	}
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	p := &Printer{JQExpr: ".[].name"}
+	err := p.PrintList([]string{"id", "name"}, rows, nil)
+
+	w.Close()
+	os.Stdout = origStdout
+	var out bytes.Buffer
+	out.ReadFrom(r)
+	r.Close()
+
+	if err != nil {
+		t.Fatalf("PrintList: %v", err)
+	}
+	if !strings.Contains(out.String(), `"alpha"`) {
+		t.Errorf("expected alpha in output, got: %s", out.String())
 	}
 }
