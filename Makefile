@@ -1,10 +1,12 @@
 BINARY_NAME=stqry
 BUILD_DIR=bin
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
 .PHONY: build test test-e2e build-recorder record lint clean
 
 build:
-	go build -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/stqry
+	go build -ldflags "-X github.com/mytours/stqry-cli/internal/buildinfo.Version=$(VERSION)" \
+		-o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/stqry
 
 build-recorder:
 	go build -o $(BUILD_DIR)/recorder ./e2e/recorder

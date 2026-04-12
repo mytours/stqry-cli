@@ -36,6 +36,15 @@ sites:
 EOF
 }
 
+# Create a directory-level stqry.yaml in the current working directory.
+# Defaults to site=testsite so doctor's directory config check passes.
+create_directory_config() {
+    local site="${1:-testsite}"
+    cat > stqry.yaml <<EOF
+site: $site
+EOF
+}
+
 # Assertion helpers
 
 assert_success() {
@@ -55,7 +64,7 @@ assert_failure() {
 }
 
 assert_output_contains() {
-    if ! echo "$output" | grep -q "$1"; then
+    if ! echo "$output" | grep -qF -- "$1"; then
         echo "Expected output to contain: $1"
         echo "Actual output: $output"
         return 1

@@ -9,6 +9,7 @@ import (
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/mytours/stqry-cli/internal/api"
+	"github.com/mytours/stqry-cli/internal/buildinfo"
 	"github.com/mytours/stqry-cli/internal/config"
 )
 
@@ -85,6 +86,7 @@ func NewServer(flagSite string) *server.MCPServer {
 	registerMediaTools(s, flagSite, sess)
 	registerCodeTools(s, flagSite, sess)
 	registerResources(s, flagSite, sess)
+	registerDoctorTools(s, buildinfo.Version)
 	return s
 }
 
