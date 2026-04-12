@@ -7,17 +7,30 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
+// APIErrorDetail mirrors the shape the Rails public API returns in
+// `errors: [{code, message}, ...]`; see
+// app/views/api/public/shared/_errors.json.jbuilder in mytours-web.
+type APIErrorDetail struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 type APIError struct {
 	StatusCode int
-	Errors     []string
+	Errors     []APIErrorDetail
 }
 
 func (e *APIError) Error() string {
 	if len(e.Errors) > 0 {
-		return fmt.Sprintf("API error %d: %s", e.StatusCode, e.Errors[0])
+		msgs := make([]string, 0, len(e.Errors))
+		for _, d := range e.Errors {
+			msgs = append(msgs, d.Message)
+		}
+		return fmt.Sprintf("API error %d: %s", e.StatusCode, strings.Join(msgs, "; "))
 	}
 	return fmt.Sprintf("API error %d", e.StatusCode)
 }
@@ -83,7 +96,7 @@ func (c *Client) doRequest(method, path string, query map[string]string, body in
 
 	if resp.StatusCode >= 400 {
 		var errResp struct {
-			Errors []string `json:"errors"`
+			Errors []APIErrorDetail `json:"errors"`
 		}
 		json.Unmarshal(respBody, &errResp)
 		return &APIError{

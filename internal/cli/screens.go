@@ -3,12 +3,26 @@ package cli
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/mytours/stqry-cli/internal/api"
 	"github.com/mytours/stqry-cli/internal/output"
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
 )
+
+// validScreenTypes mirrors Screen::SUBTYPES_SHORT in mytours-web
+// (app/models/screen.rb). Keep in sync if new subtypes are added server-side.
+var validScreenTypes = []string{"story", "web", "panorama", "ar", "kiosk"}
+
+func validateScreenType(t string) error {
+	for _, v := range validScreenTypes {
+		if t == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid screen type %q (valid: %s)", t, strings.Join(validScreenTypes, ", "))
+}
 
 func newScreensCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -57,7 +71,7 @@ func newScreensListCmd() *cobra.Command {
 				outMeta = &output.Meta{Page: meta.Page, PerPage: meta.PerPage, Total: meta.Count}
 			}
 
-			columns := []string{"id", "name", "title", "screen_type"}
+			columns := []string{"id", "name", "title", "type"}
 			return printer.PrintList(columns, screens, outMeta)
 		},
 	}
@@ -95,22 +109,19 @@ func newScreensCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a new screen",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if name == "" {
-				return fmt.Errorf("--name is required")
-			}
-			if screenType == "" {
-				return fmt.Errorf("--type is required")
+			if err := validateScreenType(screenType); err != nil {
+				return err
 			}
 
 			fields := map[string]interface{}{
-				"name":        name,
-				"screen_type": screenType,
+				"name": name,
+				"type": screenType,
 			}
 			if title != "" {
 				if flagLang != "" {
 					fields["title"] = map[string]interface{}{flagLang: title}
 				} else {
-					fields["title"] = title
+					fields["title"] = map[string]interface{}{"en": title}
 				}
 			}
 
@@ -123,8 +134,10 @@ func newScreensCreateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&name, "name", "", "Screen name (required)")
-	cmd.Flags().StringVar(&screenType, "type", "", "Screen type (required)")
+	cmd.Flags().StringVar(&screenType, "type", "", fmt.Sprintf("Screen type (required; one of: %s)", strings.Join(validScreenTypes, ", ")))
 	cmd.Flags().StringVar(&title, "title", "", "Screen title")
+	cmd.MarkFlagRequired("name")
+	cmd.MarkFlagRequired("type")
 
 	return cmd
 }
@@ -224,7 +237,7 @@ func newSectionsListCmd() *cobra.Command {
 				outMeta = &output.Meta{Page: meta.Page, PerPage: meta.PerPage, Total: meta.Count}
 			}
 
-			columns := []string{"id", "section_type", "position", "title"}
+			columns := []string{"id", "type", "position", "title"}
 			return printer.PrintList(columns, sections, outMeta)
 		},
 	}
@@ -271,7 +284,7 @@ func newSectionsAddCmd() *cobra.Command {
 			}
 
 			fields := map[string]interface{}{
-				"section_type": sectionType,
+				"type": sectionType,
 			}
 			if title != "" {
 				if flagLang != "" {

@@ -28,10 +28,13 @@ func GetScreen(c *Client, id string) (map[string]interface{}, error) {
 	return resp, nil
 }
 
-// CreateScreen creates a new screen.
+// CreateScreen creates a new screen. Fields are sent flat at the top level
+// because the public API controller reads params.permit(:name, ...) and
+// params[:type] directly; see app/controllers/api/public/screens_controller.rb
+// in mytours-web.
 func CreateScreen(c *Client, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
-	if err := c.Post("/api/public/screens", map[string]interface{}{"screen": fields}, &resp); err != nil {
+	if err := c.Post("/api/public/screens", fields, &resp); err != nil {
 		return nil, err
 	}
 	if screen, ok := resp["screen"].(map[string]interface{}); ok {
@@ -40,10 +43,11 @@ func CreateScreen(c *Client, fields map[string]interface{}) (map[string]interfac
 	return resp, nil
 }
 
-// UpdateScreen updates an existing screen.
+// UpdateScreen updates an existing screen. See CreateScreen for why the body
+// is flat.
 func UpdateScreen(c *Client, id string, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
-	if err := c.Patch(fmt.Sprintf("/api/public/screens/%s", id), map[string]interface{}{"screen": fields}, &resp); err != nil {
+	if err := c.Patch(fmt.Sprintf("/api/public/screens/%s", id), fields, &resp); err != nil {
 		return nil, err
 	}
 	if screen, ok := resp["screen"].(map[string]interface{}); ok {
@@ -89,7 +93,7 @@ func GetStorySection(c *Client, screenID, sectionID string) (map[string]interfac
 func CreateStorySection(c *Client, screenID string, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
 	path := fmt.Sprintf("/api/public/screens/%s/story_sections", screenID)
-	if err := c.Post(path, map[string]interface{}{"story_section": fields}, &resp); err != nil {
+	if err := c.Post(path, fields, &resp); err != nil {
 		return nil, err
 	}
 	if section, ok := resp["story_section"].(map[string]interface{}); ok {
@@ -102,7 +106,7 @@ func CreateStorySection(c *Client, screenID string, fields map[string]interface{
 func UpdateStorySection(c *Client, screenID, sectionID string, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}
 	path := fmt.Sprintf("/api/public/screens/%s/story_sections/%s", screenID, sectionID)
-	if err := c.Patch(path, map[string]interface{}{"story_section": fields}, &resp); err != nil {
+	if err := c.Patch(path, fields, &resp); err != nil {
 		return nil, err
 	}
 	if section, ok := resp["story_section"].(map[string]interface{}); ok {
@@ -150,7 +154,7 @@ func ListSectionSubItems(c *Client, screenID, sectionID, subItemType string) ([]
 func CreateSectionSubItem(c *Client, screenID, sectionID, subItemType, singularKey string, fields map[string]interface{}) (map[string]interface{}, error) {
 	path := fmt.Sprintf("/api/public/screens/%s/story_sections/%s/%s", screenID, sectionID, subItemType)
 	var resp map[string]interface{}
-	if err := c.Post(path, map[string]interface{}{singularKey: fields}, &resp); err != nil {
+	if err := c.Post(path, fields, &resp); err != nil {
 		return nil, err
 	}
 	if item, ok := resp[singularKey].(map[string]interface{}); ok {
@@ -163,7 +167,7 @@ func CreateSectionSubItem(c *Client, screenID, sectionID, subItemType, singularK
 func UpdateSectionSubItem(c *Client, screenID, sectionID, subItemType, itemID, singularKey string, fields map[string]interface{}) (map[string]interface{}, error) {
 	path := fmt.Sprintf("/api/public/screens/%s/story_sections/%s/%s/%s", screenID, sectionID, subItemType, itemID)
 	var resp map[string]interface{}
-	if err := c.Patch(path, map[string]interface{}{singularKey: fields}, &resp); err != nil {
+	if err := c.Patch(path, fields, &resp); err != nil {
 		return nil, err
 	}
 	if item, ok := resp[singularKey].(map[string]interface{}); ok {
