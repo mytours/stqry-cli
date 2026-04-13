@@ -11,7 +11,7 @@ import (
 
 func TestInstallAll_CodeLayout(t *testing.T) {
 	dir := t.TempDir()
-	if err := skills.InstallAll(dir, skills.LayoutCode, "v1.0.0"); err != nil {
+	if err := skills.InstallAll(dir, "v1.0.0"); err != nil {
 		t.Fatalf("InstallAll: %v", err)
 	}
 
@@ -41,10 +41,10 @@ func TestInstallAll_Overwrites(t *testing.T) {
 	dir := t.TempDir()
 
 	// Install once.
-	skills.InstallAll(dir, skills.LayoutCode, "v1.0.0")
+	skills.InstallAll(dir, "v1.0.0")
 
 	// Overwrite with a different version.
-	if err := skills.InstallAll(dir, skills.LayoutCode, "v2.0.0"); err != nil {
+	if err := skills.InstallAll(dir, "v2.0.0"); err != nil {
 		t.Fatalf("second InstallAll: %v", err)
 	}
 

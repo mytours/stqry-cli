@@ -12,11 +12,11 @@ import (
 
 func TestCheckInstalledSkills_Pass(t *testing.T) {
 	dir := t.TempDir()
-	if err := skills.InstallAll(dir, skills.LayoutCode, "v1.0.0"); err != nil {
+	if err := skills.InstallAll(dir, "v1.0.0"); err != nil {
 		t.Fatalf("InstallAll: %v", err)
 	}
 
-	loc := doctor.SkillLocation{Dir: dir, Layout: doctor.SkillLayoutCode, Label: "test (local)"}
+	loc := doctor.SkillLocation{Dir: dir, Label: "test (local)"}
 	results := doctor.CheckInstalledSkills([]doctor.SkillLocation{loc})
 
 	for _, r := range results {
@@ -41,7 +41,7 @@ func TestCheckInstalledSkills_Stale(t *testing.T) {
 		}
 	}
 
-	loc := doctor.SkillLocation{Dir: dir, Layout: doctor.SkillLayoutCode, Label: "test (local)"}
+	loc := doctor.SkillLocation{Dir: dir, Label: "test (local)"}
 	results := doctor.CheckInstalledSkills([]doctor.SkillLocation{loc})
 
 	warned := false
@@ -64,7 +64,7 @@ func TestCheckInstalledSkills_Stale(t *testing.T) {
 func TestCheckInstalledSkills_NotInstalled(t *testing.T) {
 	dir := t.TempDir() // empty — no skill files
 
-	loc := doctor.SkillLocation{Dir: dir, Layout: doctor.SkillLayoutCode, Label: "test (local)"}
+	loc := doctor.SkillLocation{Dir: dir, Label: "test (local)"}
 	results := doctor.CheckInstalledSkills([]doctor.SkillLocation{loc})
 
 	for _, r := range results {
@@ -76,11 +76,11 @@ func TestCheckInstalledSkills_NotInstalled(t *testing.T) {
 
 func TestCheckInstalledSkills_PassMessageIsJustUpToDate(t *testing.T) {
 	dir := t.TempDir()
-	if err := skills.InstallAll(dir, skills.LayoutCode, "v1.0.0"); err != nil {
+	if err := skills.InstallAll(dir, "v1.0.0"); err != nil {
 		t.Fatalf("InstallAll: %v", err)
 	}
 
-	loc := doctor.SkillLocation{Dir: dir, Layout: doctor.SkillLayoutCode, Label: "test"}
+	loc := doctor.SkillLocation{Dir: dir, Label: "test"}
 	results := doctor.CheckInstalledSkills([]doctor.SkillLocation{loc})
 
 	for _, r := range results {
