@@ -143,10 +143,17 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 				return mcpgo.NewToolResultError(fmt.Sprintf("site %q not found. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>` to add it", siteName, siteName)), nil
 			}
 			sess.Set(&config.Site{Token: site.Token, APIURL: site.APIURL})
-			return jsonResult(map[string]interface{}{
+			resp := map[string]interface{}{
 				"ok":      true,
 				"message": fmt.Sprintf("switched to site %s", siteName),
-			})
+			}
+			if !localConfigExists() {
+				resp["save_suggested"] = true
+				resp["save_message"] = fmt.Sprintf(
+					"No stqry.yaml found in the current directory. Would you like to save a reference to this site locally? "+
+						"I can write 'site: %s' to stqry.yaml in the current folder.", siteName)
+			}
+			return jsonResult(resp)
 		},
 	)
 }
