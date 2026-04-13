@@ -7,7 +7,10 @@ import (
 )
 
 // skillMDContent is the instruction body for SKILL.md.
-// Frontmatter (including skill_version) is prepended by BuildFrontmatter.
+// It includes its own YAML frontmatter (name, description) which BuildFrontmatter
+// will merge with the injected fields (skill_version, skill_hash, generated_by)
+// into a single frontmatter block. The content must begin with "---\n" and contain
+// a valid closing "\n---\n" sequence for the merge to work correctly.
 const skillMDContent = "---\n" +
 	"name: stqry\n" +
 	"description: STQRY CLI — manage STQRY content from Claude Desktop and Claude Cowork\n" +
