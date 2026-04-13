@@ -3,6 +3,7 @@ package skills_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -93,6 +94,9 @@ func TestInstallAll_Overwrites(t *testing.T) {
 }
 
 func TestDesktopSkillsDir(t *testing.T) {
+	if runtime.GOOS == "windows" && os.Getenv("APPDATA") == "" {
+		t.Skip("APPDATA not set")
+	}
 	dir := skills.DesktopSkillsDir()
 	if dir == "" {
 		t.Error("expected non-empty desktop skills dir")

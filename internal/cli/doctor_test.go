@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/mytours/stqry-cli/internal/config"
+	"github.com/mytours/stqry-cli/internal/skills"
 )
 
 func TestCheckGlobalConfig(t *testing.T) {
@@ -403,6 +404,26 @@ func TestDoctorCmd_APISkipped_WhenNoConfig(t *testing.T) {
 	}
 	if !contains(out, "-") {
 		t.Errorf("expected skip symbol for API checks, got:\n%s", out)
+	}
+}
+
+func TestCheckOneInstalledSkill_PassMessageIsJustUpToDate(t *testing.T) {
+	dir := t.TempDir()
+	if err := skills.InstallAll(dir, skills.LayoutCode, "v1.0.0"); err != nil {
+		t.Fatalf("InstallAll: %v", err)
+	}
+
+	skillNames, err := skills.EmbeddedSkillNames()
+	if err != nil || len(skillNames) == 0 {
+		t.Fatalf("EmbeddedSkillNames: %v", err)
+	}
+
+	r := checkOneInstalledSkill(dir, "test", cliLayoutCode, skillNames[0])
+	if r.status != statusPass {
+		t.Fatalf("expected pass, got %s: %s", r.status, r.message)
+	}
+	if r.message != "up to date" {
+		t.Errorf("pass message should be 'up to date', got %q (skill name must not be repeated)", r.message)
 	}
 }
 
