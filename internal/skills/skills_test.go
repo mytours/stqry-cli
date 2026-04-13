@@ -48,6 +48,31 @@ func TestBuildFrontmatter(t *testing.T) {
 	}
 }
 
+func TestBuildFrontmatter_MergesExistingFrontmatter(t *testing.T) {
+	content := []byte("---\nname: my-skill\ndescription: Does things\n---\n\n# Body\n")
+	result := skills.BuildFrontmatter("v1.2.3", content)
+	s := string(result)
+
+	// Must be exactly one frontmatter block (only two --- delimiters)
+	parts := strings.SplitN(s, "---\n", 3)
+	if len(parts) != 3 || parts[0] != "" {
+		t.Errorf("expected exactly one frontmatter block, got:\n%s", s)
+	}
+
+	// All fields must appear inside the single block
+	block := parts[1]
+	for _, field := range []string{"skill_version: v1.2.3", "skill_hash:", "generated_by: stqry-cli", "name: my-skill", "description: Does things"} {
+		if !strings.Contains(block, field) {
+			t.Errorf("frontmatter block missing %q:\n%s", field, block)
+		}
+	}
+
+	// Body must follow the single closing ---
+	if !strings.Contains(parts[2], "# Body\n") {
+		t.Errorf("expected body after frontmatter, got:\n%s", parts[2])
+	}
+}
+
 func TestExtractHashFromFrontmatter(t *testing.T) {
 	content := []byte("---\nskill_version: v1.2.3\nskill_hash: abc123def456\ngenerated_by: stqry-cli\n---\n# Hello\n")
 	hash, ok := skills.ExtractHashFromFrontmatter(content)

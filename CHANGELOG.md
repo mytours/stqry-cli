@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-04-13
+
+### Fixed
+- Skill export: merged duplicate YAML frontmatter blocks into one so `name`/`description` and version fields appear in a single `---` header
+
 ## [0.6.0] - 2026-04-13
 
 ### Added
