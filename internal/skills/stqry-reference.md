@@ -17,19 +17,19 @@ MCP server setup is not available in Claude Cowork — use CLI subprocess for al
 
 ### First-Run Configuration (all environments)
 
-Check connectivity and config:
-
-    stqry doctor
-
-If no site is configured, add one:
+Add a site to global config:
 
     stqry config add-site --name mysite --token <token> --region us
 
 Available regions: `us`, `ca`, `eu`, `sg`, `au`
 
-Then write a project config file to the current directory:
+Write a project config file to the current directory:
 
     stqry config init --name mysite   # writes stqry.yaml
+
+Verify connectivity:
+
+    stqry doctor
 
 **Claude Cowork persistence:** Download the generated `stqry.yaml` file and either
 upload it at the start of future Cowork sessions, or add it to your Cowork working
@@ -77,10 +77,10 @@ Collections are composed via Collection Items (join records):
 There is **no global default site**. A site must be specified via:
 
 1. `--site <name>` flag (highest priority)
-2. `.stqry/config.yaml` in the current (or any parent) directory
+2. `stqry.yaml` in the current (or any parent) directory
 3. A named site entry in `~/.config/stqry/config.yaml`
 
-### Directory config (`.stqry/config.yaml`)
+### Directory config (`stqry.yaml`)
 
 ```yaml
 site: my-site-name
