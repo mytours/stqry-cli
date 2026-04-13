@@ -102,7 +102,7 @@ func newMediaListCmd() *cobra.Command {
 
 // media get <id>
 func newMediaGetCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a media item by ID",
 		Example: `  # Get a media item by ID
@@ -123,6 +123,8 @@ func newMediaGetCmd() *cobra.Command {
 			return printer.PrintOne(item, nil)
 		},
 	}
+	cmd.ValidArgsFunction = completeMediaIDs
+	return cmd
 }
 
 // media create --file=<path> --type=X [--name=X] [--lang=X]
@@ -224,13 +226,14 @@ func newMediaUpdateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&name, "name", "", "New name for the media item")
+	cmd.ValidArgsFunction = completeMediaIDs
 
 	return cmd
 }
 
 // media delete <id>
 func newMediaDeleteCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Delete a media item",
 		Example: `  # Delete a media item
@@ -255,6 +258,8 @@ func newMediaDeleteCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.ValidArgsFunction = completeMediaIDs
+	return cmd
 }
 
 // media upload <file> [--lang=X] [--media-id=X]

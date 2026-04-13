@@ -105,7 +105,7 @@ func newScreensListCmd() *cobra.Command {
 // ── screens get ───────────────────────────────────────────────────────────────
 
 func newScreensGetCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a screen by ID",
 		Example: `  # Get a screen by ID
@@ -125,6 +125,8 @@ func newScreensGetCmd() *cobra.Command {
 			return printer.PrintOne(screen, nil)
 		},
 	}
+	cmd.ValidArgsFunction = completeScreenIDs
+	return cmd
 }
 
 // ── screens create ────────────────────────────────────────────────────────────
@@ -213,6 +215,7 @@ func newScreensUpdateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&name, "name", "", "New screen name")
 	cmd.Flags().StringVar(&title, "title", "", "New screen title")
+	cmd.ValidArgsFunction = completeScreenIDs
 
 	return cmd
 }
@@ -220,7 +223,7 @@ func newScreensUpdateCmd() *cobra.Command {
 // ── screens delete ────────────────────────────────────────────────────────────
 
 func newScreensDeleteCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Delete a screen",
 		Example: `  # Delete a screen
@@ -230,6 +233,8 @@ func newScreensDeleteCmd() *cobra.Command {
 			return api.DeleteScreen(activeClient, args[0])
 		},
 	}
+	cmd.ValidArgsFunction = completeScreenIDs
+	return cmd
 }
 
 // ── screens sections ──────────────────────────────────────────────────────────
