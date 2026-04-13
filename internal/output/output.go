@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+
+	"github.com/itchyny/gojq"
 )
 
 type Meta struct {
@@ -112,12 +114,37 @@ func FormatTranslatedString(ts map[string]interface{}) string {
 	return strings.Join(parts, " ")
 }
 
+func applyJQ(w io.Writer, code *gojq.Code, data interface{}) error {
+	iter := code.Run(data)
+	enc := json.NewEncoder(w)
+	for {
+		v, ok := iter.Next()
+		if !ok {
+			break
+		}
+		if err, ok := v.(error); ok {
+			return fmt.Errorf("jq: %w", err)
+		}
+		if err := enc.Encode(v); err != nil {
+			return fmt.Errorf("jq: encoding output: %w", err)
+		}
+	}
+	return nil
+}
+
 type Printer struct {
-	JSON  bool
-	Quiet bool
+	JSON   bool
+	Quiet  bool
+	JQCode *gojq.Code
 }
 
 func (p *Printer) PrintOne(data interface{}, meta *Meta) error {
+	if p.JQCode != nil {
+		if p.JSON {
+			return applyJQ(os.Stdout, p.JQCode, map[string]interface{}{"data": data, "meta": meta})
+		}
+		return applyJQ(os.Stdout, p.JQCode, data)
+	}
 	if p.Quiet {
 		f := &QuietFormatter{Writer: os.Stdout}
 		return f.Write(data, nil)
@@ -135,6 +162,16 @@ func (p *Printer) PrintOne(data interface{}, meta *Meta) error {
 }
 
 func (p *Printer) PrintList(columns []string, rows []map[string]interface{}, meta *Meta) error {
+	if p.JQCode != nil {
+		irows := make([]interface{}, len(rows))
+		for i, r := range rows {
+			irows[i] = r
+		}
+		if p.JSON {
+			return applyJQ(os.Stdout, p.JQCode, map[string]interface{}{"data": irows, "meta": meta})
+		}
+		return applyJQ(os.Stdout, p.JQCode, irows)
+	}
 	if p.Quiet {
 		f := &QuietFormatter{Writer: os.Stdout}
 		return f.Write(rows, nil)
@@ -148,7 +185,7 @@ func (p *Printer) PrintList(columns []string, rows []map[string]interface{}, met
 }
 
 func (p *Printer) PrintError(err error) {
-	if p.JSON || p.Quiet {
+	if p.JSON || p.Quiet || p.JQCode != nil {
 		enc := json.NewEncoder(os.Stderr)
 		enc.Encode(map[string]string{"error": err.Error()})
 	} else {

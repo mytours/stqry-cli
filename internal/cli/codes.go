@@ -39,7 +39,13 @@ func newCodesListCmd() *cobra.Command {
   stqry codes list
 
   # List using a specific site
-  stqry codes list --site mysite`,
+  stqry codes list --site mysite
+
+  # Filter with built-in jq (no external jq needed)
+  stqry codes list --jq '.[].coupon_code'
+
+  # Pipe to external jq (alternative)
+  stqry codes list --quiet | jq '.[].id'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -82,7 +88,10 @@ func newCodesGetCmd() *cobra.Command {
   stqry codes get 10
 
   # Get code details as JSON
-  stqry codes get 10 --json`,
+  stqry codes get 10 --json
+
+  # Filter a specific field
+  stqry codes get 10 --jq '.coupon_code'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			code, err := api.GetCode(activeClient, args[0])
