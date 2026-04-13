@@ -95,8 +95,10 @@ stqry setup claude --desktop  # update Claude Desktop skills
 ```
 Skills
   ✓ stqry-reference — Claude Code (global) (up to date)
-  ⚠ stqry-reference — Claude Desktop (outdated — run stqry setup claude --desktop)
+  ⚠ stqry-reference — Claude Desktop (outdated (skill content has changed))
 ```
+
+Run `stqry doctor --verbose` to see the remediation command for each warning.
 
 To inspect or manually distribute skill content:
 
