@@ -11,10 +11,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/mytours/stqry-cli/internal/config"
+	"github.com/mytours/stqry-cli/internal/skills"
 )
 
 type CheckStatus string
@@ -302,6 +304,15 @@ func RunChecks(currentVersion string) RunResult {
 	}
 
 	results = append(results, CheckCLIVersion(currentVersion, DefaultGitHubReleasesURL, httpClient))
+
+	// Skills checks
+	home, _ := os.UserHomeDir()
+	skillLocations := []SkillLocation{
+		{Dir: filepath.Join(cwd, ".claude", "commands"), Layout: SkillLayoutCode, Label: "Claude Code (local)"},
+		{Dir: filepath.Join(home, ".claude", "commands"), Layout: SkillLayoutCode, Label: "Claude Code (global)"},
+		{Dir: skills.DesktopSkillsDir(), Layout: SkillLayoutDesktop, Label: "Claude Desktop"},
+	}
+	results = append(results, CheckInstalledSkills(skillLocations)...)
 
 	anyFailed := false
 	for _, r := range results {
