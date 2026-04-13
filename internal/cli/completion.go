@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/mytours/stqry-cli/internal/api"
 	"github.com/mytours/stqry-cli/internal/completion"
@@ -23,6 +24,7 @@ func newCompletionCmd() *cobra.Command {
 	cmd.AddCommand(newCompletionFishCmd())
 	cmd.AddCommand(newCompletionPowerShellCmd())
 	cmd.AddCommand(newCompletionRefreshCmd())
+	cmd.AddCommand(newCompletionStatusCmd())
 
 	return cmd
 }
@@ -175,6 +177,55 @@ func newCompletionRefreshCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&siteName, "site", "", "Site to refresh (defaults to active site)")
 	return cmd
+}
+
+func newCompletionStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Show completion cache status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := resolveSiteNameForCompletion()
+			if name == "" {
+				return fmt.Errorf("no site specified; use --site or run from a directory with stqry.yaml")
+			}
+
+			resources := []string{"collections", "screens", "media", "projects"}
+			w := cmd.OutOrStdout()
+			fmt.Fprintf(w, "%-15s %-8s %-12s %s\n", "Resource", "Items", "Age", "Status")
+			fmt.Fprintf(w, "%-15s %-8s %-12s %s\n", "--------", "-----", "---", "------")
+
+			for _, resource := range resources {
+				items, stale, err := completion.Load(name, resource)
+				if err != nil || (len(items) == 0 && stale) {
+					fmt.Fprintf(w, "%-15s %-8s %-12s %s\n", resource, "-", "-", "not cached")
+					continue
+				}
+				path, _ := completion.CachePath(name, resource)
+				info, err := os.Stat(path)
+				age := "-"
+				if err == nil {
+					d := time.Since(info.ModTime())
+					age = formatAge(d)
+				}
+				status := "fresh"
+				if stale {
+					status = "stale"
+				}
+				fmt.Fprintf(w, "%-15s %-8d %-12s %s\n", resource, len(items), age, status)
+			}
+			return nil
+		},
+	}
+}
+
+func formatAge(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%ds ago", int(d.Seconds()))
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	}
+	return fmt.Sprintf("%dh ago", int(d.Hours()))
 }
 
 // fetchAllEntries pages through a list endpoint collecting all IDs and names.

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -198,6 +199,37 @@ func TestCompleteProjectIDs_HitsCache(t *testing.T) {
 	results, _ := getCmd.ValidArgsFunction(getCmd, []string{}, "")
 	if len(results) != 1 || results[0] != "1\tmain-project" {
 		t.Errorf("unexpected results: %v", results)
+	}
+}
+
+func TestCompletionStatusCmd(t *testing.T) {
+	setupTestHome(t, "http://unused")
+	flagSite = ""
+	t.Cleanup(func() { flagSite = "" })
+
+	completion.Save("testsite", "collections", []completion.CacheEntry{{ID: "1", Name: "a"}, {ID: "2", Name: "b"}})
+	completion.Save("testsite", "screens", []completion.CacheEntry{{ID: "10", Name: "welcome"}})
+
+	buf := &bytes.Buffer{}
+	cmd := newRootCmd()
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"--site=testsite", "completion", "status"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "collections") {
+		t.Errorf("expected 'collections' in output:\n%s", out)
+	}
+	if !strings.Contains(out, "2") {
+		t.Errorf("expected item count '2' in output:\n%s", out)
+	}
+	if !strings.Contains(out, "screens") {
+		t.Errorf("expected 'screens' in output:\n%s", out)
+	}
+	if !strings.Contains(out, "not cached") {
+		t.Errorf("expected 'not cached' for uncached resources:\n%s", out)
 	}
 }
 
