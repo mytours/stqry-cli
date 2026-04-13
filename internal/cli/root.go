@@ -59,12 +59,18 @@ func newRootCmd() *cobra.Command {
 		Version: buildinfo.Version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// 1. Initialise printer.
-			printer = &output.Printer{JSON: flagJSON, Quiet: flagQuiet, JQExpr: flagJQ}
+			printer = &output.Printer{JSON: flagJSON, Quiet: flagQuiet}
 
 			if flagJQ != "" {
-				if _, err := gojq.Parse(flagJQ); err != nil {
+				query, err := gojq.Parse(flagJQ)
+				if err != nil {
 					return fmt.Errorf("invalid jq expression: %w", err)
 				}
+				code, err := gojq.Compile(query)
+				if err != nil {
+					return fmt.Errorf("invalid jq expression: %w", err)
+				}
+				printer.JQCode = code
 			}
 
 			// 2. Load global config.
@@ -107,7 +113,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.PersistentFlags().StringVar(&flagLang, "lang", "", "Language code for content (e.g. en, fr)")
 	rootCmd.PersistentFlags().BoolVar(&flagJSON, "json", false, "Output as JSON")
 	rootCmd.PersistentFlags().BoolVar(&flagQuiet, "quiet", false, "Output minimal JSON (no envelope)")
-	rootCmd.PersistentFlags().StringVar(&flagJQ, "jq", "", "Filter output with a jq expression")
+	rootCmd.PersistentFlags().StringVar(&flagJQ, "jq", "", "Filter output with a jq expression (overrides --quiet)")
 
 	// Subcommands.
 	rootCmd.AddCommand(newConfigCmd())
