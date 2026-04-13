@@ -36,7 +36,7 @@ def platform_tag(go_os: str, go_arch: str) -> str:
 
 def archive_name(go_os: str, go_arch: str) -> str:
     ext = "zip" if go_os == "windows" else "tar.gz"
-    return f"stqry_{go_os}_{go_arch}.{ext}"
+    return f"stqry-cli_{go_os}_{go_arch}.{ext}"
 
 
 def binary_name(go_os: str) -> str:
