@@ -74,7 +74,50 @@ func TestSetupClaudeGlobalFlag(t *testing.T) {
 	}
 }
 
-func TestSetupClaudeDesktopFlag(t *testing.T) {
+func TestSetupClaudeDesktopExportsToDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	exportDir := t.TempDir()
+
+	cmd := newRootCmd()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cmd.SetArgs([]string{"setup", "claude", "--desktop", "--dir", exportDir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("setup claude --desktop --dir: %v", err)
+	}
+
+	// Flat .md files should be written to exportDir (not subfolder/SKILL.md).
+	entries, err := os.ReadDir(exportDir)
+	if err != nil {
+		t.Fatalf("reading export dir: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("no skill files exported")
+	}
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".md") {
+			t.Errorf("expected .md file, got %s", e.Name())
+		}
+		// Must not create subfolders.
+		if e.IsDir() {
+			t.Errorf("expected flat .md file, got directory %s", e.Name())
+		}
+	}
+
+	// Output must include UI instructions.
+	out := buf.String()
+	if !strings.Contains(out, "Claude Desktop") {
+		t.Error("expected 'Claude Desktop' in output")
+	}
+	if !strings.Contains(out, "Settings") {
+		t.Error("expected 'Settings' mention in UI instructions")
+	}
+}
+
+func TestSetupClaudeDesktopDefaultsToDownloads(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -88,17 +131,14 @@ func TestSetupClaudeDesktopFlag(t *testing.T) {
 		t.Fatalf("setup claude --desktop: %v", err)
 	}
 
-	// On any OS in tests, HOME is overridden — check that at least one
-	// SKILL.md was created somewhere under home.
-	found := false
-	filepath.Walk(home, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() && info.Name() == "SKILL.md" {
-			found = true
-		}
-		return nil
-	})
-	if !found {
-		t.Error("expected SKILL.md to be installed for --desktop")
+	// Files should land in ~/Downloads.
+	downloadsDir := filepath.Join(home, "Downloads")
+	entries, err := os.ReadDir(downloadsDir)
+	if err != nil {
+		t.Fatalf("reading Downloads dir: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("no skill files exported to ~/Downloads")
 	}
 }
 
