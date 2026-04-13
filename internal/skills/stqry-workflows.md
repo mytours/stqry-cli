@@ -30,6 +30,8 @@ Screens are created as standalone entities before they are linked into any colle
 
 ```bash
 stqry screens create \
+  --name "town-hall-overview" \
+  --type story \
   --title "Town Hall Overview" \
   --json
 ```
@@ -49,7 +51,7 @@ stqry collections items add <collection-id> \
   --json
 ```
 
-Repeat for each screen, in the order you want them to appear in the tour.
+Repeat for each screen. Note that `collections items add` does not control position — use `stqry collections items reorder` afterwards to set the order screens appear in the tour.
 
 ### Step 4 — Add sections to each screen
 
@@ -132,7 +134,9 @@ This builds a rich screen with opening hours, external links, and image badges.
 ### Step 1 — Create the screen
 
 ```bash
-stqry screens create <item-id> \
+stqry screens create \
+  --name "visitor-information" \
+  --type story \
   --title "Visitor Information" \
   --json
 ```
