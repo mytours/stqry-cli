@@ -311,8 +311,8 @@ func RunChecks(currentVersion string) RunResult {
 		localSkillDir = filepath.Join(cwd, ".claude", "commands")
 	}
 	skillLocations := []SkillLocation{
-		{Dir: localSkillDir, Layout: SkillLayoutCode, Label: "Claude Code (local)"},
-		{Dir: filepath.Join(home, ".claude", "commands"), Layout: SkillLayoutCode, Label: "Claude Code (global)"},
+		{Dir: localSkillDir, Label: "Claude Code (local)"},
+		{Dir: filepath.Join(home, ".claude", "commands"), Label: "Claude Code (global)"},
 	}
 	results = append(results, CheckInstalledSkills(skillLocations)...)
 

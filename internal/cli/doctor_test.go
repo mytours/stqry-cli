@@ -409,7 +409,7 @@ func TestDoctorCmd_APISkipped_WhenNoConfig(t *testing.T) {
 
 func TestCheckOneInstalledSkill_PassMessageIsJustUpToDate(t *testing.T) {
 	dir := t.TempDir()
-	if err := skills.InstallAll(dir, skills.LayoutCode, "v1.0.0"); err != nil {
+	if err := skills.InstallAll(dir, "v1.0.0"); err != nil {
 		t.Fatalf("InstallAll: %v", err)
 	}
 

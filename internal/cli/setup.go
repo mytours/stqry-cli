@@ -57,7 +57,7 @@ func newSetupClaudeCmd() *cobra.Command {
 				return fmt.Errorf("reading embedded skills: %w", err)
 			}
 
-			if err := skills.InstallAll(targetDir, skills.LayoutCode, buildinfo.Version); err != nil {
+			if err := skills.InstallAll(targetDir, buildinfo.Version); err != nil {
 				return err
 			}
 

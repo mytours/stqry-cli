@@ -6,16 +6,9 @@ import (
 	"path/filepath"
 )
 
-// Layout describes where and how skills are written on disk.
-type Layout int
-
-const (
-	LayoutCode Layout = iota // Flat .md file: {dir}/{skill-name}.md
-)
-
-// InstallAll writes all embedded skills to targetDir using the given layout.
+// InstallAll writes all embedded skills to targetDir.
 // Always overwrites existing files.
-func InstallAll(targetDir string, layout Layout, version string) error {
+func InstallAll(targetDir string, version string) error {
 	names, err := EmbeddedSkillNames()
 	if err != nil {
 		return fmt.Errorf("reading embedded skills: %w", err)
