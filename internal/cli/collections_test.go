@@ -83,3 +83,77 @@ func TestCollectionsListCmd(t *testing.T) {
 		t.Errorf("expected output to contain %q, got:\n%s", "alpha", out)
 	}
 }
+
+func TestJQFlagInvalidExpression(t *testing.T) {
+	// Track whether the mock server receives any requests.
+	called := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "list", "--jq", "!!invalid!!"})
+	err := cmd.Execute()
+
+	if err == nil {
+		t.Fatal("expected error for invalid jq expression")
+	}
+	if called {
+		t.Error("API should not be called when jq expression is invalid")
+	}
+}
+
+func TestJQFlagFiltersOutput(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collections": []interface{}{
+				map[string]interface{}{"id": 1, "name": "alpha"},
+				map[string]interface{}{"id": 2, "name": "beta"},
+			},
+			"meta": map[string]interface{}{
+				"page": 1, "pages": 1, "per_page": 30, "count": 2,
+			},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	origStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("creating pipe: %v", err)
+	}
+	os.Stdout = w
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "list", "--jq", ".[].name"})
+	execErr := cmd.Execute()
+
+	w.Close()
+	os.Stdout = origStdout
+
+	outBytes := make([]byte, 4096)
+	n, _ := r.Read(outBytes)
+	r.Close()
+	out := string(outBytes[:n])
+
+	if execErr != nil {
+		t.Fatalf("Execute: %v", execErr)
+	}
+	if !contains(out, `"alpha"`) {
+		t.Errorf("expected alpha in jq output, got:\n%s", out)
+	}
+	if !contains(out, `"beta"`) {
+		t.Errorf("expected beta in jq output, got:\n%s", out)
+	}
+	// Human-readable table columns should NOT appear
+	if contains(out, "NAME") {
+		t.Errorf("table header should not appear in jq output, got:\n%s", out)
+	}
+}

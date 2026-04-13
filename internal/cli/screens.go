@@ -61,7 +61,13 @@ func newScreensListCmd() *cobra.Command {
   stqry screens list --q "welcome"
 
   # List using a specific site, paginated
-  stqry screens list --site mysite --page 2 --per-page 25`,
+  stqry screens list --site mysite --page 2 --per-page 25
+
+  # Filter with built-in jq (no external jq needed)
+  stqry screens list --jq '.[].name'
+
+  # Pipe to external jq (alternative)
+  stqry screens list --quiet | jq '.[].id'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := map[string]string{}
 			if page > 0 {
@@ -106,7 +112,10 @@ func newScreensGetCmd() *cobra.Command {
   stqry screens get 42
 
   # Get screen details as JSON
-  stqry screens get 42 --json`,
+  stqry screens get 42 --json
+
+  # Filter a specific field
+  stqry screens get 42 --jq '.name'`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			screen, err := api.GetScreen(activeClient, args[0])
@@ -261,7 +270,13 @@ func newSectionsListCmd() *cobra.Command {
 		Use:   "list <screen-id>",
 		Short: "List story sections for a screen",
 		Example: `  # List all sections for a screen
-  stqry screens sections list 42`,
+  stqry screens sections list 42
+
+  # Filter with built-in jq (no external jq needed)
+  stqry screens sections list 42 --jq '.[].type'
+
+  # Pipe to external jq (alternative)
+  stqry screens sections list 42 --quiet | jq '.[].id'`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sections, meta, err := api.ListStorySections(activeClient, args[0], nil)
@@ -289,7 +304,10 @@ func newSectionsGetCmd() *cobra.Command {
 		Use:   "get <section-id>",
 		Short: "Get a story section by ID",
 		Example: `  # Get a section by ID
-  stqry screens sections get 99 --screen-id 42`,
+  stqry screens sections get 99 --screen-id 42
+
+  # Filter a specific field
+  stqry screens sections get 99 --screen-id 42 --jq '.type'`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if screenID == "" {
