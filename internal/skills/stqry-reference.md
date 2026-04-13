@@ -3,6 +3,40 @@ name: stqry-reference
 description: STQRY CLI command reference — all commands, flags, and data model relationships
 ---
 
+## Setup & Installation
+
+### Claude Cowork
+
+If `stqry` is not on PATH, install it via pip:
+
+    pip install stqry
+
+Verify with `stqry --version` before proceeding.
+
+MCP server setup is not available in Claude Cowork — use CLI subprocess for all operations.
+
+### First-Run Configuration (all environments)
+
+Check connectivity and config:
+
+    stqry doctor
+
+If no site is configured, add one:
+
+    stqry config add-site --name mysite --token <token> --region us
+
+Available regions: `us`, `ca`, `eu`, `sg`, `au`
+
+Then write a project config file to the current directory:
+
+    stqry config init --name mysite   # writes stqry.yaml
+
+**Claude Cowork persistence:** Download the generated `stqry.yaml` file and either
+upload it at the start of future Cowork sessions, or add it to your Cowork working
+folder so it is picked up automatically. This avoids reconfiguring each session.
+
+---
+
 # STQRY CLI Command Reference
 
 ## Data Model Overview
