@@ -37,7 +37,6 @@ func TestInstallAll_CodeLayout(t *testing.T) {
 	}
 }
 
-
 func TestInstallAll_Overwrites(t *testing.T) {
 	dir := t.TempDir()
 

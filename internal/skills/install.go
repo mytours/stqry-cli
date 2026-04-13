@@ -26,7 +26,7 @@ func InstallAll(targetDir string, layout Layout, version string) error {
 			return fmt.Errorf("reading embedded file %s: %w", name, err)
 		}
 		content := BuildFrontmatter(version, data)
-		if err := writeSkill(targetDir, name, layout, content); err != nil {
+		if err := writeSkill(targetDir, name, content); err != nil {
 			return err
 		}
 	}
@@ -34,7 +34,7 @@ func InstallAll(targetDir string, layout Layout, version string) error {
 }
 
 // writeSkill writes a single skill's content to disk.
-func writeSkill(targetDir, filename string, _ Layout, content []byte) error {
+func writeSkill(targetDir, filename string, content []byte) error {
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return fmt.Errorf("creating directory %s: %w", targetDir, err)
 	}

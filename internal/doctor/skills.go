@@ -11,12 +11,11 @@ import (
 )
 
 // SkillLayoutType mirrors skills.Layout for use in doctor.
-// SkillLayoutCode == skills.LayoutCode; SkillLayoutDesktop == skills.LayoutDesktop.
+// SkillLayoutCode == skills.LayoutCode.
 type SkillLayoutType int
 
 const (
-	SkillLayoutCode    SkillLayoutType = iota // flat .md file  (= skills.LayoutCode)
-	SkillLayoutDesktop                        // folder/SKILL.md (= skills.LayoutDesktop)
+	SkillLayoutCode SkillLayoutType = iota // flat .md file  (= skills.LayoutCode)
 )
 
 // SkillLocation describes a directory where skills may be installed.
@@ -63,14 +62,7 @@ func checkOneSkill(loc SkillLocation, filename string) CheckResult {
 		return r
 	}
 
-	// Determine path based on layout.
-	var installedPath string
-	switch loc.Layout {
-	case SkillLayoutDesktop:
-		installedPath = filepath.Join(loc.Dir, skillName, "SKILL.md")
-	default:
-		installedPath = filepath.Join(loc.Dir, filename)
-	}
+	installedPath := filepath.Join(loc.Dir, filename)
 
 	data, err := os.ReadFile(installedPath)
 	if err != nil {
@@ -112,11 +104,6 @@ func checkOneSkill(loc SkillLocation, filename string) CheckResult {
 	return r
 }
 
-func remediation(layout SkillLayoutType) string {
-	switch layout {
-	case SkillLayoutDesktop:
-		return "Run: stqry setup claude --desktop"
-	default:
-		return "Run: stqry setup claude (or --global)"
-	}
+func remediation(_ SkillLayoutType) string {
+	return "Run: stqry setup claude (or --global)"
 }

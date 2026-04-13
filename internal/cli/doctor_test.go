@@ -418,7 +418,7 @@ func TestCheckOneInstalledSkill_PassMessageIsJustUpToDate(t *testing.T) {
 		t.Fatalf("EmbeddedSkillNames: %v", err)
 	}
 
-	r := checkOneInstalledSkill(dir, "test", cliLayoutCode, skillNames[0])
+	r := checkOneInstalledSkill(dir, "test", skillNames[0])
 	if r.status != statusPass {
 		t.Fatalf("expected pass, got %s: %s", r.status, r.message)
 	}

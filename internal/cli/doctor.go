@@ -291,12 +291,6 @@ func doctorSymbol(s checkStatus) string {
 	}
 }
 
-type cliSkillLayout int
-
-const (
-	cliLayoutCode cliSkillLayout = iota
-)
-
 func checkInstalledSkills() []checkResult {
 	home, _ := os.UserHomeDir()
 	cwd, _ := os.Getwd()
@@ -307,13 +301,12 @@ func checkInstalledSkills() []checkResult {
 	}
 
 	type loc struct {
-		dir    string
-		layout cliSkillLayout
-		label  string
+		dir   string
+		label string
 	}
 	locations := []loc{
-		{dir: localSkillDir, layout: cliLayoutCode, label: "Claude Code (local)"},
-		{dir: filepath.Join(home, ".claude", "commands"), layout: cliLayoutCode, label: "Claude Code (global)"},
+		{dir: localSkillDir, label: "Claude Code (local)"},
+		{dir: filepath.Join(home, ".claude", "commands"), label: "Claude Code (global)"},
 	}
 
 	skillNames, err := skills.EmbeddedSkillNames()
@@ -324,13 +317,13 @@ func checkInstalledSkills() []checkResult {
 	var results []checkResult
 	for _, l := range locations {
 		for _, filename := range skillNames {
-			results = append(results, checkOneInstalledSkill(l.dir, l.label, l.layout, filename))
+			results = append(results, checkOneInstalledSkill(l.dir, l.label, filename))
 		}
 	}
 	return results
 }
 
-func checkOneInstalledSkill(dir, label string, _ cliSkillLayout, filename string) checkResult {
+func checkOneInstalledSkill(dir, label, filename string) checkResult {
 	skillName := strings.TrimSuffix(filename, ".md")
 	r := checkResult{
 		group: "Skills",
