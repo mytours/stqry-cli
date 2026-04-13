@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/mytours/stqry-cli/internal/config"
-	"github.com/mytours/stqry-cli/internal/skills"
 )
 
 type CheckStatus string
@@ -314,7 +313,6 @@ func RunChecks(currentVersion string) RunResult {
 	skillLocations := []SkillLocation{
 		{Dir: localSkillDir, Layout: SkillLayoutCode, Label: "Claude Code (local)"},
 		{Dir: filepath.Join(home, ".claude", "commands"), Layout: SkillLayoutCode, Label: "Claude Code (global)"},
-		{Dir: skills.DesktopSkillsDir(), Layout: SkillLayoutDesktop, Label: "Claude Desktop"},
 	}
 	results = append(results, CheckInstalledSkills(skillLocations)...)
 

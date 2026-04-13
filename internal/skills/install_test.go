@@ -3,7 +3,6 @@ package skills_test
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -38,34 +37,6 @@ func TestInstallAll_CodeLayout(t *testing.T) {
 	}
 }
 
-func TestInstallAll_DesktopLayout(t *testing.T) {
-	dir := t.TempDir()
-	if err := skills.InstallAll(dir, skills.LayoutDesktop, "v1.0.0"); err != nil {
-		t.Fatalf("InstallAll: %v", err)
-	}
-
-	// Each skill is a folder containing SKILL.md.
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("reading dir: %v", err)
-	}
-	if len(entries) == 0 {
-		t.Fatal("expected directories to be created")
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			t.Errorf("expected directory, got file: %s", e.Name())
-		}
-		skillPath := filepath.Join(dir, e.Name(), "SKILL.md")
-		data, err := os.ReadFile(skillPath)
-		if err != nil {
-			t.Fatalf("SKILL.md missing in %s: %v", e.Name(), err)
-		}
-		if !strings.HasPrefix(string(data), "---\n") {
-			t.Errorf("SKILL.md in %s missing frontmatter", e.Name())
-		}
-	}
-}
 
 func TestInstallAll_Overwrites(t *testing.T) {
 	dir := t.TempDir()
@@ -93,12 +64,3 @@ func TestInstallAll_Overwrites(t *testing.T) {
 	}
 }
 
-func TestDesktopSkillsDir(t *testing.T) {
-	if runtime.GOOS == "windows" && os.Getenv("APPDATA") == "" {
-		t.Skip("APPDATA not set")
-	}
-	dir := skills.DesktopSkillsDir()
-	if dir == "" {
-		t.Error("expected non-empty desktop skills dir")
-	}
-}
