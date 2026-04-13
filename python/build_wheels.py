@@ -1,15 +1,6 @@
 #!/usr/bin/env python3
 """Build platform-specific wheels from GoReleaser release artifacts."""
 
-import argparse
-import shutil
-import subprocess
-import sys
-import tarfile
-import tempfile
-import zipfile
-from pathlib import Path
-
 PLATFORMS = [
     ("darwin", "arm64"),
     ("darwin", "amd64"),
