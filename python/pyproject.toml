@@ -2,6 +2,10 @@
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
+# WARNING: Do NOT publish to PyPI from this directory.
+# Platform-specific wheels must be built by build_wheels.py (run via CI).
+# Running `python -m build` here produces a 0.0.0 placeholder sdist that is
+# only useful for local development installs (pip install -e .).
 [project]
 name = "stqry"
 version = "0.0.0"

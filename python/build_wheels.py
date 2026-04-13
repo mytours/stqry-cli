@@ -6,6 +6,7 @@ import base64
 import hashlib
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import zipfile
@@ -50,20 +51,6 @@ def _record_entry(rel_path: str, abs_path: Path) -> str:
     return f"{rel_path},{h},{size}"
 
 
-_RUN_PY = """\
-import os
-import subprocess
-import sys
-
-
-def main():
-    binary = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bin", "stqry")
-    if sys.platform == "win32":
-        binary += ".exe"
-    sys.exit(subprocess.call([binary] + sys.argv[1:]))
-"""
-
-
 def extract_binary(archive_path: Path, go_os: str, dest_dir: Path) -> Path:
     name = binary_name(go_os)
     dest = dest_dir / name
@@ -73,8 +60,11 @@ def extract_binary(archive_path: Path, go_os: str, dest_dir: Path) -> Path:
     else:
         with tarfile.open(archive_path) as tf:
             member = tf.getmember(name)
+            # Strip any directory prefix in the member name (GoReleaser archives
+            # are flat, but be defensive about path traversal).
             member.name = name
-            tf.extract(member, dest_dir)
+            extract_kwargs = {"filter": "data"} if sys.version_info >= (3, 12) else {}
+            tf.extract(member, dest_dir, **extract_kwargs)
     if go_os != "windows":
         dest.chmod(0o755)
     return dest
@@ -105,7 +95,10 @@ def build_wheel(
             dest_binary.chmod(0o755)
 
         (pkg / "__init__.py").write_text(f'__version__ = "{version}"\n')
-        (pkg / "_run.py").write_text(_RUN_PY)
+        # Read _run.py from disk to ensure the wheel always ships the current
+        # source — avoids any divergence between the embedded copy and the file.
+        _run_source = (Path(__file__).parent / "stqry" / "_run.py").read_text()
+        (pkg / "_run.py").write_text(_run_source)
 
         dist_info = tmp / f"stqry-{version}.dist-info"
         dist_info.mkdir()

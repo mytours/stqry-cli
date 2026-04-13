@@ -1,6 +1,7 @@
 import io
 import stat
 import tarfile
+import unittest.mock as mock
 import zipfile as _zipfile
 from pathlib import Path
 
@@ -141,3 +142,30 @@ def test_build_wheel_entry_points(tmp_path):
         ep = zf.read("stqry-0.6.3.dist-info/entry_points.txt").decode()
 
     assert "stqry = stqry._run:main" in ep
+
+
+def test_build_wheel_run_py_matches_source(tmp_path):
+    """_run.py in the wheel must match the on-disk source to prevent drift."""
+    binary = tmp_path / "stqry"
+    binary.write_bytes(b"fake")
+
+    out = tmp_path / "dist"
+    wheel = bw.build_wheel(binary, "linux", "amd64", "0.6.3", out)
+
+    source_path = Path(bw.__file__).parent / "stqry" / "_run.py"
+    expected = source_path.read_text()
+
+    with _zipfile.ZipFile(wheel) as zf:
+        actual = zf.read("stqry/_run.py").decode()
+
+    assert actual == expected
+
+
+def test_download_artifact_failure(tmp_path):
+    failed = mock.Mock()
+    failed.returncode = 1
+    failed.stderr = "release not found"
+
+    with mock.patch("subprocess.run", return_value=failed):
+        with pytest.raises(RuntimeError, match="gh release download failed"):
+            bw.download_artifact("v1.0.0", "stqry-cli_darwin_arm64.tar.gz", tmp_path)
