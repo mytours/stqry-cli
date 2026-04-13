@@ -16,12 +16,18 @@ func TestInstallAll_CodeLayout(t *testing.T) {
 	}
 
 	// Each skill is a flat .md file with frontmatter.
-	entries, _ := os.ReadDir(dir)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("reading dir: %v", err)
+	}
 	if len(entries) == 0 {
 		t.Fatal("expected files to be installed")
 	}
 	for _, e := range entries {
-		data, _ := os.ReadFile(filepath.Join(dir, e.Name()))
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			t.Fatalf("reading file %s: %v", e.Name(), err)
+		}
 		if !strings.HasPrefix(string(data), "---\n") {
 			t.Errorf("file %s missing frontmatter", e.Name())
 		}
@@ -38,7 +44,10 @@ func TestInstallAll_DesktopLayout(t *testing.T) {
 	}
 
 	// Each skill is a folder containing SKILL.md.
-	entries, _ := os.ReadDir(dir)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("reading dir: %v", err)
+	}
 	if len(entries) == 0 {
 		t.Fatal("expected directories to be created")
 	}
@@ -68,9 +77,15 @@ func TestInstallAll_Overwrites(t *testing.T) {
 		t.Fatalf("second InstallAll: %v", err)
 	}
 
-	entries, _ := os.ReadDir(dir)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("reading dir: %v", err)
+	}
 	for _, e := range entries {
-		data, _ := os.ReadFile(filepath.Join(dir, e.Name()))
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			t.Fatalf("reading file %s: %v", e.Name(), err)
+		}
 		if !strings.Contains(string(data), "skill_version: v2.0.0") {
 			t.Errorf("expected v2.0.0 after overwrite in %s", e.Name())
 		}
