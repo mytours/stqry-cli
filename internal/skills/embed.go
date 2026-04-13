@@ -18,9 +18,23 @@ func HashContent(data []byte) string {
 
 // BuildFrontmatter prepends YAML frontmatter to content and returns the combined bytes.
 // The skill_hash is computed from content (without frontmatter).
+// If content already begins with a YAML frontmatter block (e.g. name/description fields),
+// the two blocks are merged into one so the output has a single --- … --- header.
 func BuildFrontmatter(version string, content []byte) []byte {
 	hash := HashContent(content)
-	fm := fmt.Sprintf("---\nskill_version: %s\nskill_hash: %s\ngenerated_by: stqry-cli\n---\n", version, hash)
+	newFields := fmt.Sprintf("skill_version: %s\nskill_hash: %s\ngenerated_by: stqry-cli\n", version, hash)
+
+	s := string(content)
+	if strings.HasPrefix(s, "---\n") {
+		rest := s[4:]
+		if end := strings.Index(rest, "\n---\n"); end >= 0 {
+			existingFields := rest[:end+1] // existing fields with trailing newline
+			body := rest[end+5:]           // content after closing ---
+			return []byte("---\n" + newFields + existingFields + "---\n" + body)
+		}
+	}
+
+	fm := fmt.Sprintf("---\n%s---\n", newFields)
 	return append([]byte(fm), content...)
 }
 
