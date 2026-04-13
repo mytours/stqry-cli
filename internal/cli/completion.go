@@ -196,7 +196,11 @@ func newCompletionStatusCmd() *cobra.Command {
 
 			for _, resource := range resources {
 				items, stale, err := completion.Load(name, resource)
-				if err != nil || (len(items) == 0 && stale) {
+				if err != nil {
+					fmt.Fprintf(w, "%-15s %-8s %-12s %s\n", resource, "-", "-", fmt.Sprintf("error: %v", err))
+					continue
+				}
+				if len(items) == 0 {
 					fmt.Fprintf(w, "%-15s %-8s %-12s %s\n", resource, "-", "-", "not cached")
 					continue
 				}
