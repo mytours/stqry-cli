@@ -149,14 +149,19 @@ def build_wheel(
 def download_artifact(version: str, archive: str, dest_dir: Path) -> Path:
     """Download a release artifact using the gh CLI."""
     dest = dest_dir / archive
-    subprocess.run(
+    result = subprocess.run(
         [
             "gh", "release", "download", version,
             "--pattern", archive,
             "--output", str(dest),
         ],
-        check=True,
+        capture_output=True,
+        text=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"gh release download failed for {archive}:\n{result.stderr.strip()}"
+        )
     return dest
 
 
@@ -168,7 +173,7 @@ def main() -> None:
     parser.add_argument("--output", default="dist", help="Output directory (default: dist)")
     args = parser.parse_args()
 
-    version_str = args.version.lstrip("v")
+    version_str = args.version.removeprefix("v")
     output_dir = Path(args.output)
 
     with tempfile.TemporaryDirectory() as tmp:
