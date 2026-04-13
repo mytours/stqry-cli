@@ -922,3 +922,39 @@ func TestCreateMediaUploadError(t *testing.T) {
 		t.Fatal("expected error when upload API returns 500")
 	}
 }
+
+func TestConfigureProjectWithSiteNameSetsSession(t *testing.T) {
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"projects":[],"meta":{"page":1,"pages":1,"per_page":25,"count":0}}`)
+	}))
+	defer mock.Close()
+
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	globalCfgPath := filepath.Join(dir, "config.yaml")
+	globalCfg := &config.GlobalConfig{
+		Sites: map[string]*config.Site{
+			"mysite": {Token: "tok-abc", APIURL: mock.URL},
+		},
+	}
+	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "configure_project", `{"site_name":"mysite"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("configure_project failed: %s", toolText(result))
+	}
+
+	// Session should be set — list_projects must work without reading stqry.yaml.
+	result = callTool(s, "list_projects", `{}`)
+	if result == nil || result.IsError {
+		t.Fatalf("list_projects failed after configure_project with site_name: %s", toolText(result))
+	}
+}
