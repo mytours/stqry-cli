@@ -130,18 +130,19 @@ stqry screens delete <id>                           Delete a screen
 
 # Sections
 stqry screens sections list <screen-id>
-stqry screens sections get <id>
-stqry screens sections create <screen-id>
-stqry screens sections update <id>
-stqry screens sections delete <id>
+stqry screens sections get <section-id> --screen-id <screen-id>
+stqry screens sections add <screen-id> --type <type>
+stqry screens sections update <section-id> --screen-id <screen-id>
+stqry screens sections remove <section-id> --screen-id <screen-id>
+stqry screens sections reorder <screen-id> <section-id>...
 
-# Sub-items (attached to a section)
-stqry screens sections badges   list|get|create|update|delete
-stqry screens sections links    list|get|create|update|delete
-stqry screens sections media    list|get|create|update|delete
-stqry screens sections prices   list|get|create|update|delete
-stqry screens sections social   list|get|create|update|delete
-stqry screens sections hours    list|get|create|update|delete
+# Sub-items (attached to a section; all require --screen-id and --section-id)
+stqry screens sections badges   list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections links    list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections media    list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections prices   list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections social   list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections hours    list|add|update|remove --screen-id <id> --section-id <id>
 ```
 
 ---
