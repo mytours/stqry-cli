@@ -125,6 +125,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(newSetupCmd())
 	rootCmd.AddCommand(newMCPCmd())
 	rootCmd.AddCommand(newDoctorCmd())
+	rootCmd.AddCommand(newCompletionCmd())
 
 	return rootCmd
 }
