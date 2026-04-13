@@ -47,20 +47,19 @@ jobs:
     needs: [release]
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Build package
-        working-directory: python
-        run: pip install build twine && python -m build
+      - name: Install twine
+        run: pip install twine
 
-      - name: Check package
+      - name: Build platform wheels
         working-directory: python
-        run: twine check dist/*
+        run: python build_wheels.py --version ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to PyPI
         working-directory: python
