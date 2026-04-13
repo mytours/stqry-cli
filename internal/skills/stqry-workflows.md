@@ -9,9 +9,9 @@ These recipes show complete multi-step workflows for common STQRY content manage
 
 ---
 
-## Workflow 1: Create a New Tour (Collection + Items + Screens + Sections)
+## Workflow 1: Create a New Tour (Collection + Screens + Items + Sections)
 
-A "tour" is a Collection of Items, each with one or more Screens containing Sections.
+A "tour" is a Collection that links to Screens via collection items. Screens are standalone entities — create them first, then link each one into the collection. A collection item is a join record with two fields: `item_type` (e.g. "Screen") and `item_id` (the ID of the screen being linked).
 
 ### Step 1 — Create the collection
 
@@ -24,46 +24,57 @@ stqry collections create \
 
 Capture: `id` from the response — this is your `<collection-id>`.
 
-### Step 2 — Add items (stops) to the collection
+### Step 2 — Create each screen (one per stop)
+
+Screens are created as standalone entities before they are linked into any collection.
 
 ```bash
-stqry collections items create <collection-id> \
-  --name "Town Hall" \
-  --position 1 \
-  --json
-```
-
-Capture: `id` from each item — this is your `<item-id>`.
-
-Repeat for each stop, incrementing `--position`.
-
-### Step 3 — Create a screen for each item
-
-```bash
-stqry screens create <item-id> \
+stqry screens create \
+  --name "town-hall-overview" \
+  --type story \
   --title "Town Hall Overview" \
   --json
 ```
 
-Capture: `id` — this is your `<screen-id>`.
+Capture: `id` from each screen — this is your `<screen-id>`.
 
-### Step 4 — Add sections to the screen
+Repeat for every stop in the tour.
+
+### Step 3 — Link each screen into the collection
+
+A collection item is purely a link record — it has no content of its own. Use `collections items add` to attach each screen to the collection.
 
 ```bash
-# Text section
-stqry screens sections create <screen-id> \
-  --type text \
-  --body "Built in 1892, the Town Hall is..." \
-  --json
-
-# Image section
-stqry screens sections create <screen-id> \
-  --type image \
-  --media-id <media-id> \
+stqry collections items add <collection-id> \
+  --item-type Screen \
+  --item-id <screen-id> \
   --json
 ```
 
-Repeat for additional content blocks. Sections are ordered by their `position` field.
+Repeat for each screen. Note that `collections items add` does not control position — use `stqry collections items reorder` afterwards to set the order screens appear in the tour.
+
+### Step 4 — Add sections to each screen
+
+```bash
+# Text section
+stqry screens sections add <screen-id> \
+  --type text \
+  --title "Town Hall Overview" \
+  --json
+
+# Image section — create the section, then attach media to it
+stqry screens sections add <screen-id> \
+  --type image \
+  --json
+# Capture: <section-id> from the response above
+
+stqry screens sections media add \
+  --screen-id <screen-id> \
+  --section-id <section-id> \
+  --media-item-id <media-id>
+```
+
+Repeat for additional content blocks.
 
 ---
 
@@ -101,16 +112,22 @@ Capture each `id`.
 ### Step 3 — Attach to a section by language
 
 ```bash
-stqry screens sections media create <section-id> \
-  --media-id <media-id-en> \
+stqry screens sections media add \
+  --screen-id <screen-id> \
+  --section-id <section-id> \
+  --media-item-id <media-id-en> \
   --lang en
 
-stqry screens sections media create <section-id> \
-  --media-id <media-id-fr> \
+stqry screens sections media add \
+  --screen-id <screen-id> \
+  --section-id <section-id> \
+  --media-item-id <media-id-fr> \
   --lang fr
 
-stqry screens sections media create <section-id> \
-  --media-id <media-id-de> \
+stqry screens sections media add \
+  --screen-id <screen-id> \
+  --section-id <section-id> \
+  --media-item-id <media-id-de> \
   --lang de
 ```
 
@@ -128,7 +145,9 @@ This builds a rich screen with opening hours, external links, and image badges.
 ### Step 1 — Create the screen
 
 ```bash
-stqry screens create <item-id> \
+stqry screens create \
+  --name "visitor-information" \
+  --type story \
   --title "Visitor Information" \
   --json
 ```
@@ -138,11 +157,9 @@ Capture: `<screen-id>`.
 ### Step 2 — Add a text intro section
 
 ```bash
-stqry screens sections create <screen-id> \
+stqry screens sections add <screen-id> \
   --type text \
-  --heading "Plan Your Visit" \
-  --body "Open daily. Guided tours run at 10am and 2pm." \
-  --position 1 \
+  --title "Plan Your Visit" \
   --json
 ```
 
@@ -151,39 +168,46 @@ Capture: `<section-id>`.
 ### Step 3 — Add opening hours to the section
 
 ```bash
-stqry screens sections hours create <section-id> \
-  --day monday \
-  --open "09:00" \
-  --close "17:00"
+stqry screens sections hours add \
+  --screen-id <screen-id> \
+  --section-id <section-id> \
+  --description "Monday" \
+  --time "09:00-17:00"
 
-stqry screens sections hours create <section-id> \
-  --day tuesday \
-  --open "09:00" \
-  --close "17:00"
+stqry screens sections hours add \
+  --screen-id <screen-id> \
+  --section-id <section-id> \
+  --description "Tuesday" \
+  --time "09:00-17:00"
 
-# Repeat for each day; omit closed days or set --closed flag
+# Repeat for each day; omit closed days
 ```
 
 ### Step 4 — Add external links
 
 ```bash
-stqry screens sections links create <section-id> \
-  --label "Book Tickets" \
+stqry screens sections links add \
+  --screen-id <screen-id> \
+  --section-id <section-id> \
+  --link-type web \
   --url "https://tickets.example.com" \
-  --position 1
+  --label "Book Tickets"
 
-stqry screens sections links create <section-id> \
-  --label "Official Website" \
+stqry screens sections links add \
+  --screen-id <screen-id> \
+  --section-id <section-id> \
+  --link-type web \
   --url "https://example.com" \
-  --position 2
+  --label "Official Website"
 ```
 
-### Step 5 — Add a badge (icon + label overlay)
+### Step 5 — Add a badge
 
 ```bash
-stqry screens sections badges create <section-id> \
-  --label "Free Entry" \
-  --media-id <badge-icon-media-id>
+stqry screens sections badges add \
+  --screen-id <screen-id> \
+  --section-id <section-id> \
+  --badge-id <badge-id>
 ```
 
 ---
@@ -206,16 +230,18 @@ stqry screens update <screen-id> \
   --title "Informations pour les visiteurs"
 ```
 
-### Step 3 — Update section body text per language
+### Step 3 — Update section title per language
 
 ```bash
 stqry screens sections update <section-id> \
+  --screen-id <screen-id> \
   --lang fr \
-  --body "Ouvert tous les jours. Visites guidées à 10h et 14h."
+  --title "Informations pratiques"
 
 stqry screens sections update <section-id> \
+  --screen-id <screen-id> \
   --lang de \
-  --body "Täglich geöffnet. Führungen um 10 und 14 Uhr."
+  --title "Besucherinformationen"
 ```
 
 ### Step 4 — Verify translations
