@@ -100,12 +100,15 @@ func TestConfigureProjectMissingParams(t *testing.T) {
 	os.Chdir(dir)
 
 	s := stqrymcp.NewServer("")
-	result := callTool(s, "configure_project", `{"api_url":"","token":""}`)
-	if result == nil {
-		t.Fatal("expected a result")
-	}
-	if !result.IsError {
-		t.Fatal("expected an error result for missing params")
+
+	for _, args := range []string{`{}`, `{"api_url":"","token":""}`} {
+		result := callTool(s, "configure_project", args)
+		if result == nil {
+			t.Fatalf("expected a result for args %s", args)
+		}
+		if !result.IsError {
+			t.Fatalf("expected an error result for missing params (%s)", args)
+		}
 	}
 }
 
@@ -415,6 +418,181 @@ func TestConnectMissingParams(t *testing.T) {
 	}
 }
 
+func TestConnectSuggestsSaveWhenNoLocalConfig(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "connect", `{"token":"tok","api_url":"https://api.stqry.com"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("connect failed: %s", toolText(result))
+	}
+	var resp map[string]interface{}
+	if err := json.Unmarshal([]byte(toolText(result)), &resp); err != nil {
+		t.Fatalf("parsing response: %v", err)
+	}
+	if resp["save_suggested"] != true {
+		t.Errorf("expected save_suggested:true when no stqry.yaml, got: %v", resp["save_suggested"])
+	}
+	if resp["save_message"] == "" {
+		t.Error("expected non-empty save_message")
+	}
+}
+
+func TestConnectNoSaveSuggestedWhenLocalConfigExists(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	// Write a stqry.yaml so the helper detects an existing config.
+	if err := os.WriteFile(filepath.Join(dir, "stqry.yaml"), []byte("site: existing\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "connect", `{"token":"tok","api_url":"https://api.stqry.com"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("connect failed: %s", toolText(result))
+	}
+	var resp map[string]interface{}
+	if err := json.Unmarshal([]byte(toolText(result)), &resp); err != nil {
+		t.Fatalf("parsing response: %v", err)
+	}
+	if _, ok := resp["save_suggested"]; ok {
+		t.Error("expected no save_suggested when stqry.yaml already exists")
+	}
+}
+
+func TestConfigureProjectWithSiteName(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	// Add a site to global config first.
+	globalCfgPath := filepath.Join(dir, "config.yaml")
+	globalCfg := &config.GlobalConfig{
+		Sites: map[string]*config.Site{
+			"mysite": {Token: "tok-abc", APIURL: "https://api.stqry.com"},
+		},
+	}
+	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "configure_project", `{"site_name":"mysite"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("configure_project failed: %s", toolText(result))
+	}
+
+	// stqry.yaml should reference the named site, not inline credentials.
+	data, err := os.ReadFile(filepath.Join(dir, "stqry.yaml"))
+	if err != nil {
+		t.Fatal("stqry.yaml not written")
+	}
+	if !bytes.Contains(data, []byte("mysite")) {
+		t.Errorf("expected site name in stqry.yaml, got: %s", data)
+	}
+	if bytes.Contains(data, []byte("tok-abc")) {
+		t.Error("token should NOT be inlined when using site_name")
+	}
+}
+
+func TestConfigureProjectWithSiteNameNotInGlobalConfig(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+	// No global config — site won't exist.
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "configure_project", `{"site_name":"unknown"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error when site_name not in global config")
+	}
+	// stqry.yaml must NOT have been written.
+	if _, err := os.Stat(filepath.Join(dir, "stqry.yaml")); !os.IsNotExist(err) {
+		t.Error("stqry.yaml should not be written when site_name is invalid")
+	}
+}
+
+func TestSelectSiteSuggestsSaveWhenNoLocalConfig(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	globalCfgPath := filepath.Join(dir, "config.yaml")
+	globalCfg := &config.GlobalConfig{
+		Sites: map[string]*config.Site{
+			"mysite": {Token: "tok-abc", APIURL: "https://api.stqry.com"},
+		},
+	}
+	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "select_site", `{"site_name":"mysite"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("select_site failed: %s", toolText(result))
+	}
+	var resp map[string]interface{}
+	if err := json.Unmarshal([]byte(toolText(result)), &resp); err != nil {
+		t.Fatalf("parsing response: %v", err)
+	}
+	if resp["save_suggested"] != true {
+		t.Errorf("expected save_suggested:true when no stqry.yaml, got: %v", resp["save_suggested"])
+	}
+	msg, _ := resp["save_message"].(string)
+	if !strings.Contains(msg, "mysite") {
+		t.Errorf("expected save_message to mention the site name, got: %s", msg)
+	}
+}
+
+func TestSelectSiteNoSaveSuggestedWhenLocalConfigExists(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	globalCfgPath := filepath.Join(dir, "config.yaml")
+	globalCfg := &config.GlobalConfig{
+		Sites: map[string]*config.Site{
+			"mysite": {Token: "tok-abc", APIURL: "https://api.stqry.com"},
+		},
+	}
+	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "stqry.yaml"), []byte("site: mysite\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "select_site", `{"site_name":"mysite"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("select_site failed: %s", toolText(result))
+	}
+	var resp map[string]interface{}
+	if err := json.Unmarshal([]byte(toolText(result)), &resp); err != nil {
+		t.Fatalf("parsing response: %v", err)
+	}
+	if _, ok := resp["save_suggested"]; ok {
+		t.Error("expected no save_suggested when stqry.yaml already exists")
+	}
+}
+
 func TestConfigureProjectSetsSession(t *testing.T) {
 	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -473,6 +651,96 @@ func TestListProjectsPagination(t *testing.T) {
 	}
 	if receivedPerPage != "10" {
 		t.Errorf("expected per_page=10 forwarded to API, got %q", receivedPerPage)
+	}
+}
+
+func TestAddGlobalSiteHappyPath(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "add_global_site", `{"name":"newsite","api_url":"https://api.stqry.com","token":"tok123"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("add_global_site failed: %s", toolText(result))
+	}
+
+	// Reload global config and verify the site was added.
+	globalCfg, err := config.LoadGlobalConfig(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	site, ok := globalCfg.Sites["newsite"]
+	if !ok {
+		t.Fatal("expected 'newsite' in global config")
+	}
+	if site.Token != "tok123" {
+		t.Errorf("expected token tok123, got %s", site.Token)
+	}
+}
+
+func TestAddGlobalSiteDuplicateName(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	// Pre-populate global config with an existing site.
+	globalCfgPath := filepath.Join(dir, "config.yaml")
+	globalCfg := &config.GlobalConfig{
+		Sites: map[string]*config.Site{
+			"existing": {Token: "old-tok", APIURL: "https://api.stqry.com"},
+		},
+	}
+	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "add_global_site", `{"name":"existing","api_url":"https://api.stqry.com","token":"new-tok"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error for duplicate site name")
+	}
+	if !strings.Contains(toolText(result), "already exists") {
+		t.Errorf("expected 'already exists' in error, got: %s", toolText(result))
+	}
+
+	// Original token must be unchanged.
+	reloaded, _ := config.LoadGlobalConfig(globalCfgPath)
+	if reloaded.Sites["existing"].Token != "old-tok" {
+		t.Error("existing site token should not have been overwritten")
+	}
+}
+
+func TestAddGlobalSiteMissingParams(t *testing.T) {
+	s := stqrymcp.NewServer("")
+
+	cases := []struct {
+		name string
+		args string
+	}{
+		{"empty name", `{"name":"","api_url":"https://api.stqry.com","token":"tok"}`},
+		{"empty api_url", `{"name":"site","api_url":"","token":"tok"}`},
+		{"empty token", `{"name":"site","api_url":"https://api.stqry.com","token":""}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := callTool(s, "add_global_site", tc.args)
+			if result == nil || !result.IsError {
+				t.Fatalf("expected error for %s", tc.name)
+			}
+		})
+	}
+}
+
+func TestAddGlobalSiteInvalidURL(t *testing.T) {
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "add_global_site", `{"name":"site","api_url":"not-a-url","token":"tok"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error for invalid URL")
 	}
 }
 
@@ -655,5 +923,41 @@ func TestCreateMediaUploadError(t *testing.T) {
 	result := callTool(s, "create_media", fmt.Sprintf(`{"file_path":%q,"type":"video"}`, filePath))
 	if result == nil || !result.IsError {
 		t.Fatal("expected error when upload API returns 500")
+	}
+}
+
+func TestConfigureProjectWithSiteNameSetsSession(t *testing.T) {
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"projects":[],"meta":{"page":1,"pages":1,"per_page":25,"count":0}}`)
+	}))
+	defer mock.Close()
+
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	globalCfgPath := filepath.Join(dir, "config.yaml")
+	globalCfg := &config.GlobalConfig{
+		Sites: map[string]*config.Site{
+			"mysite": {Token: "tok-abc", APIURL: mock.URL},
+		},
+	}
+	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "configure_project", `{"site_name":"mysite"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("configure_project failed: %s", toolText(result))
+	}
+
+	// Session should be set — list_projects must work without reading stqry.yaml.
+	result = callTool(s, "list_projects", `{}`)
+	if result == nil || result.IsError {
+		t.Fatalf("list_projects failed after configure_project with site_name: %s", toolText(result))
 	}
 }
