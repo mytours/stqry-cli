@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-14
+
 ### Added
-- PyPI binary distribution: `pip install stqry` now installs the Go CLI binary for your platform via platform-specific wheels
+- Python package (`stqry` on PyPI) now ships platform-specific wheels containing the Go binary — `pip install stqry` works on macOS, Linux, and Windows without a separate install step
+- `build_wheels.py` script downloads GoReleaser archives and assembles wheels per platform
+- Binary runner wrapper (`_run.py`) so the `stqry` console script delegates to the bundled binary
+
+### Changed
+- Replaced the previous pure-Python SDK with a thin binary wrapper; the Go CLI is now the sole implementation
 
 ## [0.6.3] - 2026-04-13
 
