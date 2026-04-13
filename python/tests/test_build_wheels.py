@@ -27,11 +27,11 @@ def test_platform_tag_windows_arm64():
     assert bw.platform_tag("windows", "arm64") == "win_arm64"
 
 def test_archive_name_unix():
-    assert bw.archive_name("darwin", "arm64") == "stqry_darwin_arm64.tar.gz"
-    assert bw.archive_name("linux", "amd64") == "stqry_linux_amd64.tar.gz"
+    assert bw.archive_name("darwin", "arm64") == "stqry-cli_darwin_arm64.tar.gz"
+    assert bw.archive_name("linux", "amd64") == "stqry-cli_linux_amd64.tar.gz"
 
 def test_archive_name_windows():
-    assert bw.archive_name("windows", "amd64") == "stqry_windows_amd64.zip"
+    assert bw.archive_name("windows", "amd64") == "stqry-cli_windows_amd64.zip"
 
 def test_binary_name_windows():
     assert bw.binary_name("windows") == "stqry.exe"

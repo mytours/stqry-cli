@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- PyPI binary distribution: `pip install stqry` now installs the Go CLI binary for your platform via platform-specific wheels
+
 ## [0.6.3] - 2026-04-13
 
 ### Fixed
