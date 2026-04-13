@@ -114,12 +114,8 @@ func FormatTranslatedString(ts map[string]interface{}) string {
 	return strings.Join(parts, " ")
 }
 
-func applyJQ(w io.Writer, expr string, data interface{}) error {
-	query, err := gojq.Parse(expr)
-	if err != nil {
-		return fmt.Errorf("jq: parse: %w", err)
-	}
-	iter := query.Run(data)
+func applyJQ(w io.Writer, code *gojq.Code, data interface{}) error {
+	iter := code.Run(data)
 	enc := json.NewEncoder(w)
 	for {
 		v, ok := iter.Next()
@@ -139,15 +135,15 @@ func applyJQ(w io.Writer, expr string, data interface{}) error {
 type Printer struct {
 	JSON   bool
 	Quiet  bool
-	JQExpr string
+	JQCode *gojq.Code
 }
 
 func (p *Printer) PrintOne(data interface{}, meta *Meta) error {
-	if p.JQExpr != "" {
+	if p.JQCode != nil {
 		if p.JSON {
-			return applyJQ(os.Stdout, p.JQExpr, map[string]interface{}{"data": data, "meta": meta})
+			return applyJQ(os.Stdout, p.JQCode, map[string]interface{}{"data": data, "meta": meta})
 		}
-		return applyJQ(os.Stdout, p.JQExpr, data)
+		return applyJQ(os.Stdout, p.JQCode, data)
 	}
 	if p.Quiet {
 		f := &QuietFormatter{Writer: os.Stdout}
@@ -166,15 +162,15 @@ func (p *Printer) PrintOne(data interface{}, meta *Meta) error {
 }
 
 func (p *Printer) PrintList(columns []string, rows []map[string]interface{}, meta *Meta) error {
-	if p.JQExpr != "" {
+	if p.JQCode != nil {
 		irows := make([]interface{}, len(rows))
 		for i, r := range rows {
 			irows[i] = r
 		}
 		if p.JSON {
-			return applyJQ(os.Stdout, p.JQExpr, map[string]interface{}{"data": irows, "meta": meta})
+			return applyJQ(os.Stdout, p.JQCode, map[string]interface{}{"data": irows, "meta": meta})
 		}
-		return applyJQ(os.Stdout, p.JQExpr, irows)
+		return applyJQ(os.Stdout, p.JQCode, irows)
 	}
 	if p.Quiet {
 		f := &QuietFormatter{Writer: os.Stdout}
@@ -189,7 +185,7 @@ func (p *Printer) PrintList(columns []string, rows []map[string]interface{}, met
 }
 
 func (p *Printer) PrintError(err error) {
-	if p.JSON || p.Quiet {
+	if p.JSON || p.Quiet || p.JQCode != nil {
 		enc := json.NewEncoder(os.Stderr)
 		enc.Encode(map[string]string{"error": err.Error()})
 	} else {
