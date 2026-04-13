@@ -302,13 +302,18 @@ func checkInstalledSkills() []checkResult {
 	home, _ := os.UserHomeDir()
 	cwd, _ := os.Getwd()
 
+	var localSkillDir string
+	if cwd != "" {
+		localSkillDir = filepath.Join(cwd, ".claude", "commands")
+	}
+
 	type loc struct {
 		dir    string
 		layout cliSkillLayout
 		label  string
 	}
 	locations := []loc{
-		{dir: filepath.Join(cwd, ".claude", "commands"), layout: cliLayoutCode, label: "Claude Code (local)"},
+		{dir: localSkillDir, layout: cliLayoutCode, label: "Claude Code (local)"},
 		{dir: filepath.Join(home, ".claude", "commands"), layout: cliLayoutCode, label: "Claude Code (global)"},
 		{dir: skills.DesktopSkillsDir(), layout: cliLayoutDesktop, label: "Claude Desktop"},
 	}
@@ -385,7 +390,7 @@ func checkOneInstalledSkill(dir, label string, layout cliSkillLayout, filename s
 	}
 
 	r.status = statusPass
-	r.message = skillName + " up to date"
+	r.message = "up to date"
 	return r
 }
 
