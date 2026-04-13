@@ -34,3 +34,31 @@ func TestCompletionZshCmd(t *testing.T) {
 		t.Error("expected zsh completion script in output")
 	}
 }
+
+func TestCompletionFishCmd(t *testing.T) {
+	setupTestHome(t, "http://unused")
+	buf := &bytes.Buffer{}
+	cmd := newRootCmd()
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"completion", "fish"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("fish")) {
+		t.Error("expected fish completion script in output")
+	}
+}
+
+func TestCompletionPowerShellCmd(t *testing.T) {
+	setupTestHome(t, "http://unused")
+	buf := &bytes.Buffer{}
+	cmd := newRootCmd()
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"completion", "powershell"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("powershell")) {
+		t.Error("expected powershell completion script in output")
+	}
+}
