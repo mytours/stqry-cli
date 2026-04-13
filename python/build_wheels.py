@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Build platform-specific wheels from GoReleaser release artifacts."""
 
+import argparse
 import base64
 import hashlib
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import zipfile
@@ -142,3 +144,49 @@ def build_wheel(
                     zf.write(f, f.relative_to(tmp))
 
     return wheel_path
+
+
+def download_artifact(version: str, archive: str, dest_dir: Path) -> Path:
+    """Download a release artifact using the gh CLI."""
+    dest = dest_dir / archive
+    subprocess.run(
+        [
+            "gh", "release", "download", version,
+            "--pattern", archive,
+            "--output", str(dest),
+        ],
+        check=True,
+    )
+    return dest
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Build PyPI platform wheels from GoReleaser release artifacts."
+    )
+    parser.add_argument("--version", required=True, help="Release tag, e.g. v0.6.3")
+    parser.add_argument("--output", default="dist", help="Output directory (default: dist)")
+    args = parser.parse_args()
+
+    version_str = args.version.lstrip("v")
+    output_dir = Path(args.output)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        for go_os, go_arch in PLATFORMS:
+            archive = archive_name(go_os, go_arch)
+            print(f"  [{go_os}/{go_arch}] downloading {archive}...")
+            archive_path = download_artifact(args.version, archive, tmp_path)
+
+            extract_dir = tmp_path / f"{go_os}_{go_arch}"
+            extract_dir.mkdir()
+            binary_path = extract_binary(archive_path, go_os, extract_dir)
+
+            wheel_path = build_wheel(binary_path, go_os, go_arch, version_str, output_dir)
+            print(f"  [{go_os}/{go_arch}] → {wheel_path.name}")
+
+    print(f"\nBuilt {len(PLATFORMS)} wheels in {output_dir}/")
+
+
+if __name__ == "__main__":
+    main()
