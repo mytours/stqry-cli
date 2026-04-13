@@ -112,7 +112,7 @@ stqry collections delete <id>            Delete a collection
 stqry collections items list <collection-id>                    List items in a collection
 stqry collections items add <collection-id> --item-type <type> --item-id <id>  Add a screen or collection to a collection
 stqry collections items reorder <collection-id>                 Reorder items in a collection
-stqry collections items remove <id>                             Remove an item from a collection
+stqry collections items remove <collection-id> <item-id>        Remove an item from a collection
 ```
 
 ---
