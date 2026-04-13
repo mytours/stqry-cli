@@ -224,14 +224,17 @@ func checkCLIVersion(currentVersion string, releasesURL string, httpClient *http
 		return r
 	}
 
-	if payload.TagName == currentVersion {
+	// GitHub tags use a "v" prefix (e.g. "v0.6.2"); strip it to match
+	// the version baked into the binary by GoReleaser (e.g. "0.6.2").
+	latestVersion := strings.TrimPrefix(payload.TagName, "v")
+	if latestVersion == currentVersion {
 		r.status = statusPass
 		r.message = fmt.Sprintf("CLI is up to date (%s)", currentVersion)
-		r.detail = fmt.Sprintf("Current: %s = Latest: %s", currentVersion, payload.TagName)
+		r.detail = fmt.Sprintf("Current: %s = Latest: %s", currentVersion, latestVersion)
 	} else {
 		r.status = statusWarn
-		r.message = fmt.Sprintf("Update available: %s → %s", currentVersion, payload.TagName)
-		r.detail = fmt.Sprintf("Current: %s → Latest: %s\nRun: brew upgrade stqry (or download from GitHub releases)", currentVersion, payload.TagName)
+		r.message = fmt.Sprintf("Update available: %s → %s", currentVersion, latestVersion)
+		r.detail = fmt.Sprintf("Current: %s → Latest: %s\nRun: brew upgrade stqry (or download from GitHub releases)", currentVersion, latestVersion)
 	}
 	return r
 }
