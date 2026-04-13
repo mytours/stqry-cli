@@ -77,7 +77,7 @@ func newProjectsListCmd() *cobra.Command {
 }
 
 func newProjectsGetCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a project by ID",
 		Example: `  # Get a project by ID
@@ -97,5 +97,7 @@ func newProjectsGetCmd() *cobra.Command {
 			return printer.PrintOne(project, &output.Meta{})
 		},
 	}
+	cmd.ValidArgsFunction = completeProjectIDs
+	return cmd
 }
 

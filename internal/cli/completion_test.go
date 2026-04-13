@@ -137,3 +137,63 @@ func TestCompleteCollectionIDs_NoSite(t *testing.T) {
 		t.Errorf("unexpected directive: %v", directive)
 	}
 }
+
+func TestCompleteScreenIDs_HitsCache(t *testing.T) {
+	setupTestHome(t, "http://unused")
+	flagSite = ""
+	items := []completion.CacheEntry{{ID: "10", Name: "welcome"}}
+	if err := completion.Save("testsite", "screens", items); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newRootCmd()
+	_ = cmd.ParseFlags([]string{"--site=testsite"})
+	t.Cleanup(func() { flagSite = "" })
+	screensCmd, _, _ := cmd.Find([]string{"screens"})
+	getCmd, _, _ := screensCmd.Find([]string{"get"})
+
+	results, _ := getCmd.ValidArgsFunction(getCmd, []string{}, "")
+	if len(results) != 1 || results[0] != "10\twelcome" {
+		t.Errorf("unexpected results: %v", results)
+	}
+}
+
+func TestCompleteMediaIDs_HitsCache(t *testing.T) {
+	setupTestHome(t, "http://unused")
+	flagSite = ""
+	items := []completion.CacheEntry{{ID: "55", Name: "banner"}}
+	if err := completion.Save("testsite", "media", items); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newRootCmd()
+	_ = cmd.ParseFlags([]string{"--site=testsite"})
+	t.Cleanup(func() { flagSite = "" })
+	mediaCmd, _, _ := cmd.Find([]string{"media"})
+	getCmd, _, _ := mediaCmd.Find([]string{"get"})
+
+	results, _ := getCmd.ValidArgsFunction(getCmd, []string{}, "")
+	if len(results) != 1 || results[0] != "55\tbanner" {
+		t.Errorf("unexpected results: %v", results)
+	}
+}
+
+func TestCompleteProjectIDs_HitsCache(t *testing.T) {
+	setupTestHome(t, "http://unused")
+	flagSite = ""
+	items := []completion.CacheEntry{{ID: "1", Name: "main-project"}}
+	if err := completion.Save("testsite", "projects", items); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newRootCmd()
+	_ = cmd.ParseFlags([]string{"--site=testsite"})
+	t.Cleanup(func() { flagSite = "" })
+	projectsCmd, _, _ := cmd.Find([]string{"projects"})
+	getCmd, _, _ := projectsCmd.Find([]string{"get"})
+
+	results, _ := getCmd.ValidArgsFunction(getCmd, []string{}, "")
+	if len(results) != 1 || results[0] != "1\tmain-project" {
+		t.Errorf("unexpected results: %v", results)
+	}
+}
