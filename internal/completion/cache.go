@@ -31,6 +31,8 @@ func CachePath(site, resource string) (string, error) {
 
 // Load reads cached items. Returns (items, isStale, error).
 // A missing file returns (nil, true, nil) — not an error.
+// If the cache directory cannot be located (e.g. UserCacheDir unavailable),
+// Load returns (nil, true, nil) so callers can fall back to a live fetch.
 func Load(site, resource string) ([]CacheEntry, bool, error) {
 	path, err := CachePath(site, resource)
 	if err != nil {
