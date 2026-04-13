@@ -415,6 +415,56 @@ func TestConnectMissingParams(t *testing.T) {
 	}
 }
 
+func TestConnectSuggestsSaveWhenNoLocalConfig(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "connect", `{"token":"tok","api_url":"https://api.stqry.com"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("connect failed: %s", toolText(result))
+	}
+	var resp map[string]interface{}
+	if err := json.Unmarshal([]byte(toolText(result)), &resp); err != nil {
+		t.Fatalf("parsing response: %v", err)
+	}
+	if resp["save_suggested"] != true {
+		t.Errorf("expected save_suggested:true when no stqry.yaml, got: %v", resp["save_suggested"])
+	}
+	if resp["save_message"] == "" {
+		t.Error("expected non-empty save_message")
+	}
+}
+
+func TestConnectNoSaveSuggestedWhenLocalConfigExists(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	// Write a stqry.yaml so the helper detects an existing config.
+	if err := os.WriteFile(filepath.Join(dir, "stqry.yaml"), []byte("site: existing\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "connect", `{"token":"tok","api_url":"https://api.stqry.com"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("connect failed: %s", toolText(result))
+	}
+	var resp map[string]interface{}
+	if err := json.Unmarshal([]byte(toolText(result)), &resp); err != nil {
+		t.Fatalf("parsing response: %v", err)
+	}
+	if _, ok := resp["save_suggested"]; ok {
+		t.Error("expected no save_suggested when stqry.yaml already exists")
+	}
+}
+
 func TestConfigureProjectSetsSession(t *testing.T) {
 	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
