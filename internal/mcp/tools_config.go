@@ -5,12 +5,27 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/mytours/stqry-cli/internal/config"
 )
+
+// localConfigExists reports whether stqry.yaml or stqry.yml exists in the CWD.
+func localConfigExists() bool {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false
+	}
+	for _, name := range []string{"stqry.yaml", "stqry.yml"} {
+		if _, err := os.Stat(filepath.Join(cwd, name)); err == nil {
+			return true
+		}
+	}
+	return false
+}
 
 // WriteProjectConfig writes a stqry.yaml with inline credentials to the CWD.
 // Exported for testing.
@@ -52,10 +67,15 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 				return mcpgo.NewToolResultError("api_url must be a valid http or https URL (e.g. https://api.stqry.com)"), nil
 			}
 			sess.Set(&config.Site{Token: token, APIURL: apiURL})
-			return jsonResult(map[string]interface{}{
+			resp := map[string]interface{}{
 				"ok":      true,
 				"message": "connected to " + parsed.Host,
-			})
+			}
+			if !localConfigExists() {
+				resp["save_suggested"] = true
+				resp["save_message"] = "No stqry.yaml found in the current directory. Would you like to save these credentials? Options: locally (stqry.yaml here), globally (named site in ~/.config/stqry/config.yaml), or both."
+			}
+			return jsonResult(resp)
 		},
 	)
 
