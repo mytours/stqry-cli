@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-04-13
+
+### Fixed
+- Doctor: fixed false "Update available" warning when CLI version matches latest release (v-prefix mismatch)
+
 ## [0.6.2] - 2026-04-13
 
 ### Fixed
