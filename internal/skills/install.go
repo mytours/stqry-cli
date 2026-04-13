@@ -4,16 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 )
 
 // Layout describes where and how skills are written on disk.
 type Layout int
 
 const (
-	LayoutCode    Layout = iota // Flat .md file: {dir}/{skill-name}.md
-	LayoutDesktop               // Folder+file: {dir}/{skill-name}/SKILL.md
+	LayoutCode Layout = iota // Flat .md file: {dir}/{skill-name}.md
 )
 
 // InstallAll writes all embedded skills to targetDir using the given layout.
@@ -36,43 +33,14 @@ func InstallAll(targetDir string, layout Layout, version string) error {
 	return nil
 }
 
-// writeSkill writes a single skill's content to disk according to layout.
-func writeSkill(targetDir, filename string, layout Layout, content []byte) error {
-	skillName := strings.TrimSuffix(filename, ".md")
-	var destPath string
-	switch layout {
-	case LayoutDesktop:
-		skillDir := filepath.Join(targetDir, skillName)
-		if err := os.MkdirAll(skillDir, 0o755); err != nil {
-			return fmt.Errorf("creating skill directory %s: %w", skillDir, err)
-		}
-		destPath = filepath.Join(skillDir, "SKILL.md")
-	default: // LayoutCode
-		if err := os.MkdirAll(targetDir, 0o755); err != nil {
-			return fmt.Errorf("creating directory %s: %w", targetDir, err)
-		}
-		destPath = filepath.Join(targetDir, filename)
+// writeSkill writes a single skill's content to disk.
+func writeSkill(targetDir, filename string, _ Layout, content []byte) error {
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		return fmt.Errorf("creating directory %s: %w", targetDir, err)
 	}
+	destPath := filepath.Join(targetDir, filename)
 	if err := os.WriteFile(destPath, content, 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", destPath, err)
 	}
 	return nil
-}
-
-// DesktopSkillsDir returns the OS-appropriate Claude Desktop skills directory.
-func DesktopSkillsDir() string {
-	switch runtime.GOOS {
-	case "windows":
-		appData := os.Getenv("APPDATA")
-		if appData == "" {
-			return ""
-		}
-		return filepath.Join(appData, "Claude", "skills")
-	case "linux":
-		home, _ := os.UserHomeDir()
-		return filepath.Join(home, ".config", "Claude", "skills")
-	default: // macOS
-		home, _ := os.UserHomeDir()
-		return filepath.Join(home, "Library", "Application Support", "Claude", "skills")
-	}
 }
