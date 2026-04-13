@@ -192,7 +192,7 @@ func TestCheckCLIVersion(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		r := checkCLIVersion("v0.3.1", srv.URL, srv.Client())
+		r := checkCLIVersion("0.3.1", srv.URL, srv.Client())
 		if r.status != statusPass {
 			t.Errorf("expected pass, got %s: %s", r.status, r.message)
 		}
@@ -204,17 +204,17 @@ func TestCheckCLIVersion(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		r := checkCLIVersion("v0.3.1", srv.URL, srv.Client())
+		r := checkCLIVersion("0.3.1", srv.URL, srv.Client())
 		if r.status != statusWarn {
 			t.Errorf("expected warn (update available), got %s", r.status)
 		}
-		if !contains(r.detail, "v0.3.2") {
+		if !contains(r.detail, "0.3.2") {
 			t.Errorf("expected detail to contain latest version, got: %s", r.detail)
 		}
 	})
 
 	t.Run("github unreachable", func(t *testing.T) {
-		r := checkCLIVersion("v0.3.1", "http://127.0.0.1:1", http.DefaultClient)
+		r := checkCLIVersion("0.3.1", "http://127.0.0.1:1", http.DefaultClient)
 		if r.status != statusWarn {
 			t.Errorf("expected warn for unreachable GitHub, got %s", r.status)
 		}
@@ -226,7 +226,7 @@ func TestCheckCLIVersion(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		r := checkCLIVersion("v0.3.1", srv.URL, srv.Client())
+		r := checkCLIVersion("0.3.1", srv.URL, srv.Client())
 		if r.status != statusWarn {
 			t.Errorf("expected warn for empty tag, got %s", r.status)
 		}
@@ -238,7 +238,7 @@ func TestCheckCLIVersion(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		r := checkCLIVersion("v0.3.1", srv.URL, srv.Client())
+		r := checkCLIVersion("0.3.1", srv.URL, srv.Client())
 		if r.status != statusWarn {
 			t.Errorf("expected warn for invalid JSON, got %s", r.status)
 		}
