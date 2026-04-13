@@ -81,8 +81,14 @@ func TestSkillExportDefaultsToCurrentDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getting working directory: %v", err)
 	}
-	os.Chdir(dir)
-	defer os.Chdir(origDir)
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("changing to temp dir: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("restoring working directory: %v", err)
+		}
+	}()
 
 	cmd := newRootCmd()
 	buf := &bytes.Buffer{}

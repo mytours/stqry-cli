@@ -46,6 +46,7 @@ func newSetupClaudeCmd() *cobra.Command {
 
 			switch {
 			case desktop:
+				fmt.Fprintln(cmd.ErrOrStderr(), "Warning: --desktop exports flat .md files, not a zip. Use `stqry skill export` instead for Claude Desktop.")
 				exportDir := dir
 				if exportDir == "" {
 					home, err := os.UserHomeDir()
