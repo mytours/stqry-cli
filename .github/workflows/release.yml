@@ -53,13 +53,18 @@ jobs:
           python-version: "3.12"
 
       - name: Install twine
-        run: pip install twine
+        run: pip install "twine>=6.0,<7"
 
+      # gh CLI is pre-installed on ubuntu-latest runners
       - name: Build platform wheels
         working-directory: python
         run: python build_wheels.py --version ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check wheels
+        working-directory: python
+        run: twine check dist/*
 
       - name: Publish to PyPI
         working-directory: python
