@@ -23,21 +23,41 @@ func newSetupCmd() *cobra.Command {
 
 func newSetupClaudeCmd() *cobra.Command {
 	var global bool
+	var desktop bool
+	var dir string
 
 	cmd := &cobra.Command{
 		Use:   "claude",
 		Short: "Install Claude Code skill files",
 		Long: "Install STQRY CLI skill files for AI-assisted workflows. " +
-			"Re-running this command always overwrites existing files — use it to update stale skills.",
+			"Re-running always overwrites existing files — use it to update stale skills.\n\n" +
+			"For Claude Desktop, use --desktop to export skill files to ~/Downloads (or --dir <path>), " +
+			"then upload them via Claude Desktop Settings → Skills.",
 		Example: `  # Install into .claude/commands/ for this project (Claude Code)
   stqry setup claude
 
   # Install globally into ~/.claude/commands/ (Claude Code)
-  stqry setup claude --global`,
+  stqry setup claude --global
+
+  # Export skills to ~/Downloads for manual install via Claude Desktop
+  stqry setup claude --desktop
+
+  # Export skills to a specific directory
+  stqry setup claude --desktop --dir ~/Desktop`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var targetDir string
 
 			switch {
+			case desktop:
+				exportDir := dir
+				if exportDir == "" {
+					home, err := os.UserHomeDir()
+					if err != nil {
+						return fmt.Errorf("resolving home directory: %w", err)
+					}
+					exportDir = filepath.Join(home, "Downloads")
+				}
+				targetDir = exportDir
 			case global:
 				home, err := os.UserHomeDir()
 				if err != nil {
@@ -62,15 +82,31 @@ func newSetupClaudeCmd() *cobra.Command {
 			}
 
 			for _, name := range names {
-				fmt.Printf("Installed %s\n", filepath.Join(targetDir, name))
+				if desktop {
+					fmt.Fprintf(cmd.OutOrStdout(), "Exported %s\n", filepath.Join(targetDir, name))
+				} else {
+					fmt.Fprintf(cmd.OutOrStdout(), "Installed %s\n", filepath.Join(targetDir, name))
+				}
 			}
 
-			fmt.Printf("\n%d skill file(s) installed to %s\n", len(names), targetDir)
-			fmt.Println("Restart Claude Code (or reload commands) to activate the new skills.")
+			if desktop {
+				fmt.Fprintf(cmd.OutOrStdout(), "\n%d skill file(s) exported to %s\n", len(names), targetDir)
+				fmt.Fprintln(cmd.OutOrStdout(), "\nTo install in Claude Desktop:")
+				fmt.Fprintln(cmd.OutOrStdout(), "  1. Open Claude Desktop")
+				fmt.Fprintln(cmd.OutOrStdout(), "  2. Go to Settings → Skills")
+				fmt.Fprintln(cmd.OutOrStdout(), `  3. Click "Add Skill" for each file above`)
+				fmt.Fprintln(cmd.OutOrStdout(), "  4. Restart Claude Desktop to activate")
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "\n%d skill file(s) installed to %s\n", len(names), targetDir)
+				fmt.Fprintln(cmd.OutOrStdout(), "Restart Claude Code (or reload commands) to activate the new skills.")
+			}
 			return nil
 		},
 	}
 
 	cmd.Flags().BoolVar(&global, "global", false, "Install to ~/.claude/commands/ instead of ./.claude/commands/")
+	cmd.Flags().BoolVar(&desktop, "desktop", false, "Export skill files for manual install via Claude Desktop Settings → Skills")
+	cmd.Flags().StringVar(&dir, "dir", "", "Export directory for --desktop (default: ~/Downloads)")
+	cmd.MarkFlagsMutuallyExclusive("global", "desktop")
 	return cmd
 }
