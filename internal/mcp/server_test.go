@@ -100,12 +100,15 @@ func TestConfigureProjectMissingParams(t *testing.T) {
 	os.Chdir(dir)
 
 	s := stqrymcp.NewServer("")
-	result := callTool(s, "configure_project", `{"api_url":"","token":""}`)
-	if result == nil {
-		t.Fatal("expected a result")
-	}
-	if !result.IsError {
-		t.Fatal("expected an error result for missing params")
+
+	for _, args := range []string{`{}`, `{"api_url":"","token":""}`} {
+		result := callTool(s, "configure_project", args)
+		if result == nil {
+			t.Fatalf("expected a result for args %s", args)
+		}
+		if !result.IsError {
+			t.Fatalf("expected an error result for missing params (%s)", args)
+		}
 	}
 }
 

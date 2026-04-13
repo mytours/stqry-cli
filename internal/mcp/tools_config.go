@@ -14,6 +14,8 @@ import (
 )
 
 // localConfigExists reports whether stqry.yaml or stqry.yml exists in the CWD.
+// Intentionally checks only the current directory, not parent directories — the
+// save suggestion is about creating a config here, not whether one governs the session.
 func localConfigExists() bool {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -73,7 +75,10 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			}
 			if !localConfigExists() {
 				resp["save_suggested"] = true
-				resp["save_message"] = "No stqry.yaml found in the current directory. Would you like to save these credentials? Options: locally (stqry.yaml here), globally (named site in ~/.config/stqry/config.yaml), or both."
+				resp["save_message"] = "No stqry.yaml found in the current directory. " +
+					"To save inline credentials locally, call configure_project(api_url, token). " +
+					"To save as a named global site, call add_global_site(name, api_url, token) " +
+					"then configure_project(site_name) to reference it here."
 			}
 			return jsonResult(resp)
 		},
@@ -118,7 +123,7 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 				if err := config.SaveDirectoryConfig(cwd, &config.DirectoryConfig{Site: siteName}); err != nil {
 					return mcpgo.NewToolResultError(fmt.Sprintf("writing stqry.yaml: %v", err)), nil
 				}
-				sess.Set(globalCfg.Sites[siteName])
+				sess.Set(&config.Site{Token: globalCfg.Sites[siteName].Token, APIURL: globalCfg.Sites[siteName].APIURL})
 				return jsonResult(map[string]interface{}{
 					"ok":      true,
 					"message": fmt.Sprintf("stqry.yaml written with site reference: %s", siteName),
@@ -230,8 +235,8 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			if !localConfigExists() {
 				resp["save_suggested"] = true
 				resp["save_message"] = fmt.Sprintf(
-					"No stqry.yaml found in the current directory. Would you like to save a reference to this site locally? "+
-						"I can write 'site: %s' to stqry.yaml in the current folder.", siteName)
+					"No stqry.yaml found in the current directory. "+
+						"Call configure_project(site_name: %q) to write a reference to this site here.", siteName)
 			}
 			return jsonResult(resp)
 		},
