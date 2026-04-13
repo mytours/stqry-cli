@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Build platform-specific wheels from GoReleaser release artifacts."""
 
+import base64
+import hashlib
 import shutil
 import tarfile
 import tempfile
@@ -37,6 +39,13 @@ def archive_name(go_os: str, go_arch: str) -> str:
 
 def binary_name(go_os: str) -> str:
     return "stqry.exe" if go_os == "windows" else "stqry"
+
+
+def _record_entry(rel_path: str, abs_path: Path) -> str:
+    digest = hashlib.sha256(abs_path.read_bytes()).digest()
+    h = "sha256=" + base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+    size = abs_path.stat().st_size
+    return f"{rel_path},{h},{size}"
 
 
 _RUN_PY = """\
@@ -116,6 +125,16 @@ def build_wheel(
         (dist_info / "entry_points.txt").write_text(
             "[console_scripts]\nstqry = stqry._run:main\n"
         )
+
+        # Collect all files for RECORD
+        all_files = [f for f in tmp.rglob("*") if f.is_file()]
+        record_path = dist_info / "RECORD"
+        record_lines = [
+            _record_entry(str(f.relative_to(tmp)), f) for f in all_files
+        ]
+        # RECORD's own entry has empty hash and size
+        record_lines.append(f"{dist_info.name}/RECORD,,")
+        record_path.write_text("\n".join(record_lines) + "\n")
 
         with zipfile.ZipFile(wheel_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             for f in tmp.rglob("*"):
