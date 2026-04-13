@@ -89,3 +89,19 @@ func TestCheckInstalledSkills_DesktopLayout(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckInstalledSkills_PassMessageIsJustUpToDate(t *testing.T) {
+	dir := t.TempDir()
+	if err := skills.InstallAll(dir, skills.LayoutCode, "v1.0.0"); err != nil {
+		t.Fatalf("InstallAll: %v", err)
+	}
+
+	loc := doctor.SkillLocation{Dir: dir, Layout: doctor.SkillLayoutCode, Label: "test"}
+	results := doctor.CheckInstalledSkills([]doctor.SkillLocation{loc})
+
+	for _, r := range results {
+		if r.Status == doctor.StatusPass && r.Message != "up to date" {
+			t.Errorf("pass message for %q should be 'up to date', got %q (skill name must not be repeated)", r.Name, r.Message)
+		}
+	}
+}

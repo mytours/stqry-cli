@@ -11,11 +11,12 @@ import (
 )
 
 // SkillLayoutType mirrors skills.Layout for use in doctor.
+// SkillLayoutCode == skills.LayoutCode; SkillLayoutDesktop == skills.LayoutDesktop.
 type SkillLayoutType int
 
 const (
-	SkillLayoutCode    SkillLayoutType = iota // flat .md file
-	SkillLayoutDesktop                        // folder/SKILL.md
+	SkillLayoutCode    SkillLayoutType = iota // flat .md file  (= skills.LayoutCode)
+	SkillLayoutDesktop                        // folder/SKILL.md (= skills.LayoutDesktop)
 )
 
 // SkillLocation describes a directory where skills may be installed.
@@ -91,7 +92,7 @@ func checkOneSkill(loc SkillLocation, filename string) CheckResult {
 	embeddedData, err := skills.SkillFiles.ReadFile(filename)
 	if err != nil {
 		r.Status = StatusFail
-		r.Message = fmt.Sprintf("embedded skill %s missing", filename)
+		r.Message = "embedded skill missing: " + filename
 		r.Duration = time.Since(start)
 		return r
 	}
@@ -106,7 +107,7 @@ func checkOneSkill(loc SkillLocation, filename string) CheckResult {
 	}
 
 	r.Status = StatusPass
-	r.Message = skillName + " up to date"
+	r.Message = "up to date"
 	r.Duration = time.Since(start)
 	return r
 }

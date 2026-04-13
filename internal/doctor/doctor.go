@@ -307,8 +307,12 @@ func RunChecks(currentVersion string) RunResult {
 
 	// Skills checks
 	home, _ := os.UserHomeDir()
+	var localSkillDir string
+	if cwd != "" {
+		localSkillDir = filepath.Join(cwd, ".claude", "commands")
+	}
 	skillLocations := []SkillLocation{
-		{Dir: filepath.Join(cwd, ".claude", "commands"), Layout: SkillLayoutCode, Label: "Claude Code (local)"},
+		{Dir: localSkillDir, Layout: SkillLayoutCode, Label: "Claude Code (local)"},
 		{Dir: filepath.Join(home, ".claude", "commands"), Layout: SkillLayoutCode, Label: "Claude Code (global)"},
 		{Dir: skills.DesktopSkillsDir(), Layout: SkillLayoutDesktop, Label: "Claude Desktop"},
 	}
