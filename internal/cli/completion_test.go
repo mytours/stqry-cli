@@ -81,6 +81,7 @@ func TestCompleteCollectionIDs_HitsCache(t *testing.T) {
 
 	cmd := newRootCmd()
 	_ = cmd.ParseFlags([]string{"--site=testsite"})
+	t.Cleanup(func() { flagSite = "" })
 	collectionsCmd, _, _ := cmd.Find([]string{"collections"})
 	getCmd, _, _ := collectionsCmd.Find([]string{"get"})
 
@@ -109,6 +110,7 @@ func TestCompleteCollectionIDs_StaleHint(t *testing.T) {
 
 	cmd := newRootCmd()
 	_ = cmd.ParseFlags([]string{"--site=testsite"})
+	t.Cleanup(func() { flagSite = "" })
 	collectionsCmd, _, _ := cmd.Find([]string{"collections"})
 	getCmd, _, _ := collectionsCmd.Find([]string{"get"})
 
@@ -120,6 +122,7 @@ func TestCompleteCollectionIDs_StaleHint(t *testing.T) {
 }
 
 func TestCompleteCollectionIDs_NoSite(t *testing.T) {
+	flagSite = "" // ensure no leftover from prior tests
 	t.Setenv("HOME", t.TempDir())
 
 	cmd := newRootCmd()
