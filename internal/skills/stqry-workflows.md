@@ -133,8 +133,8 @@ stqry screens sections media add \
 
 ### Tips
 
-- Use `--quiet` to get minimal JSON output when scripting, making it easier to pipe to `jq`.
-- Example: `stqry media upload ./file.mp3 --quiet | jq -r '.id'`
+- Use the built-in `--jq` flag to extract fields directly — no need to pipe to external tools.
+- Example: `stqry media upload ./file.mp3 --jq '.id'`
 
 ---
 
@@ -254,6 +254,6 @@ stqry screens get <screen-id> --lang de --json
 ### Tips for multilingual content management
 
 - Always update the default language first to establish the canonical content.
-- Use `--quiet --json` together to get compact output suitable for diffing or logging.
+- Use `--jq` to extract or reshape output inline (e.g. `--jq '.title'`), or `--quiet` for compact JSON suitable for diffing or logging.
 - When scripting bulk translations, iterate over language codes and wrap each `update` in an error check.
 - Language codes follow IETF BCP 47: `en`, `fr`, `de`, `es`, `zh-Hans`, `zh-Hant`, `pt-BR`, etc.
