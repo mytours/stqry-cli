@@ -72,3 +72,29 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: twine upload dist/*
+
+  publish-skill:
+    runs-on: ubuntu-latest
+    environment: release
+    needs: [release]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build skill zip
+        run: |
+          go run \
+            -ldflags "-X github.com/mytours/stqry-cli/internal/buildinfo.Version=${{ github.ref_name }}" \
+            ./cmd/stqry skill export --dir .
+
+      - name: Upload skill zip to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./stqry-skill.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
