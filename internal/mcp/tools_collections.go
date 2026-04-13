@@ -188,14 +188,17 @@ func registerCollectionTools(s *server.MCPServer, flagSite string, sess *Session
 	// create_collection_item: creates a new item in a collection
 	s.AddTool(
 		mcpgo.NewTool("create_collection_item",
-			mcpgo.WithDescription("Create a new item in a STQRY collection."),
+			mcpgo.WithDescription("Add a screen or collection to a STQRY collection. "+
+				"A collection item is a link record — the screen or collection you are linking must already exist. "+
+				"Create your screens first with create_screen, then pass item_type (\"Screen\" or \"Collection\") "+
+				"and item_id in the fields object."),
 			mcpgo.WithString("collection_id",
 				mcpgo.Required(),
 				mcpgo.Description("The collection ID"),
 			),
 			mcpgo.WithObject("fields",
 				mcpgo.Required(),
-				mcpgo.Description("Arbitrary JSON object of item fields to set"),
+				mcpgo.Description("Object with required fields: item_type (\"Screen\" or \"Collection\") and item_id (the ID of the existing screen or collection to link). Optionally include position (integer)."),
 			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
