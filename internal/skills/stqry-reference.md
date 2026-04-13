@@ -7,23 +7,30 @@ description: STQRY CLI command reference — all commands, flags, and data model
 
 ## Data Model Overview
 
-STQRY content is organised in a hierarchy:
+All content types are **top-level entities** — Screens, Collections, Media Items, Projects, and Codes exist independently and can be combined in different ways.
 
 ```
-Projects
-  └── Collections
-        └── Items
-              └── Screens
-                    └── Sections
-                          └── Sub-items (hours, links, badges, prices, social, media)
-Media Items  (standalone, attached to screens or sections)
-Codes        (redemption codes linked to collections or screens)
+Top-level entities (all exist independently):
+  Projects
+  Collections
+  Screens
+    └── Sections
+          └── Sub-items (hours, links, badges, prices, social, media)
+  Media Items
+  Codes
+
+Collections are composed via Collection Items (join records):
+  Collection
+    └── Collection Items
+          └── item_type: "Screen"  →  Screen
+              item_type: "Collection"  →  Collection
 ```
+
+**Collection Items are join records**, not content containers. A collection item has two fields: `item_type` (`"Screen"` or `"Collection"`) and `item_id` (the ID of the referenced entity). The referenced entity must exist before the collection item is created — create screens first, then link them into collections.
 
 - **Projects** — top-level organisational units; each project belongs to one site.
-- **Collections** — groupings of items (e.g. a tour, an exhibition). Each collection has a type (tour, exhibit, etc.).
-- **Items** — individual entries within a collection (e.g. a stop on a tour).
-- **Screens** — content pages attached to an item. An item can have multiple screens.
+- **Collections** — groupings of screens or other collections. Each collection has a type (tour, exhibit, etc.).
+- **Screens** — standalone content pages. A screen has sections and can be linked into one or more collections.
 - **Sections** — content blocks within a screen (text, image, audio, video, etc.).
 - **Sub-items** — structured data attached to a section: hours, links, badges, prices, social handles, media.
 - **Media Items** — images, audio, video, and documents. Can be uploaded and attached independently.
@@ -98,15 +105,14 @@ Manage collections and their items.
 ```
 stqry collections list                   List collections
 stqry collections get <id>               Get a single collection
-stqry collections create                 Create a collection (interactive)
+stqry collections create --name <name> --type <type>  Create a collection
 stqry collections update <id>            Update a collection
 stqry collections delete <id>            Delete a collection
 
-stqry collections items list <id>        List items in a collection
-stqry collections items get <id>         Get a single item
-stqry collections items create <col-id>  Create an item in a collection
-stqry collections items update <id>      Update an item
-stqry collections items delete <id>      Delete an item
+stqry collections items list <collection-id>                    List items in a collection
+stqry collections items add <collection-id> --item-type <type> --item-id <id>  Add a screen or collection to a collection
+stqry collections items reorder <collection-id> <item-id>...    Reorder items in a collection
+stqry collections items remove <collection-id> <item-id>        Remove an item from a collection
 ```
 
 ---
@@ -116,26 +122,27 @@ stqry collections items delete <id>      Delete an item
 Manage screens and their sections / sub-items.
 
 ```
-stqry screens list <item-id>             List screens for an item
-stqry screens get <id>                   Get a single screen
-stqry screens create <item-id>           Create a screen
-stqry screens update <id>                Update a screen
-stqry screens delete <id>                Delete a screen
+stqry screens list                                  List screens
+stqry screens get <id>                              Get a single screen
+stqry screens create --name <name> --type <type>    Create a screen
+stqry screens update <id>                           Update a screen
+stqry screens delete <id>                           Delete a screen
 
 # Sections
 stqry screens sections list <screen-id>
-stqry screens sections get <id>
-stqry screens sections create <screen-id>
-stqry screens sections update <id>
-stqry screens sections delete <id>
+stqry screens sections get <section-id> --screen-id <screen-id>
+stqry screens sections add <screen-id> --type <type>
+stqry screens sections update <section-id> --screen-id <screen-id>
+stqry screens sections remove <section-id> --screen-id <screen-id>
+stqry screens sections reorder <screen-id> <section-id>...
 
-# Sub-items (attached to a section)
-stqry screens sections badges   list|get|create|update|delete
-stqry screens sections links    list|get|create|update|delete
-stqry screens sections media    list|get|create|update|delete
-stqry screens sections prices   list|get|create|update|delete
-stqry screens sections social   list|get|create|update|delete
-stqry screens sections hours    list|get|create|update|delete
+# Sub-items (attached to a section; all require --screen-id and --section-id)
+stqry screens sections badges   list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections links    list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections media    list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections prices   list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections social   list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections hours    list|add|update|remove --screen-id <id> --section-id <id>
 ```
 
 ---

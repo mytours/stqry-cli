@@ -10,11 +10,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/mytours/stqry-cli/internal/buildinfo"
 	"github.com/mytours/stqry-cli/internal/config"
+	"github.com/mytours/stqry-cli/internal/skills"
 	"github.com/spf13/cobra"
 )
 
@@ -289,6 +291,109 @@ func doctorSymbol(s checkStatus) string {
 	}
 }
 
+type cliSkillLayout int
+
+const (
+	cliLayoutCode    cliSkillLayout = iota
+	cliLayoutDesktop cliSkillLayout = iota
+)
+
+func checkInstalledSkills() []checkResult {
+	home, _ := os.UserHomeDir()
+	cwd, _ := os.Getwd()
+
+	var localSkillDir string
+	if cwd != "" {
+		localSkillDir = filepath.Join(cwd, ".claude", "commands")
+	}
+
+	type loc struct {
+		dir    string
+		layout cliSkillLayout
+		label  string
+	}
+	locations := []loc{
+		{dir: localSkillDir, layout: cliLayoutCode, label: "Claude Code (local)"},
+		{dir: filepath.Join(home, ".claude", "commands"), layout: cliLayoutCode, label: "Claude Code (global)"},
+		{dir: skills.DesktopSkillsDir(), layout: cliLayoutDesktop, label: "Claude Desktop"},
+	}
+
+	skillNames, err := skills.EmbeddedSkillNames()
+	if err != nil {
+		return []checkResult{{group: "Skills", name: "Embedded skills", status: statusFail, message: err.Error()}}
+	}
+
+	var results []checkResult
+	for _, l := range locations {
+		for _, filename := range skillNames {
+			results = append(results, checkOneInstalledSkill(l.dir, l.label, l.layout, filename))
+		}
+	}
+	return results
+}
+
+func checkOneInstalledSkill(dir, label string, layout cliSkillLayout, filename string) checkResult {
+	skillName := strings.TrimSuffix(filename, ".md")
+	r := checkResult{
+		group: "Skills",
+		name:  skillName + " — " + label,
+	}
+
+	if dir == "" {
+		r.status = statusSkip
+		r.message = "location not available on this platform"
+		return r
+	}
+
+	var installedPath string
+	if layout == cliLayoutDesktop {
+		installedPath = filepath.Join(dir, skillName, "SKILL.md")
+	} else {
+		installedPath = filepath.Join(dir, filename)
+	}
+
+	data, err := os.ReadFile(installedPath)
+	if err != nil {
+		r.status = statusSkip
+		r.message = "not installed"
+		return r
+	}
+
+	installedHash, ok := skills.ExtractHashFromFrontmatter(data)
+	if !ok {
+		r.status = statusWarn
+		r.message = "outdated (no version metadata)"
+		if layout == cliLayoutDesktop {
+			r.detail = "Run: stqry setup claude --desktop"
+		} else {
+			r.detail = "Run: stqry setup claude (or --global)"
+		}
+		return r
+	}
+
+	embeddedData, err := skills.SkillFiles.ReadFile(filename)
+	if err != nil {
+		r.status = statusFail
+		r.message = "embedded skill missing: " + filename
+		return r
+	}
+
+	if installedHash != skills.HashContent(embeddedData) {
+		r.status = statusWarn
+		r.message = "outdated (skill content has changed)"
+		if layout == cliLayoutDesktop {
+			r.detail = "Run: stqry setup claude --desktop"
+		} else {
+			r.detail = "Run: stqry setup claude (or --global)"
+		}
+		return r
+	}
+
+	r.status = statusPass
+	r.message = "up to date"
+	return r
+}
+
 // errDoctorFailed is a sentinel returned by the doctor command when checks fail.
 // It is silenced (not printed) by cobra; the caller's Execute() returns it so
 // the process can exit with code 1 without printing a redundant error line.
@@ -370,6 +475,9 @@ func runDoctor(w io.Writer, verbose bool) bool {
 
 	// --- Version group ---
 	results = append(results, checkCLIVersion(buildinfo.Version, defaultGitHubReleasesURL, httpClient))
+
+	// --- Skills group ---
+	results = append(results, checkInstalledSkills()...)
 
 	printDoctorResults(w, results, verbose)
 
