@@ -105,13 +105,13 @@ Manage collections and their items.
 ```
 stqry collections list                   List collections
 stqry collections get <id>               Get a single collection
-stqry collections create                 Create a collection (interactive)
+stqry collections create --name <name> --type <type>  Create a collection
 stqry collections update <id>            Update a collection
 stqry collections delete <id>            Delete a collection
 
 stqry collections items list <collection-id>                    List items in a collection
 stqry collections items add <collection-id> --item-type <type> --item-id <id>  Add a screen or collection to a collection
-stqry collections items reorder <collection-id>                 Reorder items in a collection
+stqry collections items reorder <collection-id> <item-id>...    Reorder items in a collection
 stqry collections items remove <collection-id> <item-id>        Remove an item from a collection
 ```
 
@@ -122,11 +122,11 @@ stqry collections items remove <collection-id> <item-id>        Remove an item f
 Manage screens and their sections / sub-items.
 
 ```
-stqry screens list <item-id>             List screens for an item
-stqry screens get <id>                   Get a single screen
-stqry screens create <item-id>           Create a screen
-stqry screens update <id>                Update a screen
-stqry screens delete <id>                Delete a screen
+stqry screens list                                  List screens
+stqry screens get <id>                              Get a single screen
+stqry screens create --name <name> --type <type>    Create a screen
+stqry screens update <id>                           Update a screen
+stqry screens delete <id>                           Delete a screen
 
 # Sections
 stqry screens sections list <screen-id>
