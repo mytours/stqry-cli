@@ -74,6 +74,30 @@ sites:
 | `--lang` | string | Language code for content (e.g. `en`, `fr`, `de`) |
 | `--json` | bool | Output full JSON response envelope |
 | `--quiet` | bool | Output minimal JSON (no envelope) |
+| `--jq` | string | Filter output with a jq expression (overrides `--quiet`) |
+
+### Extracting data with `--jq`
+
+The CLI has **built-in jq filtering** via the `--jq` flag (powered by gojq). Always use `--jq` instead of piping to external `jq`, `python`, or other tools.
+
+```bash
+# List just screen names
+stqry screens list --jq '.[].name'
+
+# Get specific fields as objects
+stqry collections list --jq '[.[] | {id, name, type}]'
+
+# Filter by field value
+stqry screens list --jq '[.[] | select(.type == "story")]'
+
+# Count items
+stqry media list --jq 'length'
+
+# Get a single field from a get command
+stqry screens get 12345 --jq '.name'
+```
+
+**Do NOT** pipe `--quiet` output into `python -c` or external `jq` — the built-in `--jq` flag is simpler and avoids extra dependencies.
 
 ### Language Support
 
