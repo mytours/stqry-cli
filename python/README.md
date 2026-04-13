@@ -1,6 +1,6 @@
 # stqry
 
-Python SDK for the [STQRY](https://stqry.com) API.
+STQRY CLI distributed as a Python package.
 
 ## Installation
 
@@ -8,28 +8,14 @@ Python SDK for the [STQRY](https://stqry.com) API.
 pip install stqry
 ```
 
+This installs the `stqry` binary for your platform. No compilation required.
+
 ## Usage
 
-```python
-import stqry
-
-client = stqry.Client()  # reads STQRY_API_URL and STQRY_API_TOKEN from env
-# or
-client = stqry.Client(api_url="https://your-site.stqry.com", token="your-token")
-
-# Collections
-collections = client.collections.list()
-collection = client.collections.get("123")
-
-# Screens
-screens = client.screens.list()
-
-# Media
-media = client.media.list()
+```bash
+stqry --help
+stqry collections list
+stqry screens list --collection <id>
 ```
 
-## Authentication
-
-Set environment variables:
-- `STQRY_API_URL` — your STQRY site API URL
-- `STQRY_API_TOKEN` — your API token
+Full documentation: https://github.com/mytours/stqry-cli
