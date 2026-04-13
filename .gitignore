@@ -5,6 +5,7 @@ python/.venv/
 python/*.egg-info/
 **/__pycache__/
 **/*.pyc
+python/stqry.egg-info/
 
 # Local environment (credentials, API URLs)
 .env
@@ -21,3 +22,5 @@ docs/specs/*
 !docs/superpowers/specs/.gitkeep
 !docs/plans/.gitkeep
 !docs/specs/.gitkeep
+
+
