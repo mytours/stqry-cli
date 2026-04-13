@@ -64,6 +64,9 @@ func DesktopSkillsDir() string {
 	switch runtime.GOOS {
 	case "windows":
 		appData := os.Getenv("APPDATA")
+		if appData == "" {
+			return ""
+		}
 		return filepath.Join(appData, "Claude", "skills")
 	case "linux":
 		home, _ := os.UserHomeDir()
