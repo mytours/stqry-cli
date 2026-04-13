@@ -2,14 +2,21 @@ package completion_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/mytours/stqry-cli/internal/completion"
 )
 
-func TestSaveAndLoad(t *testing.T) {
+func setCacheTempDir(t *testing.T) {
+	t.Helper()
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CACHE_HOME", "") // force HOME-relative path on Linux
+}
+
+func TestSaveAndLoad(t *testing.T) {
+	setCacheTempDir(t)
 
 	items := []completion.CacheEntry{
 		{ID: "42", Name: "city-tour"},
@@ -32,7 +39,7 @@ func TestSaveAndLoad(t *testing.T) {
 }
 
 func TestLoad_MissingFile(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	setCacheTempDir(t)
 
 	items, stale, err := completion.Load("nosite", "collections")
 	if err != nil {
@@ -41,13 +48,37 @@ func TestLoad_MissingFile(t *testing.T) {
 	if !stale {
 		t.Error("expected stale for missing file")
 	}
-	if len(items) != 0 {
-		t.Errorf("expected no items, got %v", items)
+	if items != nil {
+		t.Errorf("expected nil items for missing file, got %v", items)
 	}
 }
 
+func TestLoad_CorruptFile(t *testing.T) {
+	setCacheTempDir(t)
+
+	path, err := completion.CachePath("mysite", "collections")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("not valid json{{{{"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	items, stale, err := completion.Load("mysite", "collections")
+	if err == nil {
+		t.Error("expected error for corrupt cache file, got nil")
+	}
+	if items != nil {
+		t.Errorf("expected nil items for corrupt file, got %v", items)
+	}
+	_ = stale // stale value is unspecified for error case
+}
+
 func TestIsStale(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	setCacheTempDir(t)
 
 	items := []completion.CacheEntry{{ID: "1", Name: "a"}}
 
