@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-13
+
+### Added
+- `stqry skill dump` command — prints the raw content of an installed skill file
+- Skills versioning and update awareness: hash, frontmatter, and name helpers for installed skills
+- Skills staleness checks wired into `stqry doctor` — warns when installed skills are out of date
+- `--desktop` flag on `stqry setup` — exports skills as files for manual Claude Desktop installation
+- `add_global_site` MCP tool — saves credentials to global config from within an AI session
+- `site_name` parameter on `configure_project` MCP tool — writes a named-site local config
+- MCP `connect` and `select_site` tools now suggest saving config when no `stqry.yaml` exists
+
+### Fixed
+- Skills reference: corrected screens sections commands and sub-item flags throughout
+- Doctor: polished skills check messages and guarded against empty working directory
+- Doctor: skip skills check when install directory is unavailable on the current platform
+- MCP `configure_project`: session now set correctly when `site_name` is provided
+- MCP `add_global_site`: improved error message on failure
+
+### Removed
+- Desktop-specific skill layout code (`LayoutDesktop`, `DesktopSkillsDir`) replaced by path-agnostic install logic
+
+## [0.5.0] - 2026-04-13
+
+### Added
+- Shell completions for bash, zsh, fish, and PowerShell (`stqry completion <shell>`)
+- Per-site completion cache with 1-hour TTL
+- `completion status` subcommand — shows cache age and item counts
+- `completion refresh` subcommand — repopulates the cache via paginated API calls
+- Tab-completion for collection, screen, media, and project IDs via `ValidArgsFunction`
+- `--jq` global flag with built-in jq filtering (powered by `gojq`)
+- Rich usage examples added to all command help text
+- `AGENTS.md` and updated `CLAUDE.md` for AI agent integration documentation
+
 ## [0.4.0] - 2026-04-12
 
 ### Added

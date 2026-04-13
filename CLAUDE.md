@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Releasing a new version
+
+1. Update `CHANGELOG.md` — move items from `[Unreleased]` into a new versioned section (e.g. `## [0.6.0] - YYYY-MM-DD`), grouped under `### Added`, `### Fixed`, `### Removed`, etc.
+2. Commit the changelog update.
+3. Create and push a git tag: `git tag v0.6.0 && git push origin v0.6.0`
+4. GitHub Actions picks up the tag and runs the release workflow: tests → GoReleaser (binaries + Homebrew tap) → PyPI publish.
+
+Determine the version bump from commits since the last tag: new features → minor bump; fixes/docs only → patch bump.
+
 ## Commands
 
 ```bash
