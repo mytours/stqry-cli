@@ -32,6 +32,10 @@ func ExtractHashFromFrontmatter(data []byte) (string, bool) {
 		return "", false
 	}
 	rest := s[4:]
+	// Normalise: ensure content ends with newline so "\n---\n" always matches.
+	if !strings.HasSuffix(rest, "\n") {
+		rest += "\n"
+	}
 	end := strings.Index(rest, "\n---\n")
 	if end < 0 {
 		return "", false
@@ -39,7 +43,7 @@ func ExtractHashFromFrontmatter(data []byte) (string, bool) {
 	block := rest[:end]
 	for _, line := range strings.Split(block, "\n") {
 		if strings.HasPrefix(line, "skill_hash: ") {
-			return strings.TrimPrefix(line, "skill_hash: "), true
+			return strings.TrimSpace(strings.TrimPrefix(line, "skill_hash: ")), true
 		}
 	}
 	return "", false

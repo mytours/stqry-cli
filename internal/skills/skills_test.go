@@ -42,6 +42,10 @@ func TestBuildFrontmatter(t *testing.T) {
 	if !strings.Contains(string(result), "# Hello\nworld\n") {
 		t.Error("expected original content after frontmatter")
 	}
+	expectedHash := skills.HashContent(content)
+	if !strings.Contains(string(result), "skill_hash: "+expectedHash) {
+		t.Errorf("expected skill_hash: %s in frontmatter", expectedHash)
+	}
 }
 
 func TestExtractHashFromFrontmatter(t *testing.T) {
