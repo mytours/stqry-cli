@@ -10,20 +10,10 @@ import (
 	"github.com/mytours/stqry-cli/internal/skills"
 )
 
-// SkillLayoutType mirrors skills.Layout for use in doctor.
-// SkillLayoutCode == skills.LayoutCode; SkillLayoutDesktop == skills.LayoutDesktop.
-type SkillLayoutType int
-
-const (
-	SkillLayoutCode    SkillLayoutType = iota // flat .md file  (= skills.LayoutCode)
-	SkillLayoutDesktop                        // folder/SKILL.md (= skills.LayoutDesktop)
-)
-
 // SkillLocation describes a directory where skills may be installed.
 type SkillLocation struct {
-	Dir    string
-	Layout SkillLayoutType
-	Label  string // e.g. "Claude Code (global)"
+	Dir   string
+	Label string // e.g. "Claude Code (global)"
 }
 
 // CheckInstalledSkills checks every embedded skill at each location.
@@ -63,14 +53,7 @@ func checkOneSkill(loc SkillLocation, filename string) CheckResult {
 		return r
 	}
 
-	// Determine path based on layout.
-	var installedPath string
-	switch loc.Layout {
-	case SkillLayoutDesktop:
-		installedPath = filepath.Join(loc.Dir, skillName, "SKILL.md")
-	default:
-		installedPath = filepath.Join(loc.Dir, filename)
-	}
+	installedPath := filepath.Join(loc.Dir, filename)
 
 	data, err := os.ReadFile(installedPath)
 	if err != nil {
@@ -84,7 +67,7 @@ func checkOneSkill(loc SkillLocation, filename string) CheckResult {
 	if !ok {
 		r.Status = StatusWarn
 		r.Message = "outdated (no version metadata)"
-		r.Detail = remediation(loc.Layout)
+		r.Detail = remediation()
 		r.Duration = time.Since(start)
 		return r
 	}
@@ -101,7 +84,7 @@ func checkOneSkill(loc SkillLocation, filename string) CheckResult {
 	if installedHash != currentHash {
 		r.Status = StatusWarn
 		r.Message = "outdated (skill content has changed)"
-		r.Detail = remediation(loc.Layout)
+		r.Detail = remediation()
 		r.Duration = time.Since(start)
 		return r
 	}
@@ -112,11 +95,6 @@ func checkOneSkill(loc SkillLocation, filename string) CheckResult {
 	return r
 }
 
-func remediation(layout SkillLayoutType) string {
-	switch layout {
-	case SkillLayoutDesktop:
-		return "Run: stqry setup claude --desktop"
-	default:
-		return "Run: stqry setup claude (or --global)"
-	}
+func remediation() string {
+	return "Run: stqry setup claude (or --global)"
 }

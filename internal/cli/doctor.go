@@ -291,13 +291,6 @@ func doctorSymbol(s checkStatus) string {
 	}
 }
 
-type cliSkillLayout int
-
-const (
-	cliLayoutCode    cliSkillLayout = iota
-	cliLayoutDesktop cliSkillLayout = iota
-)
-
 func checkInstalledSkills() []checkResult {
 	home, _ := os.UserHomeDir()
 	cwd, _ := os.Getwd()
@@ -308,14 +301,12 @@ func checkInstalledSkills() []checkResult {
 	}
 
 	type loc struct {
-		dir    string
-		layout cliSkillLayout
-		label  string
+		dir   string
+		label string
 	}
 	locations := []loc{
-		{dir: localSkillDir, layout: cliLayoutCode, label: "Claude Code (local)"},
-		{dir: filepath.Join(home, ".claude", "commands"), layout: cliLayoutCode, label: "Claude Code (global)"},
-		{dir: skills.DesktopSkillsDir(), layout: cliLayoutDesktop, label: "Claude Desktop"},
+		{dir: localSkillDir, label: "Claude Code (local)"},
+		{dir: filepath.Join(home, ".claude", "commands"), label: "Claude Code (global)"},
 	}
 
 	skillNames, err := skills.EmbeddedSkillNames()
@@ -326,13 +317,13 @@ func checkInstalledSkills() []checkResult {
 	var results []checkResult
 	for _, l := range locations {
 		for _, filename := range skillNames {
-			results = append(results, checkOneInstalledSkill(l.dir, l.label, l.layout, filename))
+			results = append(results, checkOneInstalledSkill(l.dir, l.label, filename))
 		}
 	}
 	return results
 }
 
-func checkOneInstalledSkill(dir, label string, layout cliSkillLayout, filename string) checkResult {
+func checkOneInstalledSkill(dir, label, filename string) checkResult {
 	skillName := strings.TrimSuffix(filename, ".md")
 	r := checkResult{
 		group: "Skills",
@@ -345,12 +336,7 @@ func checkOneInstalledSkill(dir, label string, layout cliSkillLayout, filename s
 		return r
 	}
 
-	var installedPath string
-	if layout == cliLayoutDesktop {
-		installedPath = filepath.Join(dir, skillName, "SKILL.md")
-	} else {
-		installedPath = filepath.Join(dir, filename)
-	}
+	installedPath := filepath.Join(dir, filename)
 
 	data, err := os.ReadFile(installedPath)
 	if err != nil {
@@ -363,11 +349,7 @@ func checkOneInstalledSkill(dir, label string, layout cliSkillLayout, filename s
 	if !ok {
 		r.status = statusWarn
 		r.message = "outdated (no version metadata)"
-		if layout == cliLayoutDesktop {
-			r.detail = "Run: stqry setup claude --desktop"
-		} else {
-			r.detail = "Run: stqry setup claude (or --global)"
-		}
+		r.detail = "Run: stqry setup claude (or --global)"
 		return r
 	}
 
@@ -381,11 +363,7 @@ func checkOneInstalledSkill(dir, label string, layout cliSkillLayout, filename s
 	if installedHash != skills.HashContent(embeddedData) {
 		r.status = statusWarn
 		r.message = "outdated (skill content has changed)"
-		if layout == cliLayoutDesktop {
-			r.detail = "Run: stqry setup claude --desktop"
-		} else {
-			r.detail = "Run: stqry setup claude (or --global)"
-		}
+		r.detail = "Run: stqry setup claude (or --global)"
 		return r
 	}
 
