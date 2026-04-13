@@ -96,5 +96,6 @@ func newSetupClaudeCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&global, "global", false, "Install to ~/.claude/commands/ instead of ./.claude/commands/")
 	cmd.Flags().BoolVar(&desktop, "desktop", false, "Install to the Claude Desktop skills directory")
+	cmd.MarkFlagsMutuallyExclusive("global", "desktop")
 	return cmd
 }

@@ -30,9 +30,16 @@ func TestCheckInstalledSkills_Stale(t *testing.T) {
 	dir := t.TempDir()
 
 	// Write skill files with a deliberately wrong hash.
-	staleContent := "---\nskill_version: v0.1.0\nskill_hash: 000000000000\ngenerated_by: stqry-cli\n---\n# stale\n"
-	os.WriteFile(filepath.Join(dir, "stqry-reference.md"), []byte(staleContent), 0644)
-	os.WriteFile(filepath.Join(dir, "stqry-workflows.md"), []byte(staleContent), 0644)
+	staleContent := []byte("---\nskill_version: v0.1.0\nskill_hash: 000000000000\ngenerated_by: stqry-cli\n---\n# stale\n")
+	skillNames, err := skills.EmbeddedSkillNames()
+	if err != nil {
+		t.Fatalf("getting skill names: %v", err)
+	}
+	for _, name := range skillNames {
+		if err := os.WriteFile(filepath.Join(dir, name), staleContent, 0644); err != nil {
+			t.Fatalf("writing stale skill %s: %v", name, err)
+		}
+	}
 
 	loc := doctor.SkillLocation{Dir: dir, Layout: doctor.SkillLayoutCode, Label: "test (local)"}
 	results := doctor.CheckInstalledSkills([]doctor.SkillLocation{loc})
