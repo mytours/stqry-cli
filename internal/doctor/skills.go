@@ -55,6 +55,13 @@ func checkOneSkill(loc SkillLocation, filename string) CheckResult {
 		Name:  fmt.Sprintf("%s — %s", skillName, loc.Label),
 	}
 
+	if loc.Dir == "" {
+		r.Status = StatusSkip
+		r.Message = "location not available on this platform"
+		r.Duration = time.Since(start)
+		return r
+	}
+
 	// Determine path based on layout.
 	var installedPath string
 	switch loc.Layout {
