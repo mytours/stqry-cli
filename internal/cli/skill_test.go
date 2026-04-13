@@ -69,12 +69,18 @@ func TestSkillExportOutputContainsInstallInstructions(t *testing.T) {
 	if !strings.Contains(out, "Claude Desktop") {
 		t.Errorf("expected Claude Desktop install instructions, got: %s", out)
 	}
+	if !strings.Contains(out, "Skill version:") {
+		t.Errorf("expected Skill version in output, got: %s", out)
+	}
 }
 
 func TestSkillExportDefaultsToCurrentDirectory(t *testing.T) {
 	dir := t.TempDir()
 
-	origDir, _ := os.Getwd()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getting working directory: %v", err)
+	}
 	os.Chdir(dir)
 	defer os.Chdir(origDir)
 
