@@ -1,3 +1,9 @@
+import io
+import stat
+import tarfile
+import zipfile as _zipfile
+from pathlib import Path
+
 import pytest
 import build_wheels as bw
 
@@ -35,12 +41,6 @@ def test_binary_name_unix():
     assert bw.binary_name("linux") == "stqry"
 
 
-import io
-import tarfile
-import zipfile as _zipfile
-from pathlib import Path
-
-
 def test_extract_binary_from_tar(tmp_path):
     # Create a fake tar.gz with a stqry binary inside
     binary_content = b"fake elf binary"
@@ -57,6 +57,7 @@ def test_extract_binary_from_tar(tmp_path):
 
     assert result.name == "stqry"
     assert result.read_bytes() == binary_content
+    assert result.stat().st_mode & stat.S_IXUSR  # executable bit set
 
 
 def test_extract_binary_from_zip(tmp_path):
@@ -99,6 +100,7 @@ def test_build_wheel_contains_expected_files(tmp_path):
     assert "stqry-0.6.3.dist-info/METADATA" in names
     assert "stqry-0.6.3.dist-info/WHEEL" in names
     assert "stqry-0.6.3.dist-info/entry_points.txt" in names
+    assert "stqry-0.6.3.dist-info/RECORD" in names
 
 
 def test_build_wheel_windows_uses_exe(tmp_path):
