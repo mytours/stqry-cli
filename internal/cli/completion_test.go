@@ -2,7 +2,12 @@ package cli
 
 import (
 	"bytes"
+	"os"
 	"testing"
+	"time"
+
+	"github.com/mytours/stqry-cli/internal/completion"
+	"github.com/spf13/cobra"
 )
 
 func TestCompletionBashCmd(t *testing.T) {
@@ -60,5 +65,72 @@ func TestCompletionPowerShellCmd(t *testing.T) {
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("powershell")) {
 		t.Error("expected powershell completion script in output")
+	}
+}
+
+func TestCompleteCollectionIDs_HitsCache(t *testing.T) {
+	setupTestHome(t, "http://unused")
+
+	items := []completion.CacheEntry{
+		{ID: "42", Name: "city-tour"},
+		{ID: "87", Name: "museum"},
+	}
+	if err := completion.Save("testsite", "collections", items); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newRootCmd()
+	_ = cmd.ParseFlags([]string{"--site=testsite"})
+	collectionsCmd, _, _ := cmd.Find([]string{"collections"})
+	getCmd, _, _ := collectionsCmd.Find([]string{"get"})
+
+	results, directive := getCmd.ValidArgsFunction(getCmd, []string{}, "")
+	if directive != cobra.ShellCompDirectiveNoFileComp {
+		t.Errorf("unexpected directive: %v", directive)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d: %v", len(results), results)
+	}
+	if results[0] != "42\tcity-tour" {
+		t.Errorf("unexpected first result: %q", results[0])
+	}
+}
+
+func TestCompleteCollectionIDs_StaleHint(t *testing.T) {
+	setupTestHome(t, "http://unused")
+
+	items := []completion.CacheEntry{{ID: "1", Name: "old"}}
+	if err := completion.Save("testsite", "collections", items); err != nil {
+		t.Fatal(err)
+	}
+	path, _ := completion.CachePath("testsite", "collections")
+	twoHoursAgo := time.Now().Add(-2 * time.Hour)
+	os.Chtimes(path, twoHoursAgo, twoHoursAgo)
+
+	cmd := newRootCmd()
+	_ = cmd.ParseFlags([]string{"--site=testsite"})
+	collectionsCmd, _, _ := cmd.Find([]string{"collections"})
+	getCmd, _, _ := collectionsCmd.Find([]string{"get"})
+
+	results, _ := getCmd.ValidArgsFunction(getCmd, []string{}, "")
+	last := results[len(results)-1]
+	if last != "# cache stale — run: stqry completion refresh" {
+		t.Errorf("expected stale hint, got: %q", last)
+	}
+}
+
+func TestCompleteCollectionIDs_NoSite(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	cmd := newRootCmd()
+	collectionsCmd, _, _ := cmd.Find([]string{"collections"})
+	getCmd, _, _ := collectionsCmd.Find([]string{"get"})
+
+	results, directive := getCmd.ValidArgsFunction(getCmd, []string{}, "")
+	if len(results) != 0 {
+		t.Errorf("expected no results, got: %v", results)
+	}
+	if directive != cobra.ShellCompDirectiveNoFileComp {
+		t.Errorf("unexpected directive: %v", directive)
 	}
 }

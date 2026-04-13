@@ -99,7 +99,7 @@ func newCollectionsListCmd() *cobra.Command {
 }
 
 func newCollectionsGetCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a collection",
 		Example: `  # Get a collection by ID
@@ -120,6 +120,8 @@ func newCollectionsGetCmd() *cobra.Command {
 			return printer.PrintOne(col, nil)
 		},
 	}
+	cmd.ValidArgsFunction = completeCollectionIDs
+	return cmd
 }
 
 func newCollectionsCreateCmd() *cobra.Command {
@@ -203,12 +205,13 @@ func newCollectionsUpdateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&name, "name", "", "Collection name")
 	cmd.Flags().StringVar(&title, "title", "", "Collection title")
+	cmd.ValidArgsFunction = completeCollectionIDs
 
 	return cmd
 }
 
 func newCollectionsDeleteCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "delete <id>",
 		Short: "Delete a collection",
 		Example: `  # Delete a collection
@@ -223,6 +226,8 @@ func newCollectionsDeleteCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.ValidArgsFunction = completeCollectionIDs
+	return cmd
 }
 
 func newCollectionsItemsCmd() *cobra.Command {
@@ -245,7 +250,7 @@ func newCollectionsItemsCmd() *cobra.Command {
 }
 
 func newCollectionsItemsListCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list <collection-id>",
 		Short: "List items in a collection",
 		Example: `  # List all items in a collection
@@ -271,6 +276,8 @@ func newCollectionsItemsListCmd() *cobra.Command {
 			return printer.PrintList([]string{"id", "item_type", "item_id", "position"}, items, m)
 		},
 	}
+	cmd.ValidArgsFunction = completeCollectionIDs
+	return cmd
 }
 
 func newCollectionsItemsAddCmd() *cobra.Command {
@@ -303,12 +310,13 @@ func newCollectionsItemsAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&itemID, "item-id", "", "Item ID (required)")
 	cmd.MarkFlagRequired("item-type")
 	cmd.MarkFlagRequired("item-id")
+	cmd.ValidArgsFunction = completeCollectionIDs
 
 	return cmd
 }
 
 func newCollectionsItemsRemoveCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "remove <collection-id> <item-id>",
 		Short: "Remove an item from a collection",
 		Example: `  # Remove an item from a collection
@@ -323,10 +331,12 @@ func newCollectionsItemsRemoveCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.ValidArgsFunction = completeCollectionIDs
+	return cmd
 }
 
 func newCollectionsItemsReorderCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "reorder <collection-id> <item-id>...",
 		Short: "Reorder items in a collection",
 		Example: `  # Reorder items in a collection (IDs in desired order)
@@ -343,4 +353,6 @@ func newCollectionsItemsReorderCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.ValidArgsFunction = completeCollectionIDs
+	return cmd
 }
