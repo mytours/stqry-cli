@@ -465,6 +465,62 @@ func TestConnectNoSaveSuggestedWhenLocalConfigExists(t *testing.T) {
 	}
 }
 
+func TestConfigureProjectWithSiteName(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	// Add a site to global config first.
+	globalCfgPath := filepath.Join(dir, "config.yaml")
+	globalCfg := &config.GlobalConfig{
+		Sites: map[string]*config.Site{
+			"mysite": {Token: "tok-abc", APIURL: "https://api.stqry.com"},
+		},
+	}
+	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "configure_project", `{"site_name":"mysite"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("configure_project failed: %s", toolText(result))
+	}
+
+	// stqry.yaml should reference the named site, not inline credentials.
+	data, err := os.ReadFile(filepath.Join(dir, "stqry.yaml"))
+	if err != nil {
+		t.Fatal("stqry.yaml not written")
+	}
+	if !bytes.Contains(data, []byte("mysite")) {
+		t.Errorf("expected site name in stqry.yaml, got: %s", data)
+	}
+	if bytes.Contains(data, []byte("tok-abc")) {
+		t.Error("token should NOT be inlined when using site_name")
+	}
+}
+
+func TestConfigureProjectWithSiteNameNotInGlobalConfig(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+	// No global config — site won't exist.
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "configure_project", `{"site_name":"unknown"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error when site_name not in global config")
+	}
+	// stqry.yaml must NOT have been written.
+	if _, err := os.Stat(filepath.Join(dir, "stqry.yaml")); !os.IsNotExist(err) {
+		t.Error("stqry.yaml should not be written when site_name is invalid")
+	}
+}
+
 func TestSelectSiteSuggestsSaveWhenNoLocalConfig(t *testing.T) {
 	dir := t.TempDir()
 	orig, _ := os.Getwd()

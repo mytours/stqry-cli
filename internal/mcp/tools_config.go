@@ -82,22 +82,51 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 	s.AddTool(
 		mcpgo.NewTool("configure_project",
 			mcpgo.WithDescription("Configure a STQRY project by storing credentials in this session. "+
-				"Also attempts to write stqry.yaml to the current directory for future use "+
-				"(this may fail in read-only environments and is not fatal)."),
+				"Pass site_name to write a named reference (site: <name>) to stqry.yaml, or pass api_url+token "+
+				"to write inline credentials. Also stores credentials in the session for immediate use."),
+			mcpgo.WithString("site_name",
+				mcpgo.Description("Named site from global config to reference in stqry.yaml (alternative to api_url+token)"),
+			),
 			mcpgo.WithString("api_url",
-				mcpgo.Required(),
 				mcpgo.Description("The STQRY API URL, e.g. https://api.stqry.com or https://api-us.stqry.com"),
 			),
 			mcpgo.WithString("token",
-				mcpgo.Required(),
 				mcpgo.Description("The STQRY API token for this site"),
 			),
 		),
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+			siteName := strings.TrimSpace(req.GetString("site_name", ""))
 			apiURL := strings.TrimSpace(req.GetString("api_url", ""))
 			token := strings.TrimSpace(req.GetString("token", ""))
+
+			if siteName != "" {
+				// Named-reference mode: write site: <name> to stqry.yaml.
+				globalCfg, err := config.LoadGlobalConfig(config.DefaultGlobalConfigPath())
+				if err != nil {
+					return mcpgo.NewToolResultError(fmt.Sprintf("loading global config: %v", err)), nil
+				}
+				if _, ok := globalCfg.Sites[siteName]; !ok {
+					return mcpgo.NewToolResultError(fmt.Sprintf(
+						"site %q not found in global config. Add it first with add_global_site or `stqry config add-site`",
+						siteName,
+					)), nil
+				}
+				cwd, err := os.Getwd()
+				if err != nil {
+					return mcpgo.NewToolResultError(fmt.Sprintf("getting working directory: %v", err)), nil
+				}
+				if err := config.SaveDirectoryConfig(cwd, &config.DirectoryConfig{Site: siteName}); err != nil {
+					return mcpgo.NewToolResultError(fmt.Sprintf("writing stqry.yaml: %v", err)), nil
+				}
+				return jsonResult(map[string]interface{}{
+					"ok":      true,
+					"message": fmt.Sprintf("stqry.yaml written with site reference: %s", siteName),
+				})
+			}
+
+			// Inline credentials mode (existing behaviour).
 			if apiURL == "" || token == "" {
-				return mcpgo.NewToolResultError("api_url and token are required"), nil
+				return mcpgo.NewToolResultError("provide either site_name, or both api_url and token"), nil
 			}
 			parsed, err := url.Parse(apiURL)
 			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
@@ -106,7 +135,6 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			site := &config.Site{Token: token, APIURL: apiURL}
 			sess.Set(site)
 
-			// Best-effort disk write — not fatal if CWD is read-only.
 			writeErr := WriteProjectConfig(apiURL, token)
 			if writeErr != nil {
 				return jsonResult(map[string]interface{}{
