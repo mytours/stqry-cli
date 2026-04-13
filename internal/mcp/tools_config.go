@@ -118,6 +118,7 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 				if err := config.SaveDirectoryConfig(cwd, &config.DirectoryConfig{Site: siteName}); err != nil {
 					return mcpgo.NewToolResultError(fmt.Sprintf("writing stqry.yaml: %v", err)), nil
 				}
+				sess.Set(globalCfg.Sites[siteName])
 				return jsonResult(map[string]interface{}{
 					"ok":      true,
 					"message": fmt.Sprintf("stqry.yaml written with site reference: %s", siteName),
@@ -184,17 +185,18 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 			}
 			if _, exists := globalCfg.Sites[name]; exists {
 				return mcpgo.NewToolResultError(fmt.Sprintf(
-					"site %q already exists. Choose a different name or update it with `stqry config add-site`",
-					name,
+					"site %q already exists. Choose a different name or update it with `stqry config edit-site %s`",
+					name, name,
 				)), nil
 			}
 			globalCfg.Sites[name] = &config.Site{Token: token, APIURL: apiURL}
-			if err := config.SaveGlobalConfig(globalCfg, config.DefaultGlobalConfigPath()); err != nil {
+			globalCfgPath := config.DefaultGlobalConfigPath()
+			if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("saving global config: %v", err)), nil
 			}
 			return jsonResult(map[string]interface{}{
 				"ok":      true,
-				"message": fmt.Sprintf("site %q added to global config (~/.config/stqry/config.yaml)", name),
+				"message": fmt.Sprintf("site %q added to global config (%s)", name, globalCfgPath),
 			})
 		},
 	)
