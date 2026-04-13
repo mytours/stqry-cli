@@ -33,3 +33,109 @@ def test_binary_name_windows():
 def test_binary_name_unix():
     assert bw.binary_name("darwin") == "stqry"
     assert bw.binary_name("linux") == "stqry"
+
+
+import io
+import tarfile
+import zipfile as _zipfile
+from pathlib import Path
+
+
+def test_extract_binary_from_tar(tmp_path):
+    # Create a fake tar.gz with a stqry binary inside
+    binary_content = b"fake elf binary"
+    archive = tmp_path / "stqry_darwin_arm64.tar.gz"
+    with tarfile.open(archive, "w:gz") as tf:
+        data = io.BytesIO(binary_content)
+        info = tarfile.TarInfo(name="stqry")
+        info.size = len(binary_content)
+        tf.addfile(info, data)
+
+    dest = tmp_path / "out"
+    dest.mkdir()
+    result = bw.extract_binary(archive, "darwin", dest)
+
+    assert result.name == "stqry"
+    assert result.read_bytes() == binary_content
+
+
+def test_extract_binary_from_zip(tmp_path):
+    binary_content = b"fake pe binary"
+    archive = tmp_path / "stqry_windows_amd64.zip"
+    with _zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("stqry.exe", binary_content)
+
+    dest = tmp_path / "out"
+    dest.mkdir()
+    result = bw.extract_binary(archive, "windows", dest)
+
+    assert result.name == "stqry.exe"
+    assert result.read_bytes() == binary_content
+
+
+def test_build_wheel_filename(tmp_path):
+    binary = tmp_path / "stqry"
+    binary.write_bytes(b"fake")
+
+    out = tmp_path / "dist"
+    wheel = bw.build_wheel(binary, "darwin", "arm64", "0.6.3", out)
+
+    assert wheel.name == "stqry-0.6.3-py3-none-macosx_11_0_arm64.whl"
+
+
+def test_build_wheel_contains_expected_files(tmp_path):
+    binary = tmp_path / "stqry"
+    binary.write_bytes(b"fake")
+
+    out = tmp_path / "dist"
+    wheel = bw.build_wheel(binary, "linux", "amd64", "0.6.3", out)
+
+    with _zipfile.ZipFile(wheel) as zf:
+        names = zf.namelist()
+
+    assert "stqry/__init__.py" in names
+    assert "stqry/_run.py" in names
+    assert "stqry/bin/stqry" in names
+    assert "stqry-0.6.3.dist-info/METADATA" in names
+    assert "stqry-0.6.3.dist-info/WHEEL" in names
+    assert "stqry-0.6.3.dist-info/entry_points.txt" in names
+
+
+def test_build_wheel_windows_uses_exe(tmp_path):
+    binary = tmp_path / "stqry.exe"
+    binary.write_bytes(b"fake")
+
+    out = tmp_path / "dist"
+    wheel = bw.build_wheel(binary, "windows", "amd64", "0.6.3", out)
+
+    with _zipfile.ZipFile(wheel) as zf:
+        names = zf.namelist()
+
+    assert "stqry/bin/stqry.exe" in names
+    assert "stqry/bin/stqry" not in names
+
+
+def test_build_wheel_metadata_tag(tmp_path):
+    binary = tmp_path / "stqry"
+    binary.write_bytes(b"fake")
+
+    out = tmp_path / "dist"
+    wheel = bw.build_wheel(binary, "linux", "arm64", "0.6.3", out)
+
+    with _zipfile.ZipFile(wheel) as zf:
+        wheel_meta = zf.read("stqry-0.6.3.dist-info/WHEEL").decode()
+
+    assert "Tag: py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64" in wheel_meta
+
+
+def test_build_wheel_entry_points(tmp_path):
+    binary = tmp_path / "stqry"
+    binary.write_bytes(b"fake")
+
+    out = tmp_path / "dist"
+    wheel = bw.build_wheel(binary, "darwin", "amd64", "0.6.3", out)
+
+    with _zipfile.ZipFile(wheel) as zf:
+        ep = zf.read("stqry-0.6.3.dist-info/entry_points.txt").decode()
+
+    assert "stqry = stqry._run:main" in ep

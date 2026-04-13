@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Build platform-specific wheels from GoReleaser release artifacts."""
 
+import shutil
+import tarfile
+import tempfile
+import zipfile
+from pathlib import Path
+
 PLATFORMS = [
     ("darwin", "arm64"),
     ("darwin", "amd64"),
@@ -31,3 +37,89 @@ def archive_name(go_os: str, go_arch: str) -> str:
 
 def binary_name(go_os: str) -> str:
     return "stqry.exe" if go_os == "windows" else "stqry"
+
+
+_RUN_PY = """\
+import os
+import subprocess
+import sys
+
+
+def main():
+    binary = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bin", "stqry")
+    if sys.platform == "win32":
+        binary += ".exe"
+    sys.exit(subprocess.call([binary] + sys.argv[1:]))
+"""
+
+
+def extract_binary(archive_path: Path, go_os: str, dest_dir: Path) -> Path:
+    name = binary_name(go_os)
+    dest = dest_dir / name
+    if go_os == "windows":
+        with zipfile.ZipFile(archive_path) as zf:
+            zf.extract(name, dest_dir)
+    else:
+        with tarfile.open(archive_path) as tf:
+            member = tf.getmember(name)
+            member.name = name
+            tf.extract(member, dest_dir)
+    if go_os != "windows":
+        dest.chmod(0o755)
+    return dest
+
+
+def build_wheel(
+    binary_path: Path,
+    go_os: str,
+    go_arch: str,
+    version: str,
+    output_dir: Path,
+) -> Path:
+    tag = platform_tag(go_os, go_arch)
+    wheel_name = f"stqry-{version}-py3-none-{tag}.whl"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    wheel_path = output_dir / wheel_name
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+
+        pkg = tmp / "stqry"
+        bin_dir = pkg / "bin"
+        bin_dir.mkdir(parents=True)
+
+        dest_binary = bin_dir / binary_name(go_os)
+        shutil.copy2(binary_path, dest_binary)
+        if go_os != "windows":
+            dest_binary.chmod(0o755)
+
+        (pkg / "__init__.py").write_text(f'__version__ = "{version}"\n')
+        (pkg / "_run.py").write_text(_RUN_PY)
+
+        dist_info = tmp / f"stqry-{version}.dist-info"
+        dist_info.mkdir()
+        (dist_info / "METADATA").write_text(
+            f"Metadata-Version: 2.1\n"
+            f"Name: stqry\n"
+            f"Version: {version}\n"
+            f"Summary: STQRY CLI - manage collections, screens, media, and content\n"
+            f"Home-page: https://github.com/mytours/stqry-cli\n"
+            f"License: MIT\n"
+            f"Requires-Python: >=3.8\n"
+        )
+        (dist_info / "WHEEL").write_text(
+            f"Wheel-Version: 1.0\n"
+            f"Generator: build_wheels.py\n"
+            f"Root-Is-Purelib: false\n"
+            f"Tag: py3-none-{tag}\n"
+        )
+        (dist_info / "entry_points.txt").write_text(
+            "[console_scripts]\nstqry = stqry._run:main\n"
+        )
+
+        with zipfile.ZipFile(wheel_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for f in tmp.rglob("*"):
+                if f.is_file():
+                    zf.write(f, f.relative_to(tmp))
+
+    return wheel_path
