@@ -1,6 +1,13 @@
 package cli
 
 import (
+	"fmt"
+	"os"
+	"strconv"
+
+	"github.com/mytours/stqry-cli/internal/api"
+	"github.com/mytours/stqry-cli/internal/completion"
+	"github.com/mytours/stqry-cli/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +22,7 @@ func newCompletionCmd() *cobra.Command {
 	cmd.AddCommand(newCompletionZshCmd())
 	cmd.AddCommand(newCompletionFishCmd())
 	cmd.AddCommand(newCompletionPowerShellCmd())
+	cmd.AddCommand(newCompletionRefreshCmd())
 
 	return cmd
 }
@@ -84,4 +92,117 @@ To load completions for every new session, add the above line to your PowerShell
 			return cmd.Root().GenPowerShellCompletionWithDesc(cmd.OutOrStdout())
 		},
 	}
+}
+
+func newCompletionRefreshCmd() *cobra.Command {
+	var siteName string
+
+	cmd := &cobra.Command{
+		Use:   "refresh",
+		Short: "Refresh the local completion cache",
+		Long:  "Fetch all resource names from the API and update the local completion cache.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := siteName
+			if name == "" {
+				name = flagSite
+			}
+
+			cfg, err := config.LoadGlobalConfig(config.DefaultGlobalConfigPath())
+			if err != nil {
+				return fmt.Errorf("loading config: %w", err)
+			}
+
+			cwd, _ := os.Getwd()
+			dirCfg, _ := config.FindDirectoryConfig(cwd)
+
+			if name == "" && dirCfg != nil {
+				name = dirCfg.Site
+			}
+
+			if name == "" {
+				return fmt.Errorf("no site specified; use --site or run from a directory with stqry.yaml")
+			}
+
+			site, err := config.ResolveSite(cfg, name, dirCfg)
+			if err != nil {
+				return err
+			}
+
+			client := api.NewClient(site.APIURL, site.Token)
+
+			resources := []struct {
+				key   string
+				fetch func() ([]completion.CacheEntry, error)
+			}{
+				{"collections", func() ([]completion.CacheEntry, error) {
+					return fetchAllEntries(func(page int) ([]map[string]interface{}, *api.PaginationMeta, error) {
+						return api.ListCollections(client, map[string]string{"page": strconv.Itoa(page), "per_page": "100"})
+					})
+				}},
+				{"screens", func() ([]completion.CacheEntry, error) {
+					return fetchAllEntries(func(page int) ([]map[string]interface{}, *api.PaginationMeta, error) {
+						return api.ListScreens(client, map[string]string{"page": strconv.Itoa(page), "per_page": "100"})
+					})
+				}},
+				{"media", func() ([]completion.CacheEntry, error) {
+					return fetchAllEntries(func(page int) ([]map[string]interface{}, *api.PaginationMeta, error) {
+						return api.ListMediaItems(client, map[string]string{"page": strconv.Itoa(page), "per_page": "100"})
+					})
+				}},
+				{"projects", func() ([]completion.CacheEntry, error) {
+					return fetchAllEntries(func(page int) ([]map[string]interface{}, *api.PaginationMeta, error) {
+						return api.ListProjects(client, map[string]string{"page": strconv.Itoa(page), "per_page": "100"})
+					})
+				}},
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "Refreshed completions for site %q:\n", name)
+			for _, r := range resources {
+				entries, err := r.fetch()
+				if err != nil {
+					fmt.Fprintf(cmd.OutOrStdout(), "  %-15s error: %v\n", r.key, err)
+					continue
+				}
+				if err := completion.Save(name, r.key, entries); err != nil {
+					fmt.Fprintf(cmd.OutOrStdout(), "  %-15s save error: %v\n", r.key, err)
+					continue
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "  %-15s %d items\n", r.key, len(entries))
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&siteName, "site", "", "Site to refresh (defaults to active site)")
+	return cmd
+}
+
+// fetchAllEntries pages through a list endpoint collecting all IDs and names.
+func fetchAllEntries(listFn func(page int) ([]map[string]interface{}, *api.PaginationMeta, error)) ([]completion.CacheEntry, error) {
+	var entries []completion.CacheEntry
+	for page := 1; ; page++ {
+		items, meta, err := listFn(page)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range items {
+			e := completion.CacheEntry{}
+			switch v := item["id"].(type) {
+			case float64:
+				e.ID = strconv.Itoa(int(v))
+			case string:
+				e.ID = v
+			}
+			if name, ok := item["name"].(string); ok {
+				e.Name = name
+			}
+			if e.ID != "" {
+				entries = append(entries, e)
+			}
+		}
+		if meta == nil || page >= meta.Pages {
+			break
+		}
+	}
+	return entries, nil
 }

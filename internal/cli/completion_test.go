@@ -2,6 +2,9 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -195,5 +198,60 @@ func TestCompleteProjectIDs_HitsCache(t *testing.T) {
 	results, _ := getCmd.ValidArgsFunction(getCmd, []string{}, "")
 	if len(results) != 1 || results[0] != "1\tmain-project" {
 		t.Errorf("unexpected results: %v", results)
+	}
+}
+
+func TestCompletionRefreshCmd(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/public/collections":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"collections": []interface{}{
+					map[string]interface{}{"id": float64(1), "name": "alpha"},
+				},
+				"meta": map[string]interface{}{"page": 1, "pages": 1, "per_page": 30, "count": 1},
+			})
+		case "/api/public/screens":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"screens": []interface{}{
+					map[string]interface{}{"id": float64(2), "name": "welcome"},
+				},
+				"meta": map[string]interface{}{"page": 1, "pages": 1, "per_page": 30, "count": 1},
+			})
+		case "/api/public/media_items":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"media_items": []interface{}{
+					map[string]interface{}{"id": float64(3), "name": "banner"},
+				},
+				"meta": map[string]interface{}{"page": 1, "pages": 1, "per_page": 30, "count": 1},
+			})
+		case "/api/public/projects":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"projects": []interface{}{
+					map[string]interface{}{"id": float64(4), "name": "main"},
+				},
+				"meta": map[string]interface{}{"page": 1, "pages": 1, "per_page": 30, "count": 1},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "completion", "refresh"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	items, stale, err := completion.Load("testsite", "collections")
+	if err != nil || stale || len(items) != 1 || items[0].ID != "1" {
+		t.Errorf("collections cache wrong: items=%v stale=%v err=%v", items, stale, err)
+	}
+	items, stale, err = completion.Load("testsite", "screens")
+	if err != nil || stale || len(items) != 1 || items[0].Name != "welcome" {
+		t.Errorf("screens cache wrong: items=%v stale=%v err=%v", items, stale, err)
 	}
 }
