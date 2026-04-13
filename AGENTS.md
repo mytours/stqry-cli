@@ -4,6 +4,15 @@ This file helps AI agents use the STQRY CLI to read and manage STQRY content.
 It covers the two integration paths, how to get connected, and where to find
 detailed command references and workflow recipes.
 
+## Setup in Claude Cowork
+
+If `stqry` is not on PATH, install it via pip:
+
+    pip install stqry
+
+Verify with `stqry --version` before proceeding. Note: MCP server setup is not
+available in Claude Cowork — use Path 1 (CLI subprocess) below instead.
+
 ## Integration Paths
 
 ### Path 1 — CLI subprocess
