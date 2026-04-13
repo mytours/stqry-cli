@@ -57,13 +57,53 @@ stqry media create --file=./photo.jpg --type=image --name=photo.jpg
 
 ## AI Agent Integration
 
-### Skill Files (Claude Code)
+### Skill Files
 
-Install STQRY workflow skills into Claude Code:
+STQRY ships two skill files (`stqry-reference` and `stqry-workflows`) that give Claude context about CLI commands and common workflows.
+
+**Claude Code** — install into the commands directory:
 
 ```bash
-stqry setup claude          # current project
-stqry setup claude --global # all projects
+stqry setup claude          # current project (.claude/commands/)
+stqry setup claude --global # all projects (~/.claude/commands/)
+```
+
+**Claude Desktop** — install into the Claude Desktop skills directory:
+
+```bash
+stqry setup claude --desktop
+```
+
+Skills are installed to the OS-appropriate location:
+- macOS: `~/Library/Application Support/Claude/skills/`
+- Windows: `%APPDATA%\Claude\skills\`
+- Linux: `~/.config/Claude/skills/`
+
+Restart Claude Desktop after installing to activate the new skills.
+
+#### Keeping skills up to date
+
+Installed skills embed a version hash. When you upgrade the CLI, re-run the install command to update them — it always overwrites:
+
+```bash
+stqry setup claude --global   # update Claude Code skills
+stqry setup claude --desktop  # update Claude Desktop skills
+```
+
+`stqry doctor` checks whether your installed skills match the current CLI version and warns if they are stale:
+
+```
+Skills
+  ✓ stqry-reference — Claude Code (global) (up to date)
+  ⚠ stqry-reference — Claude Desktop (outdated — run stqry setup claude --desktop)
+```
+
+To inspect or manually distribute skill content:
+
+```bash
+stqry skill dump                    # list available skills
+stqry skill dump stqry-reference    # print skill content to stdout
+stqry skill dump stqry-reference > stqry-reference.md  # save to file
 ```
 
 ### MCP Server
