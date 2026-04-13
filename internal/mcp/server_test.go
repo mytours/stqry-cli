@@ -651,6 +651,96 @@ func TestListProjectsPagination(t *testing.T) {
 	}
 }
 
+func TestAddGlobalSiteHappyPath(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "add_global_site", `{"name":"newsite","api_url":"https://api.stqry.com","token":"tok123"}`)
+	if result == nil || result.IsError {
+		t.Fatalf("add_global_site failed: %s", toolText(result))
+	}
+
+	// Reload global config and verify the site was added.
+	globalCfg, err := config.LoadGlobalConfig(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	site, ok := globalCfg.Sites["newsite"]
+	if !ok {
+		t.Fatal("expected 'newsite' in global config")
+	}
+	if site.Token != "tok123" {
+		t.Errorf("expected token tok123, got %s", site.Token)
+	}
+}
+
+func TestAddGlobalSiteDuplicateName(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	os.Chdir(dir)
+	t.Setenv("STQRY_CONFIG_HOME", dir)
+
+	// Pre-populate global config with an existing site.
+	globalCfgPath := filepath.Join(dir, "config.yaml")
+	globalCfg := &config.GlobalConfig{
+		Sites: map[string]*config.Site{
+			"existing": {Token: "old-tok", APIURL: "https://api.stqry.com"},
+		},
+	}
+	if err := config.SaveGlobalConfig(globalCfg, globalCfgPath); err != nil {
+		t.Fatal(err)
+	}
+
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "add_global_site", `{"name":"existing","api_url":"https://api.stqry.com","token":"new-tok"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error for duplicate site name")
+	}
+	if !strings.Contains(toolText(result), "already exists") {
+		t.Errorf("expected 'already exists' in error, got: %s", toolText(result))
+	}
+
+	// Original token must be unchanged.
+	reloaded, _ := config.LoadGlobalConfig(globalCfgPath)
+	if reloaded.Sites["existing"].Token != "old-tok" {
+		t.Error("existing site token should not have been overwritten")
+	}
+}
+
+func TestAddGlobalSiteMissingParams(t *testing.T) {
+	s := stqrymcp.NewServer("")
+
+	cases := []struct {
+		name string
+		args string
+	}{
+		{"empty name", `{"name":"","api_url":"https://api.stqry.com","token":"tok"}`},
+		{"empty api_url", `{"name":"site","api_url":"","token":"tok"}`},
+		{"empty token", `{"name":"site","api_url":"https://api.stqry.com","token":""}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := callTool(s, "add_global_site", tc.args)
+			if result == nil || !result.IsError {
+				t.Fatalf("expected error for %s", tc.name)
+			}
+		})
+	}
+}
+
+func TestAddGlobalSiteInvalidURL(t *testing.T) {
+	s := stqrymcp.NewServer("")
+	result := callTool(s, "add_global_site", `{"name":"site","api_url":"not-a-url","token":"tok"}`)
+	if result == nil || !result.IsError {
+		t.Fatal("expected error for invalid URL")
+	}
+}
+
 func TestCreateMediaInvalidType(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "file.mp4")

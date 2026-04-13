@@ -150,6 +150,56 @@ func registerConfigTools(s *server.MCPServer, flagSite string, sess *Session) {
 	)
 
 	s.AddTool(
+		mcpgo.NewTool("add_global_site",
+			mcpgo.WithDescription("Add a named site to the global STQRY config (~/.config/stqry/config.yaml). "+
+				"Use this to save credentials permanently so they can be referenced by name across projects. "+
+				"Returns an error if a site with that name already exists."),
+			mcpgo.WithString("name",
+				mcpgo.Required(),
+				mcpgo.Description("Name for this site (e.g. 'my-museum')"),
+			),
+			mcpgo.WithString("api_url",
+				mcpgo.Required(),
+				mcpgo.Description("The STQRY API URL, e.g. https://api.stqry.com"),
+			),
+			mcpgo.WithString("token",
+				mcpgo.Required(),
+				mcpgo.Description("The STQRY API token"),
+			),
+		),
+		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+			name := strings.TrimSpace(req.GetString("name", ""))
+			apiURL := strings.TrimSpace(req.GetString("api_url", ""))
+			token := strings.TrimSpace(req.GetString("token", ""))
+			if name == "" || apiURL == "" || token == "" {
+				return mcpgo.NewToolResultError("name, api_url, and token are required"), nil
+			}
+			parsed, err := url.Parse(apiURL)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+				return mcpgo.NewToolResultError("api_url must be a valid http or https URL"), nil
+			}
+			globalCfg, err := config.LoadGlobalConfig(config.DefaultGlobalConfigPath())
+			if err != nil {
+				return mcpgo.NewToolResultError(fmt.Sprintf("loading global config: %v", err)), nil
+			}
+			if _, exists := globalCfg.Sites[name]; exists {
+				return mcpgo.NewToolResultError(fmt.Sprintf(
+					"site %q already exists. Choose a different name or update it with `stqry config add-site`",
+					name,
+				)), nil
+			}
+			globalCfg.Sites[name] = &config.Site{Token: token, APIURL: apiURL}
+			if err := config.SaveGlobalConfig(globalCfg, config.DefaultGlobalConfigPath()); err != nil {
+				return mcpgo.NewToolResultError(fmt.Sprintf("saving global config: %v", err)), nil
+			}
+			return jsonResult(map[string]interface{}{
+				"ok":      true,
+				"message": fmt.Sprintf("site %q added to global config (~/.config/stqry/config.yaml)", name),
+			})
+		},
+	)
+
+	s.AddTool(
 		mcpgo.NewTool("select_site",
 			mcpgo.WithDescription("Switch to a named site from global config (~/.config/stqry/config.yaml). Use this when the user says which site they want to work on."),
 			mcpgo.WithString("site_name",
