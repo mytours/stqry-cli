@@ -2,6 +2,7 @@
 bin/
 python/dist/
 python/.venv/
+python/*.egg-info/
 **/__pycache__/
 **/*.pyc
 
