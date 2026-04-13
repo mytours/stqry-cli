@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/mytours/stqry-cli/internal/config"
+	"github.com/mytours/stqry-cli/internal/skills"
 )
 
 func TestCheckGlobalConfig(t *testing.T) {
@@ -403,5 +404,69 @@ func TestDoctorCmd_APISkipped_WhenNoConfig(t *testing.T) {
 	}
 	if !contains(out, "-") {
 		t.Errorf("expected skip symbol for API checks, got:\n%s", out)
+	}
+}
+
+func TestCheckOneInstalledSkill_PassMessageIsJustUpToDate(t *testing.T) {
+	dir := t.TempDir()
+	if err := skills.InstallAll(dir, skills.LayoutCode, "v1.0.0"); err != nil {
+		t.Fatalf("InstallAll: %v", err)
+	}
+
+	skillNames, err := skills.EmbeddedSkillNames()
+	if err != nil || len(skillNames) == 0 {
+		t.Fatalf("EmbeddedSkillNames: %v", err)
+	}
+
+	r := checkOneInstalledSkill(dir, "test", cliLayoutCode, skillNames[0])
+	if r.status != statusPass {
+		t.Fatalf("expected pass, got %s: %s", r.status, r.message)
+	}
+	if r.message != "up to date" {
+		t.Errorf("pass message should be 'up to date', got %q (skill name must not be repeated)", r.message)
+	}
+}
+
+func TestDoctorShowsSkillsGroup(t *testing.T) {
+	// Install a skill with a bad hash so the Skills group appears with a warn.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	setupTestHome(t, srv.URL)
+
+	// Write a stale skill into the global Claude commands dir (under the HOME
+	// that setupTestHome just configured via t.Setenv).
+	home, _ := os.UserHomeDir()
+	commandsDir := filepath.Join(home, ".claude", "commands")
+	if err := os.MkdirAll(commandsDir, 0755); err != nil {
+		t.Fatalf("creating commands dir: %v", err)
+	}
+	staleContent := "---\nskill_version: v0.1.0\nskill_hash: 000000000000\ngenerated_by: stqry-cli\n---\n# stale\n"
+	if err := os.WriteFile(filepath.Join(commandsDir, "stqry-reference.md"), []byte(staleContent), 0644); err != nil {
+		t.Fatalf("writing stale skill: %v", err)
+	}
+
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"doctor"})
+	cmd.Execute() // ignore exit code — doctor exits non-zero on warn
+
+	w.Close()
+	os.Stdout = origStdout
+
+	outBytes := make([]byte, 16384)
+	n, _ := r.Read(outBytes)
+	r.Close()
+	out := string(outBytes[:n])
+
+	// Check for the "Skills" group header — printDoctorResults writes group names
+	// as bare lines ("Skills\n"), so we look for that exact pattern.
+	if !strings.Contains(out, "\nSkills\n") {
+		t.Errorf("expected 'Skills' group header in doctor output, got:\n%s", out)
 	}
 }
