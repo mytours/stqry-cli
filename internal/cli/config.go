@@ -48,6 +48,7 @@ func newConfigCmd() *cobra.Command {
 	cmd.AddCommand(newConfigListSitesCmd())
 	cmd.AddCommand(newConfigInitCmd())
 	cmd.AddCommand(newConfigShowCmd())
+	cmd.AddCommand(newConfigValidateCmd())
 
 	return cmd
 }
