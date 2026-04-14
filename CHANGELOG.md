@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-04-15
+
+### Added
+- CI workflow now uploads `stqry-skill.zip` to Bunny CDN on every tagged release, providing a stable download URL
+
 ## [0.8.0] - 2026-04-14
 
 ### Added
