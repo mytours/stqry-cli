@@ -85,59 +85,56 @@ Repeat for additional content blocks.
 
 Upload the same asset in multiple languages, then attach each to the appropriate section.
 
-### Step 1 — Upload the default-language file
+### Step 1 — Create the default-language media item
+
+Use `stqry media create` (not `stqry media upload`) so the file is wrapped in a
+media item and shows up in STQRY Builder.
 
 ```bash
-stqry media upload ./audio/stop1_en.mp3 \
-  --title "Stop 1 Audio" \
+stqry media create \
+  --type audio \
+  --file ./audio/stop1_en.mp3 \
+  --name "Stop 1 Audio" \
   --lang en \
   --json
 ```
 
-Capture: `id` — this is your `<media-id-en>`.
+Capture: `id` — this is your `<media-id>`.
 
-### Step 2 — Upload translated files
+### Step 2 — Attach translated files to the same media item
+
+Use `stqry media upload --media-id` to add language variants to the existing
+media item. Do **not** call `stqry media create` again — that would create a
+separate media item for each language.
 
 ```bash
 stqry media upload ./audio/stop1_fr.mp3 \
-  --title "Stop 1 Audio" \
+  --media-id <media-id> \
   --lang fr \
   --json
 
 stqry media upload ./audio/stop1_de.mp3 \
-  --title "Stop 1 Audio" \
+  --media-id <media-id> \
   --lang de \
   --json
 ```
 
-Capture each `id`.
+### Step 3 — Attach the media item to a section
 
-### Step 3 — Attach to a section by language
+The media item already holds all language variants, so you only need to attach
+it to the section once:
 
 ```bash
 stqry screens sections media add \
   --screen-id <screen-id> \
   --section-id <section-id> \
-  --media-item-id <media-id-en> \
-  --lang en
-
-stqry screens sections media add \
-  --screen-id <screen-id> \
-  --section-id <section-id> \
-  --media-item-id <media-id-fr> \
-  --lang fr
-
-stqry screens sections media add \
-  --screen-id <screen-id> \
-  --section-id <section-id> \
-  --media-item-id <media-id-de> \
-  --lang de
+  --media-item-id <media-id>
 ```
 
 ### Tips
 
 - Use the built-in `--jq` flag to extract fields directly — no need to pipe to external tools.
-- Example: `stqry media upload ./file.mp3 --jq '.id'`
+- Example: `stqry media create --type audio --file ./file.mp3 --lang en --jq '.id'`
 
 ---
 
