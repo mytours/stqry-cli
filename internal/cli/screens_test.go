@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -154,10 +155,9 @@ func TestScreensListCmd(t *testing.T) {
 	w.Close()
 	os.Stdout = origStdout
 
-	outBytes := make([]byte, 4096)
-	n, _ := r.Read(outBytes)
+	outBytes, _ := io.ReadAll(r)
 	r.Close()
-	out := string(outBytes[:n])
+	out := string(outBytes)
 
 	if execErr != nil {
 		t.Fatalf("Execute: %v", execErr)
@@ -197,10 +197,9 @@ func TestScreensGetCmd(t *testing.T) {
 	w.Close()
 	os.Stdout = origStdout
 
-	outBytes := make([]byte, 4096)
-	n, _ := r.Read(outBytes)
+	outBytes, _ := io.ReadAll(r)
 	r.Close()
-	out := string(outBytes[:n])
+	out := string(outBytes)
 
 	if execErr != nil {
 		t.Fatalf("Execute: %v", execErr)
@@ -232,7 +231,6 @@ func TestScreensUpdateCmd(t *testing.T) {
 
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--site=testsite", "screens", "update", "42", "--name=new-name"})
-	cmd.SetOut(os.Stderr)
 	cmd.SetErr(os.Stderr)
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -250,8 +248,9 @@ func TestScreensDeleteCmd(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "DELETE" || r.URL.Path != "/api/public/screens/42" {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		} else {
+			deleted = true
 		}
-		deleted = true
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()
@@ -260,7 +259,6 @@ func TestScreensDeleteCmd(t *testing.T) {
 
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--site=testsite", "screens", "delete", "42"})
-	cmd.SetOut(os.Stderr)
 	cmd.SetErr(os.Stderr)
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
