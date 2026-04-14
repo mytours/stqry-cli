@@ -31,6 +31,8 @@ const skillMDContent = "---\n" +
 	"Then use REFERENCE.md for command reference and WORKFLOWS.md for step-by-step recipes.\n"
 
 // setupMDContent is the full installation and configuration guide for SETUP.md.
+// NOTE: The "Setup & Installation" section in stqry-reference.md mirrors this content.
+// Keep both in sync when updating installation or configuration instructions.
 const setupMDContent = "# STQRY Setup Guide\n\n" +
 	"## Installation\n\n" +
 	"### Claude Cowork\n\n" +

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `stqry skill export` command — packages skills as a Claude Desktop zip file (`stqry-skill.zip`)
+- CI workflow uploads `stqry-skill.zip` as a GitHub release asset on every tagged release
+
+### Changed
+- `stqry setup claude --desktop` is deprecated; users are directed to `stqry skill export` instead
+
 ## [0.7.0] - 2026-04-14
 
 ### Added

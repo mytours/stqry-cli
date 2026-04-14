@@ -103,7 +103,7 @@ func newSetupClaudeCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&global, "global", false, "Install to ~/.claude/commands/ instead of ./.claude/commands/")
-	cmd.Flags().BoolVar(&desktop, "desktop", false, "Export skill files for manual install via Claude Desktop Settings → Skills")
+	cmd.Flags().BoolVar(&desktop, "desktop", false, "[Deprecated] Export flat .md skill files; use 'stqry skill export' for Claude Desktop")
 	cmd.Flags().StringVar(&dir, "dir", "", "Export directory for --desktop (default: ~/Downloads)")
 	cmd.MarkFlagsMutuallyExclusive("global", "desktop")
 	return cmd
