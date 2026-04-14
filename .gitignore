@@ -1,5 +1,6 @@
 # Build output
 bin/
+coverage.out
 python/dist/
 python/.venv/
 python/*.egg-info/

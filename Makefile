@@ -33,3 +33,4 @@ test-coverage:
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -f coverage.out
