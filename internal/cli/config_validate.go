@@ -37,6 +37,10 @@ func newConfigValidateCmd() *cobra.Command {
 }
 
 // runConfigValidate executes the validation checks and returns true if any check failed.
+// Checks are intentionally chained: each step depends on the previous one succeeding
+// (e.g. you cannot check whether a named site resolves until the global config parses,
+// and you cannot check the token until a site is resolved). On failure we print results
+// accumulated so far and return early rather than proceeding with an invalid config.
 func runConfigValidate(targetSite string, httpClient *http.Client) bool {
 	var results []checkResult
 

@@ -49,6 +49,9 @@ func TestConfigShowCmd(t *testing.T) {
 		if !contains(out, "abc12345") {
 			t.Errorf("expected output to contain masked token prefix, got:\n%s", out)
 		}
+		if !contains(out, "(none)") {
+			t.Errorf("expected output to contain '(none)' for missing directory config, got:\n%s", out)
+		}
 	})
 
 	t.Run("shows directory config source when stqry.yaml present", func(t *testing.T) {
@@ -128,6 +131,117 @@ func TestConfigShowCmd(t *testing.T) {
 		}
 		if _, ok := envelope["data"]; !ok {
 			t.Errorf("expected JSON envelope with 'data' key, got: %s", out)
+		}
+	})
+
+	t.Run("shows parse error when stqry.yaml is invalid", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		t.Setenv("HOME", tmpDir)
+		cfgDir := filepath.Join(tmpDir, ".config", "stqry")
+		os.MkdirAll(cfgDir, 0755)
+		os.WriteFile(filepath.Join(cfgDir, "config.yaml"), []byte(`sites:
+  mysite:
+    token: abc12345token
+    api_url: https://api-us.stqry.com
+`), 0644)
+
+		workDir := t.TempDir()
+		os.WriteFile(filepath.Join(workDir, "stqry.yaml"), []byte(":\ninvalid: yaml: content:\n"), 0644)
+		origWD, _ := os.Getwd()
+		os.Chdir(workDir)
+		defer os.Chdir(origWD)
+
+		printer = &output.Printer{}
+		r, w, _ := os.Pipe()
+		origStdout := os.Stdout
+		os.Stdout = w
+
+		cmd := newRootCmd()
+		cmd.SetArgs([]string{"config", "show"})
+		execErr := cmd.Execute()
+
+		w.Close()
+		os.Stdout = origStdout
+		buf := make([]byte, 8192)
+		n, _ := r.Read(buf)
+		r.Close()
+		out := string(buf[:n])
+
+		if execErr != nil {
+			t.Fatalf("Execute: %v", execErr)
+		}
+		if !contains(out, "parse error") {
+			t.Errorf("expected output to contain 'parse error', got:\n%s", out)
+		}
+	})
+
+	t.Run("shows not configured when no site is active", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		t.Setenv("HOME", tmpDir)
+		cfgDir := filepath.Join(tmpDir, ".config", "stqry")
+		os.MkdirAll(cfgDir, 0755)
+		os.WriteFile(filepath.Join(cfgDir, "config.yaml"), []byte("sites: {}\n"), 0644)
+
+		printer = &output.Printer{}
+		r, w, _ := os.Pipe()
+		origStdout := os.Stdout
+		os.Stdout = w
+
+		cmd := newRootCmd()
+		cmd.SetArgs([]string{"config", "show"})
+		execErr := cmd.Execute()
+
+		w.Close()
+		os.Stdout = origStdout
+		buf := make([]byte, 8192)
+		n, _ := r.Read(buf)
+		r.Close()
+		out := string(buf[:n])
+
+		if execErr != nil {
+			t.Fatalf("Execute: %v", execErr)
+		}
+		if !contains(out, "(not configured)") {
+			t.Errorf("expected '(not configured)', got:\n%s", out)
+		}
+	})
+
+	t.Run("json mode outputs null active_site when no site configured", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		t.Setenv("HOME", tmpDir)
+		cfgDir := filepath.Join(tmpDir, ".config", "stqry")
+		os.MkdirAll(cfgDir, 0755)
+		os.WriteFile(filepath.Join(cfgDir, "config.yaml"), []byte("sites: {}\n"), 0644)
+
+		printer = &output.Printer{JSON: true}
+		r, w, _ := os.Pipe()
+		origStdout := os.Stdout
+		os.Stdout = w
+
+		cmd := newRootCmd()
+		cmd.SetArgs([]string{"--json", "config", "show"})
+		execErr := cmd.Execute()
+
+		w.Close()
+		os.Stdout = origStdout
+		buf := make([]byte, 8192)
+		n, _ := r.Read(buf)
+		r.Close()
+		out := string(buf[:n])
+
+		if execErr != nil {
+			t.Fatalf("Execute: %v", execErr)
+		}
+		var envelope map[string]interface{}
+		if err := json.Unmarshal(buf[:n], &envelope); err != nil {
+			t.Fatalf("expected valid JSON, got:\n%s\nerror: %v", out, err)
+		}
+		data, ok := envelope["data"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected JSON envelope with 'data' map, got: %s", out)
+		}
+		if activeSite, exists := data["active_site"]; exists && activeSite != nil {
+			t.Errorf("expected active_site to be null, got: %v", activeSite)
 		}
 	})
 }
