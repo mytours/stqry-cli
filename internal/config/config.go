@@ -60,7 +60,10 @@ func SaveGlobalConfig(cfg *GlobalConfig, path string) error {
 	return os.WriteFile(path, data, 0600)
 }
 
-func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
+// FindDirectoryConfigWithPath walks parent directories looking for stqry.yaml
+// or stqry.yml. It returns the parsed config, the path of the file that was
+// found (empty string if none), and any parse error.
+func FindDirectoryConfigWithPath(startDir string) (*DirectoryConfig, string, error) {
 	dir := startDir
 	for {
 		for _, name := range []string{"stqry.yaml", "stqry.yml"} {
@@ -69,17 +72,25 @@ func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
 			if err == nil {
 				var cfg DirectoryConfig
 				if err := yaml.Unmarshal(data, &cfg); err != nil {
-					return nil, fmt.Errorf("parsing %s: %w", candidate, err)
+					return nil, candidate, fmt.Errorf("parsing %s: %w", candidate, err)
 				}
-				return &cfg, nil
+				return &cfg, candidate, nil
 			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return &DirectoryConfig{}, nil
+			return &DirectoryConfig{}, "", nil
 		}
 		dir = parent
 	}
+}
+
+// FindDirectoryConfig walks parent directories looking for stqry.yaml or
+// stqry.yml and returns the parsed config. Use FindDirectoryConfigWithPath
+// when you also need the path of the file that was found.
+func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
+	cfg, _, err := FindDirectoryConfigWithPath(startDir)
+	return cfg, err
 }
 
 func SaveDirectoryConfig(dir string, cfg *DirectoryConfig) error {

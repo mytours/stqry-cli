@@ -183,6 +183,36 @@ func TestResolveSiteEnvVar(t *testing.T) {
 	}
 }
 
+func TestFindDirectoryConfigWithPath(t *testing.T) {
+	t.Run("finds stqry.yaml and returns path", func(t *testing.T) {
+		tmp := t.TempDir()
+		if err := os.WriteFile(filepath.Join(tmp, "stqry.yaml"), []byte("site: mysite\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		cfg, path, err := FindDirectoryConfigWithPath(tmp)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.Site != "mysite" {
+			t.Errorf("expected site %q, got %q", "mysite", cfg.Site)
+		}
+		if path != filepath.Join(tmp, "stqry.yaml") {
+			t.Errorf("expected path %q, got %q", filepath.Join(tmp, "stqry.yaml"), path)
+		}
+	})
+
+	t.Run("returns empty path when not found", func(t *testing.T) {
+		tmp := t.TempDir()
+		_, path, err := FindDirectoryConfigWithPath(tmp)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if path != "" {
+			t.Errorf("expected empty path, got %q", path)
+		}
+	})
+}
+
 func TestSaveGlobalConfig(t *testing.T) {
 	dir := t.TempDir()
 	globalPath := filepath.Join(dir, "config.yaml")
