@@ -2,7 +2,7 @@ BINARY_NAME=stqry
 BUILD_DIR=bin
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
-.PHONY: build test test-e2e build-recorder record lint clean
+.PHONY: build test test-e2e build-recorder record lint test-race test-coverage clean
 
 build:
 	go build -ldflags "-X github.com/mytours/stqry-cli/internal/buildinfo.Version=$(VERSION)" \
@@ -24,5 +24,13 @@ record: build build-recorder
 lint:
 	go vet ./...
 
+test-race:
+	go test -race ./...
+
+test-coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
+
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -f coverage.out
