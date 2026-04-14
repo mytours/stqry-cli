@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-14
+
+### Added
+- `stqry config show` — display resolved config with source labels (global path, directory config, active site with masked token)
+- `stqry config validate` — verify config file and perform a live API token check
+- `API-COVERAGE.md` — maps all 66 public API operations to their CLI commands (85% coverage)
+
+### Changed
+- `stqry media upload` now requires `--media-id`. Running without it previously produced an orphan upload invisible in STQRY Builder; the command now errors out and points users at `stqry media create`.
+
+### Fixed
+- Skills reference: direct Claude to use `stqry media create` (not `stqry media upload`) when creating new media items
+
 ## [0.8.0] - 2026-04-14
 
 ### Added
