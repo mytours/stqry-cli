@@ -177,6 +177,23 @@ func indexString(s, substr string) int {
 	return -1
 }
 
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	origStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("creating pipe: %v", err)
+	}
+	os.Stdout = w
+	fn()
+	w.Close()
+	os.Stdout = origStdout
+	outBytes := make([]byte, 4096)
+	n, _ := r.Read(outBytes)
+	r.Close()
+	return string(outBytes[:n])
+}
+
 func TestConfigInitCmd(t *testing.T) {
 	t.Run("named site writes stqry.yaml and AGENTS.md", func(t *testing.T) {
 		tmpHome := t.TempDir()
@@ -201,10 +218,14 @@ func TestConfigInitCmd(t *testing.T) {
 			t.Fatalf("writing config: %v", err)
 		}
 
-		cmd := newRootCmd()
-		cmd.SetArgs([]string{"config", "init", "--name=mysite"})
-		if err := cmd.Execute(); err != nil {
-			t.Fatalf("Execute: %v", err)
+		var execErr error
+		out := captureStdout(t, func() {
+			cmd := newRootCmd()
+			cmd.SetArgs([]string{"config", "init", "--name=mysite"})
+			execErr = cmd.Execute()
+		})
+		if execErr != nil {
+			t.Fatalf("Execute: %v", execErr)
 		}
 
 		// stqry.yaml must exist
@@ -219,6 +240,15 @@ func TestConfigInitCmd(t *testing.T) {
 		}
 		if !bytes.Equal(data, agentsmd.Content) {
 			t.Error("AGENTS.md content does not match agentsmd.Content")
+		}
+
+		// Success message must be a single combined line
+		want := `Initialised stqry.yaml for site "mysite" and wrote AGENTS.md.`
+		if !contains(out, want) {
+			t.Errorf("expected output to contain %q, got:\n%s", want, out)
+		}
+		if contains(out, "Copied AGENTS.md") {
+			t.Errorf("expected single combined message, but output still has separate 'Copied AGENTS.md' line:\n%s", out)
 		}
 	})
 
@@ -236,10 +266,14 @@ func TestConfigInitCmd(t *testing.T) {
 			t.Fatalf("chdir: %v", err)
 		}
 
-		cmd := newRootCmd()
-		cmd.SetArgs([]string{"config", "init", "--token=tok123", "--region=us"})
-		if err := cmd.Execute(); err != nil {
-			t.Fatalf("Execute: %v", err)
+		var execErr error
+		out := captureStdout(t, func() {
+			cmd := newRootCmd()
+			cmd.SetArgs([]string{"config", "init", "--token=tok123", "--region=us"})
+			execErr = cmd.Execute()
+		})
+		if execErr != nil {
+			t.Fatalf("Execute: %v", execErr)
 		}
 
 		data, err := os.ReadFile(filepath.Join(tmpCWD, "AGENTS.md"))
@@ -248,6 +282,15 @@ func TestConfigInitCmd(t *testing.T) {
 		}
 		if !bytes.Equal(data, agentsmd.Content) {
 			t.Error("AGENTS.md content does not match agentsmd.Content")
+		}
+
+		// Success message must be a single combined line
+		want := "Initialised stqry.yaml with inline credentials and wrote AGENTS.md."
+		if !contains(out, want) {
+			t.Errorf("expected output to contain %q, got:\n%s", want, out)
+		}
+		if contains(out, "Copied AGENTS.md") {
+			t.Errorf("expected single combined message, but output still has separate 'Copied AGENTS.md' line:\n%s", out)
 		}
 	})
 

@@ -216,6 +216,7 @@ func newConfigListSitesCmd() *cobra.Command {
 }
 
 func writeAgentsMD(dir string) error {
+	// 0644: AGENTS.md contains no secrets; world-readable is intentional.
 	return os.WriteFile(filepath.Join(dir, "AGENTS.md"), agentsmd.Content, 0644)
 }
 
@@ -251,8 +252,7 @@ func newConfigInitCmd() *cobra.Command {
 					return fmt.Errorf("writing AGENTS.md: %w", err)
 				}
 				if !flagQuiet && !flagJSON {
-					fmt.Printf("Initialised stqry.yaml with inline site credentials.\n")
-					fmt.Printf("Copied AGENTS.md.\n")
+					fmt.Printf("Initialised stqry.yaml with inline credentials and wrote AGENTS.md.\n")
 				}
 				return nil
 			}
@@ -283,8 +283,7 @@ func newConfigInitCmd() *cobra.Command {
 			}
 
 			if !flagQuiet && !flagJSON {
-				fmt.Printf("Initialised .stqry/config.yaml with site %q.\n", name)
-				fmt.Printf("Copied AGENTS.md.\n")
+				fmt.Printf("Initialised stqry.yaml for site %q and wrote AGENTS.md.\n", name)
 			}
 			return nil
 		},
