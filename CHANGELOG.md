@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-15
+
+### Added
+- `stqry config show` — prints the resolved site config with source tracking (flag / local file / global)
+- `stqry config validate` — checks the resolved config and performs a live token verification against the API
+- CI workflow now uploads `stqry-skill.zip` to Bunny CDN on every tagged release, providing a stable download URL at `stqry-download/stqry-cli/stqry-skill.zip`
+
 ## [0.8.0] - 2026-04-14
 
 ### Added
