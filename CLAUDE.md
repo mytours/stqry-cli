@@ -78,6 +78,7 @@ Entry point: `cmd/stqry/main.go` → `internal/cli.Execute()`
 2. Implement API methods in `internal/api/xxx.go` using `Client.Get/Post/Patch/Put/Delete`
 3. Add unit tests in `internal/cli/xxx_test.go` with `httptest.NewServer` and `setupTestHome()`
 4. If the command manages STQRY content (not a meta/tooling command like `setup` or `mcp`), add tool registration in `internal/mcp/tools_xxx.go` so AI agents can use it
+5. If the command maps to a public API endpoint in `docs/public_api.json`, update `API-COVERAGE.md`: add the CLI command to the endpoint row, change status to ✅, update the coverage count in the header, and remove the entry from Future Work if present
 
 ### Testing patterns
 
