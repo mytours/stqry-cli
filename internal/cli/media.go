@@ -267,15 +267,33 @@ func newMediaUploadCmd() *cobra.Command {
 	var mediaID string
 
 	cmd := &cobra.Command{
-		Use:   "upload <file>",
-		Short: "Upload a file (optionally attach to a media item)",
-		Example: `  # Upload a file and get the uploaded file ID
-  stqry media upload ./photo.jpg
+		Use:   "upload <file> --media-id <id>",
+		Short: "Attach a new file to an existing media item (use 'media create' to create a new one)",
+		Long: `Upload a file and attach it to an existing media item via --media-id.
 
-  # Upload a file and attach it to an existing media item
+Almost always use ` + "`stqry media create`" + ` instead. ` + "`stqry media upload`" + ` is
+only for attaching a new file (e.g. a language variant or replacement) to a
+media item that already exists.
+
+--media-id is required. Running without it is not supported because the
+resulting uploaded file would be orphaned — invisible in STQRY Builder and
+unlinkable from the CLI afterwards.`,
+		Example: `  # PREFERRED: create a new media item with a file
+  stqry media create --type image --file ./photo.jpg
+
+  # Attach a new file to an EXISTING media item (e.g. add a language variant)
   stqry media upload ./photo.jpg --media-id 55 --lang en`,
-		Args:  cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if mediaID == "" {
+				return fmt.Errorf("--media-id is required. To upload a file and create a new media item for it, use `stqry media create --type <type> --file <path>` instead.\n\nTo attach a file to an existing media item, pass --media-id <id> --lang <code>")
+			}
+
+			lang := flagLang
+			if lang == "" {
+				return fmt.Errorf("--lang (or --lang global flag) is required")
+			}
+
 			filePath := args[0]
 
 			uploadedFile, err := api.UploadFile(activeClient, filePath, "", func(written, total int64) {
@@ -292,36 +310,26 @@ func newMediaUploadCmd() *cobra.Command {
 				return err
 			}
 
-			// If --media-id set, PATCH the media item with the uploaded file.
-			if mediaID != "" {
-				lang := flagLang
-				if lang == "" {
-					return fmt.Errorf("--lang (or --lang global flag) is required when --media-id is set")
-				}
-
-				uploadedFileID := ""
-				if id, ok := uploadedFile["id"].(string); ok {
-					uploadedFileID = id
-				} else if id, ok := uploadedFile["id"].(float64); ok {
-					uploadedFileID = strconv.Itoa(int(id))
-				}
-
-				fields := map[string]interface{}{
-					"file_uploaded_file_id": map[string]interface{}{lang: uploadedFileID},
-				}
-				item, err := api.UpdateMediaItem(activeClient, mediaID, fields)
-				if err != nil {
-					printer.PrintError(err)
-					return err
-				}
-				return printer.PrintOne(item, nil)
+			uploadedFileID := ""
+			if id, ok := uploadedFile["id"].(string); ok {
+				uploadedFileID = id
+			} else if id, ok := uploadedFile["id"].(float64); ok {
+				uploadedFileID = strconv.Itoa(int(id))
 			}
 
-			return printer.PrintOne(uploadedFile, nil)
+			fields := map[string]interface{}{
+				"file_uploaded_file_id": map[string]interface{}{lang: uploadedFileID},
+			}
+			item, err := api.UpdateMediaItem(activeClient, mediaID, fields)
+			if err != nil {
+				printer.PrintError(err)
+				return err
+			}
+			return printer.PrintOne(item, nil)
 		},
 	}
 
-	cmd.Flags().StringVar(&mediaID, "media-id", "", "Attach uploaded file to this media item ID")
+	cmd.Flags().StringVar(&mediaID, "media-id", "", "Attach uploaded file to this media item ID (required)")
 
 	return cmd
 }
