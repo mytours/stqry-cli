@@ -96,3 +96,11 @@ jobs:
           files: ./stqry-skill.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload skill zip to Bunny CDN
+        run: |
+          curl -f -X PUT \
+            -H "AccessKey: ${{ secrets.BUNNY_STORAGE_API_KEY }}" \
+            -H "Content-Type: application/zip" \
+            --data-binary @stqry-skill.zip \
+            "https://la.storage.bunnycdn.com/stqry-download/stqry-cli/stqry-skill.zip"
