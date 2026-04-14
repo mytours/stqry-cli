@@ -227,7 +227,7 @@ func TestMediaDeleteCmd(t *testing.T) {
 	if !deleted {
 		t.Error("expected DELETE request to have been made, but it was not")
 	}
-	if !contains(out, "55") {
-		t.Errorf("expected output to contain %q, got:\n%s", "55", out)
+	if !contains(out, "deleted") {
+		t.Errorf("expected output to contain %q, got:\n%s", "deleted", out)
 	}
 }

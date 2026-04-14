@@ -264,9 +264,16 @@ func TestCodesCreateCmd(t *testing.T) {
 }
 
 // TestCodesUpdateNoFields asserts that `stqry codes update 10` with no flags
-// returns an error containing "no fields".
+// returns an error without hitting the API.
 func TestCodesUpdateNoFields(t *testing.T) {
-	setupTestHome(t, "http://localhost:0")
+	called := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
 
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--site=testsite", "codes", "update", "10"})
@@ -278,6 +285,9 @@ func TestCodesUpdateNoFields(t *testing.T) {
 	}
 	if !contains(err.Error(), "no fields") {
 		t.Errorf("expected error to contain \"no fields\", got %q", err.Error())
+	}
+	if called {
+		t.Error("API should not be called when no update fields are specified")
 	}
 }
 
@@ -334,22 +344,22 @@ func TestCodesDeleteCmd(t *testing.T) {
 	setupTestHome(t, server.URL)
 
 	origStdout := os.Stdout
-	rPipe, wPipe, err := os.Pipe()
+	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("creating pipe: %v", err)
 	}
-	os.Stdout = wPipe
+	os.Stdout = w
 
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--site=testsite", "codes", "delete", "10"})
 	cmd.SetErr(os.Stderr)
 	execErr := cmd.Execute()
 
-	wPipe.Close()
+	w.Close()
 	os.Stdout = origStdout
 
-	outBytes, _ := io.ReadAll(rPipe)
-	rPipe.Close()
+	outBytes, _ := io.ReadAll(r)
+	r.Close()
 	out := string(outBytes)
 
 	if execErr != nil {

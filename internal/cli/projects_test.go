@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+// TestProjectsListCmd asserts that `stqry projects list` sends a GET request
+// to /api/public/projects and prints project names.
 func TestProjectsListCmd(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" || r.URL.Path != "/api/public/projects" {
@@ -54,6 +56,8 @@ func TestProjectsListCmd(t *testing.T) {
 	}
 }
 
+// TestProjectsGetCmd asserts that `stqry projects get 1` sends a GET request
+// to /api/public/projects/1 and prints the project name.
 func TestProjectsGetCmd(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" || r.URL.Path != "/api/public/projects/1" {
