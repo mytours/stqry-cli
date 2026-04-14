@@ -193,7 +193,7 @@ STQRY CLI requires a site to be configured. Sites are resolved in this order:
 1. **Command flag** (highest priority):
 
    ```bash
-   stqry collection list --site mysite
+   stqry collections list --site mysite
    ```
 
 2. **Local folder config** — a `stqry.yaml` or `stqry.yml` file in the current directory (or any parent). Run `stqry config init` to create one:
