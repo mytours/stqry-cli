@@ -3,6 +3,9 @@ name: stqry-workflows
 description: STQRY CLI workflow recipes — guided multi-step tasks for common content management operations
 ---
 
+> **Before running these workflows**, ensure stqry is installed and a site is configured.
+> See the Setup & Installation section in the stqry-reference skill.
+
 # STQRY CLI Workflow Recipes
 
 These recipes show complete multi-step workflows for common STQRY content management operations. Each step shows the exact command to run and what to capture from the output.

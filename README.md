@@ -68,18 +68,24 @@ stqry setup claude          # current project (.claude/commands/)
 stqry setup claude --global # all projects (~/.claude/commands/)
 ```
 
-**Claude Desktop** — install into the Claude Desktop skills directory:
+**Claude Desktop** — export a skill zip and install via the UI:
 
 ```bash
-stqry setup claude --desktop
+stqry skill export          # writes ./stqry-skill.zip
 ```
 
-Skills are installed to the OS-appropriate location:
-- macOS: `~/Library/Application Support/Claude/skills/`
-- Windows: `%APPDATA%\Claude\skills\`
-- Linux: `~/.config/Claude/skills/`
+Then open Claude Desktop → Settings → Customise → Skills → Add Skill, select `stqry-skill.zip`, and restart.
 
-Restart Claude Desktop after installing to activate the new skills.
+Alternatively, download `stqry-skill.zip` directly from the [latest GitHub release](https://github.com/mytours/stqry-cli/releases) — no CLI install needed.
+
+**Claude Cowork** — install via pip and use as CLI subprocess:
+
+```bash
+pip install stqry
+stqry --version   # verify
+```
+
+MCP server setup is not required in Claude Cowork. See [AGENTS.md](AGENTS.md) for full agent integration guidance.
 
 #### Keeping skills up to date
 
@@ -87,10 +93,10 @@ Installed skills embed a version hash. When you upgrade the CLI, re-run the inst
 
 ```bash
 stqry setup claude --global   # update Claude Code skills
-stqry setup claude --desktop  # update Claude Desktop skills
+stqry skill export            # rebuild zip for Claude Desktop, then reinstall
 ```
 
-`stqry doctor` checks whether your installed skills match the current CLI version and warns if they are stale:
+`stqry doctor` checks whether your installed skills match the current CLI version and warns if they are stale.
 
 ```
 Skills
@@ -100,12 +106,10 @@ Skills
 
 Run `stqry doctor --verbose` to see the remediation command for each warning.
 
-To inspect or manually distribute skill content:
+To inspect or export skill content:
 
 ```bash
-stqry skill dump                    # list available skills
-stqry skill dump stqry-reference    # print skill content to stdout
-stqry skill dump stqry-reference > stqry-reference.md  # save to file
+stqry skill export --dir /tmp   # write zip to /tmp/stqry-skill.zip
 ```
 
 ### MCP Server

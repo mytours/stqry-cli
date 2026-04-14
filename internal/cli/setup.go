@@ -31,24 +31,22 @@ func newSetupClaudeCmd() *cobra.Command {
 		Short: "Install Claude Code skill files",
 		Long: "Install STQRY CLI skill files for AI-assisted workflows. " +
 			"Re-running always overwrites existing files — use it to update stale skills.\n\n" +
-			"For Claude Desktop, use --desktop to export skill files to ~/Downloads (or --dir <path>), " +
-			"then upload them via Claude Desktop Settings → Skills.",
+			"For Claude Desktop, use `stqry skill export` to produce a stqry-skill.zip, " +
+			"then install it via Claude Desktop Settings → Customise → Skills.",
 		Example: `  # Install into .claude/commands/ for this project (Claude Code)
   stqry setup claude
 
   # Install globally into ~/.claude/commands/ (Claude Code)
   stqry setup claude --global
 
-  # Export skills to ~/Downloads for manual install via Claude Desktop
-  stqry setup claude --desktop
-
-  # Export skills to a specific directory
-  stqry setup claude --desktop --dir ~/Desktop`,
+  # Export a skill zip for Claude Desktop
+  stqry skill export`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var targetDir string
 
 			switch {
 			case desktop:
+				fmt.Fprintln(cmd.ErrOrStderr(), "Warning: --desktop exports flat .md files, not a zip. Use `stqry skill export` instead for Claude Desktop.")
 				exportDir := dir
 				if exportDir == "" {
 					home, err := os.UserHomeDir()
@@ -105,7 +103,7 @@ func newSetupClaudeCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&global, "global", false, "Install to ~/.claude/commands/ instead of ./.claude/commands/")
-	cmd.Flags().BoolVar(&desktop, "desktop", false, "Export skill files for manual install via Claude Desktop Settings → Skills")
+	cmd.Flags().BoolVar(&desktop, "desktop", false, "[Deprecated] Export flat .md skill files; use 'stqry skill export' for Claude Desktop")
 	cmd.Flags().StringVar(&dir, "dir", "", "Export directory for --desktop (default: ~/Downloads)")
 	cmd.MarkFlagsMutuallyExclusive("global", "desktop")
 	return cmd
