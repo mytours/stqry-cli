@@ -213,6 +213,80 @@ func TestFindDirectoryConfigWithPath(t *testing.T) {
 	})
 }
 
+func TestResolveSiteWithSource(t *testing.T) {
+	global := &GlobalConfig{
+		Sites: map[string]*Site{
+			"prod": {Token: "tok-prod", APIURL: "https://api-us.stqry.com"},
+		},
+	}
+
+	t.Run("--site flag takes priority", func(t *testing.T) {
+		site, source, err := ResolveSiteWithSource(global, "prod", nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if source != "--site flag" {
+			t.Errorf("expected source %q, got %q", "--site flag", source)
+		}
+		if site.Token != "tok-prod" {
+			t.Errorf("expected token %q, got %q", "tok-prod", site.Token)
+		}
+	})
+
+	t.Run("STQRY_SITE env var", func(t *testing.T) {
+		t.Setenv("STQRY_SITE", "prod")
+		_, source, err := ResolveSiteWithSource(global, "", nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if source != "STQRY_SITE env var" {
+			t.Errorf("expected source %q, got %q", "STQRY_SITE env var", source)
+		}
+	})
+
+	t.Run("directory config inline credentials", func(t *testing.T) {
+		dirCfg := &DirectoryConfig{Token: "inline-tok", APIURL: "https://api-eu.stqry.com"}
+		site, source, err := ResolveSiteWithSource(global, "", dirCfg)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if source != "stqry.yaml (inline credentials)" {
+			t.Errorf("expected source %q, got %q", "stqry.yaml (inline credentials)", source)
+		}
+		if site.Token != "inline-tok" {
+			t.Errorf("expected token %q, got %q", "inline-tok", site.Token)
+		}
+	})
+
+	t.Run("directory config named site", func(t *testing.T) {
+		dirCfg := &DirectoryConfig{Site: "prod"}
+		site, source, err := ResolveSiteWithSource(global, "", dirCfg)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if source != "stqry.yaml → prod" {
+			t.Errorf("expected source %q, got %q", "stqry.yaml → prod", source)
+		}
+		if site.Token != "tok-prod" {
+			t.Errorf("expected token %q, got %q", "tok-prod", site.Token)
+		}
+	})
+
+	t.Run("no site configured returns error", func(t *testing.T) {
+		_, _, err := ResolveSiteWithSource(global, "", nil)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("unknown site name returns error", func(t *testing.T) {
+		_, _, err := ResolveSiteWithSource(global, "missing", nil)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+}
+
 func TestSaveGlobalConfig(t *testing.T) {
 	dir := t.TempDir()
 	globalPath := filepath.Join(dir, "config.yaml")
