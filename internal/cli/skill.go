@@ -2,7 +2,8 @@ package cli
 
 import (
 	"fmt"
-	"strings"
+	"os"
+	"path/filepath"
 
 	"github.com/mytours/stqry-cli/internal/buildinfo"
 	"github.com/mytours/stqry-cli/internal/skills"
@@ -12,61 +13,56 @@ import (
 func newSkillCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "skill",
-		Short: "Inspect embedded skill files",
+		Short: "Inspect and export embedded skill files",
 	}
-	cmd.AddCommand(newSkillDumpCmd())
+	cmd.AddCommand(newSkillExportCmd())
 	return cmd
 }
 
-func newSkillDumpCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "dump [skill-name]",
-		Short: "Print embedded skill content to stdout",
-		Long: "Print a skill's content (with frontmatter) to stdout. " +
-			"With no argument, lists available skill names. " +
-			"Useful for piping to a file for manual installation.",
-		Example: `  # List available skills
-  stqry skill dump
+func newSkillExportCmd() *cobra.Command {
+	var dir string
 
-  # Print a skill to stdout
-  stqry skill dump stqry-reference
+	cmd := &cobra.Command{
+		Use:   "export",
+		Short: "Export a Claude Desktop skill zip to the current directory",
+		Long: "Build and write a stqry-skill.zip containing SKILL.md, SETUP.md, REFERENCE.md, " +
+			"and WORKFLOWS.md. Install the zip via Claude Desktop Settings → Customise → Skills.",
+		Example: `  # Export to current directory (./stqry-skill.zip)
+  stqry skill export
 
-  # Pipe to a file for manual installation
-  stqry skill dump stqry-reference > stqry-reference.md`,
-		Args: cobra.MaximumNArgs(1),
+  # Export to a specific directory
+  stqry skill export --dir ~/Downloads`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			names, err := skills.EmbeddedSkillNames()
-			if err != nil {
-				return fmt.Errorf("reading embedded skills: %w", err)
-			}
-
-			if len(args) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "Available skills:")
-				for _, name := range names {
-					fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", strings.TrimSuffix(name, ".md"))
+			outDir := dir
+			if outDir == "" {
+				cwd, err := os.Getwd()
+				if err != nil {
+					return fmt.Errorf("getting working directory: %w", err)
 				}
-				return nil
+				outDir = cwd
 			}
 
-			target := args[0]
-			// Accept with or without .md suffix.
-			filename := target
-			if !strings.HasSuffix(filename, ".md") {
-				filename += ".md"
-			}
-
-			data, err := skills.SkillFiles.ReadFile(filename)
+			zipBytes, err := skills.BuildZip(buildinfo.Version)
 			if err != nil {
-				available := make([]string, len(names))
-				for i, n := range names {
-					available[i] = strings.TrimSuffix(n, ".md")
-				}
-				return fmt.Errorf("skill %q not found (available: %s)", target, strings.Join(available, ", "))
+				return fmt.Errorf("building skill zip: %w", err)
 			}
 
-			content := skills.BuildFrontmatter(buildinfo.Version, data)
-			cmd.OutOrStdout().Write(content) //nolint:errcheck
+			outPath := filepath.Join(outDir, "stqry-skill.zip")
+			if err := os.WriteFile(outPath, zipBytes, 0o644); err != nil {
+				return fmt.Errorf("writing %s: %w", outPath, err)
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "Exported skill to %s\n\n", outPath)
+			fmt.Fprintln(cmd.OutOrStdout(), "To install in Claude Desktop:")
+			fmt.Fprintln(cmd.OutOrStdout(), "  1. Open Claude Desktop")
+			fmt.Fprintln(cmd.OutOrStdout(), "  2. Go to Settings → Customise → Skills")
+			fmt.Fprintln(cmd.OutOrStdout(), `  3. Click "Add Skill" and select stqry-skill.zip`)
+			fmt.Fprintln(cmd.OutOrStdout(), "  4. Restart Claude Desktop to activate")
+			fmt.Fprintf(cmd.OutOrStdout(), "\nSkill version: %s\n", buildinfo.Version)
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVar(&dir, "dir", "", "Directory to write stqry-skill.zip (default: current directory)")
+	return cmd
 }

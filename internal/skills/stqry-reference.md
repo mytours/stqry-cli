@@ -3,6 +3,40 @@ name: stqry-reference
 description: STQRY CLI command reference — all commands, flags, and data model relationships
 ---
 
+## Setup & Installation
+
+### Claude Cowork
+
+If `stqry` is not on PATH, install it via pip:
+
+    pip install stqry
+
+Verify with `stqry --version` before proceeding.
+
+MCP server setup is not available in Claude Cowork — use CLI subprocess for all operations.
+
+### First-Run Configuration (all environments)
+
+Add a site to global config:
+
+    stqry config add-site --name mysite --token <token> --region us
+
+Available regions: `us`, `ca`, `eu`, `sg`, `au`
+
+Write a project config file to the current directory:
+
+    stqry config init --name mysite   # writes stqry.yaml
+
+Verify connectivity:
+
+    stqry doctor
+
+**Claude Cowork persistence:** Download the generated `stqry.yaml` file and either
+upload it at the start of future Cowork sessions, or add it to your Cowork working
+folder so it is picked up automatically. This avoids reconfiguring each session.
+
+---
+
 # STQRY CLI Command Reference
 
 ## Data Model Overview
@@ -43,10 +77,10 @@ Collections are composed via Collection Items (join records):
 There is **no global default site**. A site must be specified via:
 
 1. `--site <name>` flag (highest priority)
-2. `.stqry/config.yaml` in the current (or any parent) directory
+2. `stqry.yaml` in the current (or any parent) directory
 3. A named site entry in `~/.config/stqry/config.yaml`
 
-### Directory config (`.stqry/config.yaml`)
+### Directory config (`stqry.yaml`)
 
 ```yaml
 site: my-site-name
