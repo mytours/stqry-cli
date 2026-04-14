@@ -39,6 +39,10 @@ folder so it is picked up automatically. This avoids reconfiguring each session.
 
 # STQRY CLI Command Reference
 
+## Command Naming Rule
+
+**All resource subcommands are plural.** Use `screens`, `collections`, `media`, `projects`, `codes` — never the singular form. `stqry screen list`, `stqry collection list`, `stqry project get` do **not** exist and will error with `unknown command`. This holds for every verb (`list`, `get`, `create`, `update`, `delete`) and every resource. When in doubt, plural.
+
 ## Data Model Overview
 
 All content types are **top-level entities** — Screens, Collections, Media Items, Projects, and Codes exist independently and can be combined in different ways.
@@ -210,19 +214,33 @@ stqry screens sections hours    list|add|update|remove --screen-id <id> --sectio
 Manage and upload media items.
 
 ```
-stqry media list                         List media items
-stqry media get <id>                     Get a single media item
-stqry media upload <file>                Upload a new media file
-stqry media update <id>                  Update media metadata
-stqry media delete <id>                  Delete a media item
+stqry media list                                      List media items
+stqry media get <id>                                  Get a single media item
+stqry media create --type <type> --file <path>        Create a media item (uploads file if provided)
+stqry media upload <file> --media-id <id> --lang <l>  Attach a new file to an EXISTING media item (--media-id required)
+stqry media update <id>                               Update media metadata
+stqry media delete <id>                               Delete a media item
 ```
+
+**When the user asks to upload a file, use `stqry media create`** — not `stqry media upload`.
+
+`stqry media upload` requires `--media-id` and only exists to attach a new file to a media item that already exists (e.g. replacing a file or adding a language variant). It will refuse to run without `--media-id`. Running without it is not supported because the resulting uploaded file would be orphaned — invisible in STQRY Builder and unlinkable from the CLI afterwards.
+
+Flags for `stqry media create`:
+
+| Flag | Description |
+|------|-------------|
+| `--type` | Media item type (required). One of: `map`, `webpackage`, `animation`, `audio`, `image`, `video`, `webvideo`, `ar`, `data` |
+| `--file` | Path to the file to upload |
+| `--name` | Media item name |
+| `--lang` | Language code for the uploaded file (global flag) |
 
 Flags for `stqry media upload`:
 
 | Flag | Description |
 |------|-------------|
-| `--title` | Title for the media item |
-| `--lang` | Language of the media content |
+| `--media-id` | **Required.** Existing media item ID to attach the uploaded file to |
+| `--lang` | **Required.** Language of the uploaded file (global flag) |
 
 ---
 
