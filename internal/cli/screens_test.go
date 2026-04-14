@@ -118,3 +118,155 @@ func TestMediaCreateInvalidType(t *testing.T) {
 		t.Errorf("expected error to list valid types (image), got %q", err.Error())
 	}
 }
+
+// TestScreensListCmd asserts that `stqry screens list` prints the screen name
+// returned by the API.
+func TestScreensListCmd(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" || r.URL.Path != "/api/public/screens" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"screens": []interface{}{
+				map[string]interface{}{"id": "1", "name": "welcome", "type": "story"},
+			},
+			"meta": map[string]interface{}{
+				"page": 1, "pages": 1, "per_page": 30, "count": 1,
+			},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	origStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("creating pipe: %v", err)
+	}
+	os.Stdout = w
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "screens", "list"})
+	execErr := cmd.Execute()
+
+	w.Close()
+	os.Stdout = origStdout
+
+	outBytes := make([]byte, 4096)
+	n, _ := r.Read(outBytes)
+	r.Close()
+	out := string(outBytes[:n])
+
+	if execErr != nil {
+		t.Fatalf("Execute: %v", execErr)
+	}
+	if !contains(out, "welcome") {
+		t.Errorf("expected output to contain %q, got:\n%s", "welcome", out)
+	}
+}
+
+// TestScreensGetCmd asserts that `stqry screens get 42` prints the screen name
+// returned by the API.
+func TestScreensGetCmd(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" || r.URL.Path != "/api/public/screens/42" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"screen": map[string]interface{}{"id": "42", "name": "welcome", "type": "story"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	origStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("creating pipe: %v", err)
+	}
+	os.Stdout = w
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "screens", "get", "42"})
+	execErr := cmd.Execute()
+
+	w.Close()
+	os.Stdout = origStdout
+
+	outBytes := make([]byte, 4096)
+	n, _ := r.Read(outBytes)
+	r.Close()
+	out := string(outBytes[:n])
+
+	if execErr != nil {
+		t.Fatalf("Execute: %v", execErr)
+	}
+	if !contains(out, "welcome") {
+		t.Errorf("expected output to contain %q, got:\n%s", "welcome", out)
+	}
+}
+
+// TestScreensUpdateCmd asserts that `stqry screens update 42 --name=new-name`
+// sends the correct field in the PATCH request body.
+func TestScreensUpdateCmd(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" || r.URL.Path != "/api/public/screens/42" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"screen": map[string]interface{}{"id": "42", "name": "new-name", "type": "story"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "screens", "update", "42", "--name=new-name"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	if captured["name"] != "new-name" {
+		t.Errorf("expected name=%q in request body, got %v", "new-name", captured["name"])
+	}
+}
+
+// TestScreensDeleteCmd asserts that `stqry screens delete 42` sends a DELETE
+// request to the correct endpoint.
+func TestScreensDeleteCmd(t *testing.T) {
+	deleted := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" || r.URL.Path != "/api/public/screens/42" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		deleted = true
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "screens", "delete", "42"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	if !deleted {
+		t.Error("expected DELETE request to have been made, but it was not")
+	}
+}
