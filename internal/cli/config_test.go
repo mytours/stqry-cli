@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/mytours/stqry-cli/internal/agentsmd"
 	"github.com/mytours/stqry-cli/internal/config"
 )
 
@@ -173,4 +175,117 @@ func indexString(s, substr string) int {
 		}
 	}
 	return -1
+}
+
+func TestConfigInitCmd(t *testing.T) {
+	t.Run("named site writes stqry.yaml and AGENTS.md", func(t *testing.T) {
+		tmpHome := t.TempDir()
+		t.Setenv("HOME", tmpHome)
+
+		tmpCWD := t.TempDir()
+		origDir, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("getwd: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chdir(origDir) })
+		if err := os.Chdir(tmpCWD); err != nil {
+			t.Fatalf("chdir: %v", err)
+		}
+
+		cfgDir := filepath.Join(tmpHome, ".config", "stqry")
+		if err := os.MkdirAll(cfgDir, 0755); err != nil {
+			t.Fatalf("creating config dir: %v", err)
+		}
+		cfgYAML := "sites:\n  mysite:\n    token: tok123\n    api_url: https://api-us.stqry.com\n"
+		if err := os.WriteFile(filepath.Join(cfgDir, "config.yaml"), []byte(cfgYAML), 0644); err != nil {
+			t.Fatalf("writing config: %v", err)
+		}
+
+		cmd := newRootCmd()
+		cmd.SetArgs([]string{"config", "init", "--name=mysite"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("Execute: %v", err)
+		}
+
+		// stqry.yaml must exist
+		if _, err := os.Stat(filepath.Join(tmpCWD, "stqry.yaml")); os.IsNotExist(err) {
+			t.Fatal("stqry.yaml not written to CWD")
+		}
+
+		// AGENTS.md must exist and match embedded content
+		data, err := os.ReadFile(filepath.Join(tmpCWD, "AGENTS.md"))
+		if err != nil {
+			t.Fatalf("AGENTS.md not written to CWD: %v", err)
+		}
+		if !bytes.Equal(data, agentsmd.Content) {
+			t.Error("AGENTS.md content does not match agentsmd.Content")
+		}
+	})
+
+	t.Run("inline credentials writes stqry.yaml and AGENTS.md", func(t *testing.T) {
+		tmpHome := t.TempDir()
+		t.Setenv("HOME", tmpHome)
+
+		tmpCWD := t.TempDir()
+		origDir, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("getwd: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chdir(origDir) })
+		if err := os.Chdir(tmpCWD); err != nil {
+			t.Fatalf("chdir: %v", err)
+		}
+
+		cmd := newRootCmd()
+		cmd.SetArgs([]string{"config", "init", "--token=tok123", "--region=us"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("Execute: %v", err)
+		}
+
+		data, err := os.ReadFile(filepath.Join(tmpCWD, "AGENTS.md"))
+		if err != nil {
+			t.Fatalf("AGENTS.md not written: %v", err)
+		}
+		if !bytes.Equal(data, agentsmd.Content) {
+			t.Error("AGENTS.md content does not match agentsmd.Content")
+		}
+	})
+
+	t.Run("re-running overwrites existing AGENTS.md", func(t *testing.T) {
+		tmpHome := t.TempDir()
+		t.Setenv("HOME", tmpHome)
+
+		tmpCWD := t.TempDir()
+		origDir, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("getwd: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chdir(origDir) })
+		if err := os.Chdir(tmpCWD); err != nil {
+			t.Fatalf("chdir: %v", err)
+		}
+
+		// Write a sentinel value to AGENTS.md before init runs
+		sentinel := []byte("old content — should be overwritten")
+		if err := os.WriteFile(filepath.Join(tmpCWD, "AGENTS.md"), sentinel, 0644); err != nil {
+			t.Fatalf("writing sentinel: %v", err)
+		}
+
+		cmd := newRootCmd()
+		cmd.SetArgs([]string{"config", "init", "--token=tok123", "--region=us"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("Execute: %v", err)
+		}
+
+		data, err := os.ReadFile(filepath.Join(tmpCWD, "AGENTS.md"))
+		if err != nil {
+			t.Fatalf("AGENTS.md not found: %v", err)
+		}
+		if bytes.Equal(data, sentinel) {
+			t.Error("AGENTS.md was not overwritten — sentinel content still present")
+		}
+		if !bytes.Equal(data, agentsmd.Content) {
+			t.Error("AGENTS.md content does not match agentsmd.Content after overwrite")
+		}
+	})
 }
