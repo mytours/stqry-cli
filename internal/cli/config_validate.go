@@ -87,7 +87,18 @@ func runConfigValidate(targetSite string, httpClient *http.Client) bool {
 		var dirCfg *config.DirectoryConfig
 		var dirCfgPath string
 		if cwd != "" {
-			dirCfg, dirCfgPath, _ = config.FindDirectoryConfigWithPath(cwd)
+			var dirCfgErr error
+			dirCfg, dirCfgPath, dirCfgErr = config.FindDirectoryConfigWithPath(cwd)
+			if dirCfgErr != nil {
+				results = append(results, checkResult{
+					group:   "Config",
+					name:    "Directory config parsed",
+					status:  statusFail,
+					message: dirCfgErr.Error(),
+				})
+				printDoctorResults(os.Stdout, results, false)
+				return true
+			}
 		}
 
 		if dirCfgPath != "" {
@@ -98,7 +109,7 @@ func runConfigValidate(targetSite string, httpClient *http.Client) bool {
 				message: dirConfigDescription(dirCfg),
 			})
 			// If the directory config references a named site, verify it exists.
-			if dirCfg.Site != "" {
+			if dirCfg != nil && dirCfg.Site != "" {
 				if _, ok := globalCfg.Sites[dirCfg.Site]; ok {
 					results = append(results, checkResult{
 						group:  "Config",
