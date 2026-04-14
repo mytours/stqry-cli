@@ -60,7 +60,10 @@ func SaveGlobalConfig(cfg *GlobalConfig, path string) error {
 	return os.WriteFile(path, data, 0600)
 }
 
-func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
+// FindDirectoryConfigWithPath walks parent directories looking for stqry.yaml
+// or stqry.yml. It returns the parsed config, the path of the file that was
+// found (empty string if none), and any parse error.
+func FindDirectoryConfigWithPath(startDir string) (*DirectoryConfig, string, error) {
 	dir := startDir
 	for {
 		for _, name := range []string{"stqry.yaml", "stqry.yml"} {
@@ -69,17 +72,25 @@ func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
 			if err == nil {
 				var cfg DirectoryConfig
 				if err := yaml.Unmarshal(data, &cfg); err != nil {
-					return nil, fmt.Errorf("parsing %s: %w", candidate, err)
+					return nil, candidate, fmt.Errorf("parsing %s: %w", candidate, err)
 				}
-				return &cfg, nil
+				return &cfg, candidate, nil
 			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return &DirectoryConfig{}, nil
+			return &DirectoryConfig{}, "", nil
 		}
 		dir = parent
 	}
+}
+
+// FindDirectoryConfig walks parent directories looking for stqry.yaml or
+// stqry.yml and returns the parsed config. Use FindDirectoryConfigWithPath
+// when you also need the path of the file that was found.
+func FindDirectoryConfig(startDir string) (*DirectoryConfig, error) {
+	cfg, _, err := FindDirectoryConfigWithPath(startDir)
+	return cfg, err
 }
 
 func SaveDirectoryConfig(dir string, cfg *DirectoryConfig) error {
@@ -90,38 +101,48 @@ func SaveDirectoryConfig(dir string, cfg *DirectoryConfig) error {
 	return os.WriteFile(filepath.Join(dir, "stqry.yaml"), data, 0600)
 }
 
-func ResolveSite(global *GlobalConfig, flagSite string, dirCfg *DirectoryConfig) (*Site, error) {
+// ResolveSiteWithSource resolves the active site using the same priority chain
+// as ResolveSite, and also returns a human-readable label describing which
+// config layer provided the site.
+func ResolveSiteWithSource(global *GlobalConfig, flagSite string, dirCfg *DirectoryConfig) (*Site, string, error) {
 	// --site flag takes priority: look up in global config.
 	if flagSite != "" {
 		site, ok := global.Sites[flagSite]
 		if !ok {
-			return nil, fmt.Errorf("site %q not found in config. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>`", flagSite, flagSite)
+			return nil, "", fmt.Errorf("site %q not found in config. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>`", flagSite, flagSite)
 		}
-		return site, nil
+		return site, "--site flag", nil
 	}
 
 	// STQRY_SITE environment variable.
 	if envSite := os.Getenv("STQRY_SITE"); envSite != "" {
 		site, ok := global.Sites[envSite]
 		if !ok {
-			return nil, fmt.Errorf("site %q (from STQRY_SITE) not found in config", envSite)
+			return nil, "", fmt.Errorf("site %q (from STQRY_SITE) not found in config", envSite)
 		}
-		return site, nil
+		return site, "STQRY_SITE env var", nil
 	}
 
 	// Directory config with inline credentials takes next priority.
 	if dirCfg != nil && dirCfg.Token != "" && dirCfg.APIURL != "" {
-		return &Site{Token: dirCfg.Token, APIURL: dirCfg.APIURL}, nil
+		return &Site{Token: dirCfg.Token, APIURL: dirCfg.APIURL}, "stqry.yaml (inline credentials)", nil
 	}
 
 	// Directory config referencing a named global site.
 	if dirCfg != nil && dirCfg.Site != "" {
 		site, ok := global.Sites[dirCfg.Site]
 		if !ok {
-			return nil, fmt.Errorf("site %q not found in config. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>`", dirCfg.Site, dirCfg.Site)
+			return nil, "", fmt.Errorf("site %q not found in config. Run `stqry config add-site --name=%s --token=<token> --api-url=<url>`", dirCfg.Site, dirCfg.Site)
 		}
-		return site, nil
+		return site, fmt.Sprintf("stqry.yaml → %s", dirCfg.Site), nil
 	}
 
-	return nil, fmt.Errorf("no site specified. Use --site or run `stqry config init` in this directory")
+	return nil, "", fmt.Errorf("no site specified. Use --site or run `stqry config init` in this directory")
+}
+
+// ResolveSite resolves the active site. Use ResolveSiteWithSource to also get
+// a human-readable label describing which config layer provided the site.
+func ResolveSite(global *GlobalConfig, flagSite string, dirCfg *DirectoryConfig) (*Site, error) {
+	site, _, err := ResolveSiteWithSource(global, flagSite, dirCfg)
+	return site, err
 }
