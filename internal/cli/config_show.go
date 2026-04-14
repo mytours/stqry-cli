@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -37,24 +36,29 @@ func runConfigShow() error {
 	cwd, _ := os.Getwd()
 	var dirCfg *config.DirectoryConfig
 	var dirCfgPath string
+	var dirCfgErr error
 	if cwd != "" {
-		dirCfg, dirCfgPath, _ = config.FindDirectoryConfigWithPath(cwd)
+		dirCfg, dirCfgPath, dirCfgErr = config.FindDirectoryConfigWithPath(cwd)
 	}
 
 	// Best-effort resolution — no error if nothing configured.
 	site, source, _ := config.ResolveSiteWithSource(globalCfg, flagSite, dirCfg)
 
 	if flagJSON || flagQuiet {
-		return printConfigShowJSON(configPath, dirCfgPath, dirCfg, globalCfg, site, source)
+		return printConfigShowJSON(configPath, dirCfgPath, dirCfg, dirCfgErr, globalCfg, site, source)
 	}
-	return printConfigShowHuman(configPath, dirCfgPath, dirCfg, globalCfg, site, source)
+	return printConfigShowHuman(configPath, dirCfgPath, dirCfg, dirCfgErr, globalCfg, site, source)
 }
 
-func printConfigShowHuman(configPath, dirCfgPath string, dirCfg *config.DirectoryConfig, globalCfg *config.GlobalConfig, site *config.Site, source string) error {
+func printConfigShowHuman(configPath, dirCfgPath string, dirCfg *config.DirectoryConfig, dirCfgErr error, globalCfg *config.GlobalConfig, site *config.Site, source string) error {
 	fmt.Println("Config files:")
-	fmt.Printf("  Global:    %s  (%d sites)\n", configPath, len(globalCfg.Sites))
+	fmt.Printf("  Global:    %s (%d sites)\n", configPath, len(globalCfg.Sites))
 	if dirCfgPath != "" {
-		fmt.Printf("  Directory: %s (%s)\n", dirCfgPath, dirConfigDescription(dirCfg))
+		if dirCfgErr != nil {
+			fmt.Printf("  Directory: %s (parse error: %s)\n", dirCfgPath, dirCfgErr)
+		} else {
+			fmt.Printf("  Directory: %s (%s)\n", dirCfgPath, dirConfigDescription(dirCfg))
+		}
 	} else {
 		fmt.Printf("  Directory: (none)\n")
 	}
@@ -86,7 +90,7 @@ func printConfigShowHuman(configPath, dirCfgPath string, dirCfg *config.Director
 	return nil
 }
 
-func printConfigShowJSON(configPath, dirCfgPath string, dirCfg *config.DirectoryConfig, globalCfg *config.GlobalConfig, site *config.Site, source string) error {
+func printConfigShowJSON(configPath, dirCfgPath string, dirCfg *config.DirectoryConfig, dirCfgErr error, globalCfg *config.GlobalConfig, site *config.Site, source string) error {
 	sites := make([]map[string]interface{}, 0, len(globalCfg.Sites))
 	for name, s := range globalCfg.Sites {
 		sites = append(sites, map[string]interface{}{
@@ -98,9 +102,16 @@ func printConfigShowJSON(configPath, dirCfgPath string, dirCfg *config.Directory
 
 	var dirEntry interface{}
 	if dirCfgPath != "" {
-		dirEntry = map[string]interface{}{
-			"path":    dirCfgPath,
-			"content": dirConfigDescription(dirCfg),
+		if dirCfgErr != nil {
+			dirEntry = map[string]interface{}{
+				"path":  dirCfgPath,
+				"error": dirCfgErr.Error(),
+			}
+		} else {
+			dirEntry = map[string]interface{}{
+				"path":    dirCfgPath,
+				"content": dirConfigDescription(dirCfg),
+			}
 		}
 	}
 
@@ -141,11 +152,7 @@ func maskToken(token string) string {
 // regionFromURL extracts the region code from a STQRY API URL hostname.
 // Returns empty string for non-standard URLs.
 func regionFromURL(apiURL string) string {
-	u, err := url.Parse(apiURL)
-	if err != nil {
-		return ""
-	}
-	host := u.Host
+	host := hostFromURL(apiURL)
 	if strings.HasPrefix(host, "api-") && strings.HasSuffix(host, ".stqry.com") {
 		parts := strings.SplitN(host, ".", 2)
 		return strings.TrimPrefix(parts[0], "api-")
