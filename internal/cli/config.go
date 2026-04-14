@@ -199,10 +199,7 @@ func newConfigListSitesCmd() *cobra.Command {
 			rows := make([]map[string]interface{}, 0, len(globalConfig.Sites))
 
 			for name, site := range globalConfig.Sites {
-				tokenDisplay := site.Token
-				if len(tokenDisplay) > 8 {
-					tokenDisplay = tokenDisplay[:8] + "..."
-				}
+				tokenDisplay := maskToken(site.Token)
 				rows = append(rows, map[string]interface{}{
 					"name":    name,
 					"api_url": site.APIURL,
