@@ -14,6 +14,9 @@ python/stqry.egg-info/
 # Claude Code local settings
 .claude/
 
+# Git worktrees
+.worktrees/
+
 # Local planning docs
 docs/superpowers/plans/*
 docs/superpowers/specs/*
