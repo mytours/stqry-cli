@@ -10,6 +10,8 @@ python/stqry.egg-info/
 
 # Local environment (credentials, API URLs)
 .env
+stqry.yaml
+stqry.yml
 
 # Claude Code local settings
 .claude/
