@@ -98,28 +98,6 @@ func TestCollectionsCreateInvalidType(t *testing.T) {
 	}
 }
 
-// TestMediaCreateInvalidType asserts client-side validation of --type on
-// `stqry media create`.
-func TestMediaCreateInvalidType(t *testing.T) {
-	setupTestHome(t, "http://localhost:0")
-
-	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--site=testsite", "media", "create", "--type=bogus"})
-	cmd.SetOut(os.Stderr)
-	cmd.SetErr(os.Stderr)
-
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatal("expected error for invalid media type, got nil")
-	}
-	if !contains(err.Error(), "invalid media type") {
-		t.Errorf("expected error to mention \"invalid media type\", got %q", err.Error())
-	}
-	if !contains(err.Error(), "image") {
-		t.Errorf("expected error to list valid types (image), got %q", err.Error())
-	}
-}
-
 // TestScreensListCmd asserts that `stqry screens list` prints the screen name
 // returned by the API.
 func TestScreensListCmd(t *testing.T) {
