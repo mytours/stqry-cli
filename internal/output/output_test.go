@@ -212,6 +212,31 @@ func TestFormatValue_ScalarSlice(t *testing.T) {
 	}
 }
 
+func TestIsScalar(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    interface{}
+		expected bool
+	}{
+		{"nil", nil, true},
+		{"string", "hello", true},
+		{"float64", 3.14, true},
+		{"bool", true, true},
+		{"scalar slice", []interface{}{"a", "b"}, true},
+		{"map", map[string]interface{}{"en": "Hello"}, false},
+		{"slice of maps", []interface{}{map[string]interface{}{"id": 1.0}}, false},
+		{"mixed slice", []interface{}{"a", map[string]interface{}{"id": 1.0}}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isScalar(tc.input)
+			if got != tc.expected {
+				t.Errorf("isScalar(%v) = %v, want %v", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 // TestPrinterPrintList_JQ_OverridesQuiet pins the documented behaviour:
 // when --jq is set, --quiet is a no-op (jq runs instead).
 func TestPrinterPrintList_JQ_OverridesQuiet(t *testing.T) {

@@ -79,6 +79,32 @@ func (f *HumanFormatter) WriteKeyValue(data map[string]interface{}) error {
 	return w.Flush()
 }
 
+func sortedKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func isScalar(v interface{}) bool {
+	switch val := v.(type) {
+	case nil, bool, float64, string:
+		return true
+	case []interface{}:
+		for _, elem := range val {
+			if !isScalar(elem) {
+				return false
+			}
+		}
+		return true
+	default:
+		_ = val
+		return false
+	}
+}
+
 func formatValue(v interface{}) string {
 	if v == nil {
 		return "-"
