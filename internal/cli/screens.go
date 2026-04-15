@@ -204,7 +204,7 @@ func newScreensUpdateCmd() *cobra.Command {
 
   # Update the short title
   stqry screens update 42 --short-title "Welcome"`,
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lang := flagLang
 			if lang == "" {
@@ -216,11 +216,7 @@ func newScreensUpdateCmd() *cobra.Command {
 				case "name":
 					fields["name"] = name
 				case "title":
-					if flagLang != "" {
-						fields["title"] = map[string]interface{}{flagLang: title}
-					} else {
-						fields["title"] = title
-					}
+					fields["title"] = map[string]interface{}{lang: title}
 				case "short-title":
 					fields["short_title"] = map[string]interface{}{lang: shortTitle}
 				}
@@ -372,15 +368,15 @@ func newSectionsAddCmd() *cobra.Command {
 				return fmt.Errorf("--type is required")
 			}
 
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
+			}
 			fields := map[string]interface{}{
 				"type": sectionType,
 			}
 			if title != "" {
-				if flagLang != "" {
-					fields["title"] = map[string]interface{}{flagLang: title}
-				} else {
-					fields["title"] = title
-				}
+				fields["title"] = map[string]interface{}{lang: title}
 			}
 
 			section, err := api.CreateStorySection(activeClient, args[0], fields)
@@ -416,15 +412,15 @@ func newSectionsUpdateCmd() *cobra.Command {
 				return fmt.Errorf("--screen-id is required")
 			}
 
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
+			}
 			fields := map[string]interface{}{}
 			cmd.Flags().Visit(func(f *flag.Flag) {
 				switch f.Name {
 				case "title":
-					if flagLang != "" {
-						fields["title"] = map[string]interface{}{flagLang: title}
-					} else {
-						fields["title"] = title
-					}
+					fields["title"] = map[string]interface{}{lang: title}
 				}
 			})
 
