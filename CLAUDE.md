@@ -66,6 +66,9 @@ Entry point: `cmd/stqry/main.go` → `internal/cli.Execute()`
 - Local: `stqry.yaml` or `stqry.yml` (walks directory tree upward)
 - Resolution: `--site` flag > local file > global config
 
+**`internal/agentsmd/`** — Embeds `AGENTS.md` for writing to the CWD during `stqry config init`
+- `internal/agentsmd/AGENTS.md` mirrors the root `AGENTS.md` — update both when the content changes
+
 **`internal/mcp/`** — MCP server over stdio (mark3labs/mcp-go)
 - Mirrors CLI commands as MCP tools; session-level in-memory site selection via `connect`/`select_site` tools
 - Doctor and config logic must be kept in sync between CLI and MCP implementations

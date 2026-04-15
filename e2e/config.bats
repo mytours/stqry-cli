@@ -39,3 +39,31 @@ load "test_helper"
     run "$STQRY" config remove-site testsite
     assert_success
 }
+
+@test "config init --name creates stqry.yaml and AGENTS.md" {
+    create_global_config
+    run "$STQRY" config init --name=testsite
+    assert_success
+    [ -f "$TEST_WORK/stqry.yaml" ]
+    [ -f "$TEST_WORK/AGENTS.md" ]
+    assert_output_contains "Initialised stqry.yaml for site"
+    assert_output_contains "wrote AGENTS.md"
+}
+
+@test "config init --token --region creates stqry.yaml and AGENTS.md" {
+    run "$STQRY" config init --token=tok123 --region=us
+    assert_success
+    [ -f "$TEST_WORK/stqry.yaml" ]
+    [ -f "$TEST_WORK/AGENTS.md" ]
+    assert_output_contains "Initialised stqry.yaml with inline credentials"
+    assert_output_contains "wrote AGENTS.md"
+}
+
+@test "config init re-run overwrites AGENTS.md" {
+    create_global_config
+    echo "old content" > "$TEST_WORK/AGENTS.md"
+    run "$STQRY" config init --name=testsite
+    assert_success
+    run grep -c "old content" "$TEST_WORK/AGENTS.md"
+    [ "$output" = "0" ]
+}

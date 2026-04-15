@@ -3,8 +3,10 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/mytours/stqry-cli/internal/agentsmd"
 	"github.com/mytours/stqry-cli/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -213,6 +215,11 @@ func newConfigListSitesCmd() *cobra.Command {
 	}
 }
 
+func writeAgentsMD(dir string) error {
+	// 0644: AGENTS.md contains no secrets; world-readable is intentional.
+	return os.WriteFile(filepath.Join(dir, "AGENTS.md"), agentsmd.Content, 0644)
+}
+
 // config init [--name=X] [--token=X] [--region=X | --api-url=X]
 func newConfigInitCmd() *cobra.Command {
 	var name, token, region, apiURL string
@@ -241,8 +248,11 @@ func newConfigInitCmd() *cobra.Command {
 				if err := config.SaveDirectoryConfig(cwd, dirCfg); err != nil {
 					return fmt.Errorf("saving directory config: %w", err)
 				}
+				if err := writeAgentsMD(cwd); err != nil {
+					return fmt.Errorf("writing AGENTS.md: %w", err)
+				}
 				if !flagQuiet && !flagJSON {
-					fmt.Printf("Initialised stqry.yaml with inline site credentials.\n")
+					fmt.Printf("Initialised stqry.yaml with inline credentials and wrote AGENTS.md.\n")
 				}
 				return nil
 			}
@@ -268,9 +278,12 @@ func newConfigInitCmd() *cobra.Command {
 			if err := config.SaveDirectoryConfig(cwd, dirCfg); err != nil {
 				return fmt.Errorf("saving directory config: %w", err)
 			}
+			if err := writeAgentsMD(cwd); err != nil {
+				return fmt.Errorf("writing AGENTS.md: %w", err)
+			}
 
 			if !flagQuiet && !flagJSON {
-				fmt.Printf("Initialised .stqry/config.yaml with site %q.\n", name)
+				fmt.Printf("Initialised stqry.yaml for site %q and wrote AGENTS.md.\n", name)
 			}
 			return nil
 		},
