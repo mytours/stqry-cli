@@ -76,7 +76,9 @@ func (f *HumanFormatter) WriteKeyValue(data map[string]interface{}) error {
 			fmt.Fprintf(w, "%s:\t%s\n", k, formatValue(data[k]))
 		}
 	}
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return err
+	}
 
 	// Pass 2: complex fields, indented blocks
 	for _, k := range keys {
