@@ -69,6 +69,10 @@ func (f *HumanFormatter) WriteTable(columns []string, rows []map[string]interfac
 func (f *HumanFormatter) WriteKeyValue(data map[string]interface{}) error {
 	keys := sortedKeys(data)
 
+	// Two-pass rendering: scalars first so tabwriter can align them together,
+	// then complex fields as indented blocks below. This means complex fields
+	// always appear after scalars regardless of alphabetical order.
+
 	// Pass 1: scalar fields, tabwriter-aligned
 	w := tabwriter.NewWriter(f.Writer, 0, 0, 2, ' ', 0)
 	for _, k := range keys {
@@ -83,8 +87,12 @@ func (f *HumanFormatter) WriteKeyValue(data map[string]interface{}) error {
 	// Pass 2: complex fields, indented blocks
 	for _, k := range keys {
 		if !isScalar(data[k]) {
-			fmt.Fprintf(f.Writer, "%s:\n", k)
-			writeComplexValue(f.Writer, data[k], "  ")
+			if _, err := fmt.Fprintf(f.Writer, "%s:\n", k); err != nil {
+				return err
+			}
+			if err := writeComplexValue(f.Writer, data[k], "  "); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -99,16 +107,22 @@ func sortedKeys(m map[string]interface{}) []string {
 	return keys
 }
 
-func writeComplexValue(w io.Writer, v interface{}, indent string) {
+func writeComplexValue(w io.Writer, v interface{}, indent string) error {
 	switch val := v.(type) {
 	case map[string]interface{}:
 		keys := sortedKeys(val)
 		for _, k := range keys {
 			if isScalar(val[k]) {
-				fmt.Fprintf(w, "%s%s: %s\n", indent, k, formatValue(val[k]))
+				if _, err := fmt.Fprintf(w, "%s%s: %s\n", indent, k, formatValue(val[k])); err != nil {
+					return err
+				}
 			} else {
-				fmt.Fprintf(w, "%s%s:\n", indent, k)
-				writeComplexValue(w, val[k], indent+"  ")
+				if _, err := fmt.Fprintf(w, "%s%s:\n", indent, k); err != nil {
+					return err
+				}
+				if err := writeComplexValue(w, val[k], indent+"  "); err != nil {
+					return err
+				}
 			}
 		}
 	case []interface{}:
@@ -123,17 +137,30 @@ func writeComplexValue(w io.Writer, v interface{}, indent string) {
 						first = false
 					}
 					if isScalar(m[k]) {
-						fmt.Fprintf(w, "%s%s: %s\n", prefix, k, formatValue(m[k]))
+						if _, err := fmt.Fprintf(w, "%s%s: %s\n", prefix, k, formatValue(m[k])); err != nil {
+							return err
+						}
 					} else {
-						fmt.Fprintf(w, "%s%s:\n", prefix, k)
-						writeComplexValue(w, m[k], indent+"    ")
+						if _, err := fmt.Fprintf(w, "%s%s:\n", prefix, k); err != nil {
+							return err
+						}
+						if err := writeComplexValue(w, m[k], indent+"    "); err != nil {
+							return err
+						}
 					}
 				}
 			} else {
-				fmt.Fprintf(w, "%s- %s\n", indent, formatValue(elem))
+				if _, err := fmt.Fprintf(w, "%s- %s\n", indent, formatValue(elem)); err != nil {
+					return err
+				}
 			}
 		}
+	default:
+		if _, err := fmt.Fprintf(w, "%s%s\n", indent, formatValue(v)); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func isScalar(v interface{}) bool {

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Human-readable output now renders nested maps and translated fields as indented blocks instead of raw `map[string]interface{}` text; scalar slices render as comma-separated values
+
 ## [0.9.2] - 2026-04-15
 
 ### Added
