@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-04-15
+
+### Fixed
+
+- `stqry screens update --title` and `stqry screens sections add|update --title` now correctly send a translated map (e.g. `{"en": "..."}`) when `--lang` is omitted. Previously they sent a plain string, which the API rejected with a 500 — making the section commands unusable without remembering to add `--lang en`.
+
 ## [0.10.1] - 2026-04-15
 
 ### Added
