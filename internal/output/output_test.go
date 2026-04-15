@@ -197,6 +197,121 @@ func TestPrinterPrintError_JQ(t *testing.T) {
 	}
 }
 
+func TestFormatValue_EmptySlice(t *testing.T) {
+	result := formatValue([]interface{}{})
+	if result != "-" {
+		t.Errorf("expected '-' for empty slice, got %q", result)
+	}
+}
+
+func TestFormatValue_ScalarSlice(t *testing.T) {
+	v := []interface{}{"foo", "bar", "baz"}
+	result := formatValue(v)
+	if result != "foo, bar, baz" {
+		t.Errorf("expected 'foo, bar, baz', got %q", result)
+	}
+}
+
+func TestIsScalar(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    interface{}
+		expected bool
+	}{
+		{"nil", nil, true},
+		{"string", "hello", true},
+		{"float64", 3.14, true},
+		{"bool", true, true},
+		{"scalar slice", []interface{}{"a", "b"}, true},
+		{"map", map[string]interface{}{"en": "Hello"}, false},
+		{"slice of maps", []interface{}{map[string]interface{}{"id": 1.0}}, false},
+		{"mixed slice", []interface{}{"a", map[string]interface{}{"id": 1.0}}, false},
+		{"empty slice", []interface{}{}, true},
+		{"nested scalar slice", []interface{}{[]interface{}{"a", "b"}}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isScalar(tc.input)
+			if got != tc.expected {
+				t.Errorf("isScalar(%v) = %v, want %v", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestWriteKeyValue_TranslatedString(t *testing.T) {
+	var buf bytes.Buffer
+	f := &HumanFormatter{Writer: &buf}
+
+	data := map[string]interface{}{
+		"id": 42.0,
+		"title": map[string]interface{}{
+			"en": "Confederation Park",
+			"fr": "Parc de la Confédération",
+		},
+	}
+	if err := f.WriteKeyValue(data); err != nil {
+		t.Fatalf("WriteKeyValue: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "id:") {
+		t.Error("expected id field in output")
+	}
+	if !strings.Contains(out, "title:") {
+		t.Error("expected title: header")
+	}
+	if !strings.Contains(out, "en: Confederation Park") {
+		t.Errorf("expected en: line, got:\n%s", out)
+	}
+	if !strings.Contains(out, "fr: Parc de la Confédération") {
+		t.Errorf("expected fr: line, got:\n%s", out)
+	}
+	// translated string should NOT appear inline on same line as "title:"
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "title:") && strings.Contains(line, "Confederation") {
+			t.Errorf("title should not be inline, got: %q", line)
+		}
+	}
+}
+
+func TestWriteKeyValue_NestedArray(t *testing.T) {
+	var buf bytes.Buffer
+	f := &HumanFormatter{Writer: &buf}
+
+	data := map[string]interface{}{
+		"id": 1.0,
+		"sections": []interface{}{
+			map[string]interface{}{
+				"id":   1.0,
+				"type": "media_group",
+			},
+			map[string]interface{}{
+				"id":   2.0,
+				"type": "text_group",
+			},
+		},
+	}
+	if err := f.WriteKeyValue(data); err != nil {
+		t.Fatalf("WriteKeyValue: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "sections:") {
+		t.Error("expected sections: header")
+	}
+	if !strings.Contains(out, "- id: 1") {
+		t.Errorf("expected '- id: 1', got:\n%s", out)
+	}
+	if !strings.Contains(out, "- id: 2") {
+		t.Errorf("expected '- id: 2', got:\n%s", out)
+	}
+	if !strings.Contains(out, "type: media_group") {
+		t.Errorf("expected 'type: media_group', got:\n%s", out)
+	}
+}
+
 // TestPrinterPrintList_JQ_OverridesQuiet pins the documented behaviour:
 // when --jq is set, --quiet is a no-op (jq runs instead).
 func TestPrinterPrintList_JQ_OverridesQuiet(t *testing.T) {

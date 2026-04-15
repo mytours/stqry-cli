@@ -67,16 +67,116 @@ func (f *HumanFormatter) WriteTable(columns []string, rows []map[string]interfac
 }
 
 func (f *HumanFormatter) WriteKeyValue(data map[string]interface{}) error {
+	keys := sortedKeys(data)
+
+	// Two-pass rendering: scalars first so tabwriter can align them together,
+	// then complex fields as indented blocks below. This means complex fields
+	// always appear after scalars regardless of alphabetical order.
+
+	// Pass 1: scalar fields, tabwriter-aligned
 	w := tabwriter.NewWriter(f.Writer, 0, 0, 2, ' ', 0)
-	keys := make([]string, 0, len(data))
-	for k := range data {
+	for _, k := range keys {
+		if isScalar(data[k]) {
+			fmt.Fprintf(w, "%s:\t%s\n", k, formatValue(data[k]))
+		}
+	}
+	if err := w.Flush(); err != nil {
+		return err
+	}
+
+	// Pass 2: complex fields, indented blocks
+	for _, k := range keys {
+		if !isScalar(data[k]) {
+			if _, err := fmt.Fprintf(f.Writer, "%s:\n", k); err != nil {
+				return err
+			}
+			if err := writeComplexValue(f.Writer, data[k], "  "); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func sortedKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	for _, k := range keys {
-		fmt.Fprintf(w, "%s:\t%s\n", k, formatValue(data[k]))
+	return keys
+}
+
+func writeComplexValue(w io.Writer, v interface{}, indent string) error {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		keys := sortedKeys(val)
+		for _, k := range keys {
+			if isScalar(val[k]) {
+				if _, err := fmt.Fprintf(w, "%s%s: %s\n", indent, k, formatValue(val[k])); err != nil {
+					return err
+				}
+			} else {
+				if _, err := fmt.Fprintf(w, "%s%s:\n", indent, k); err != nil {
+					return err
+				}
+				if err := writeComplexValue(w, val[k], indent+"  "); err != nil {
+					return err
+				}
+			}
+		}
+	case []interface{}:
+		for _, elem := range val {
+			if m, ok := elem.(map[string]interface{}); ok {
+				keys := sortedKeys(m)
+				first := true
+				for _, k := range keys {
+					prefix := indent + "  "
+					if first {
+						prefix = indent + "- "
+						first = false
+					}
+					if isScalar(m[k]) {
+						if _, err := fmt.Fprintf(w, "%s%s: %s\n", prefix, k, formatValue(m[k])); err != nil {
+							return err
+						}
+					} else {
+						if _, err := fmt.Fprintf(w, "%s%s:\n", prefix, k); err != nil {
+							return err
+						}
+						if err := writeComplexValue(w, m[k], indent+"    "); err != nil {
+							return err
+						}
+					}
+				}
+			} else {
+				if _, err := fmt.Fprintf(w, "%s- %s\n", indent, formatValue(elem)); err != nil {
+					return err
+				}
+			}
+		}
+	default:
+		if _, err := fmt.Fprintf(w, "%s%s\n", indent, formatValue(v)); err != nil {
+			return err
+		}
 	}
-	return w.Flush()
+	return nil
+}
+
+func isScalar(v interface{}) bool {
+	switch val := v.(type) {
+	case nil, bool, float64, string:
+		return true
+	case []interface{}:
+		for _, elem := range val {
+			if !isScalar(elem) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
 }
 
 func formatValue(v interface{}) string {
@@ -91,6 +191,15 @@ func formatValue(v interface{}) string {
 			return fmt.Sprintf("%d", int(val))
 		}
 		return fmt.Sprintf("%.2f", val)
+	case []interface{}:
+		if len(val) == 0 {
+			return "-"
+		}
+		parts := make([]string, 0, len(val))
+		for _, elem := range val {
+			parts = append(parts, formatValue(elem))
+		}
+		return strings.Join(parts, ", ")
 	default:
 		return fmt.Sprintf("%v", val)
 	}

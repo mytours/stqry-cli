@@ -7,10 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Human-readable output now renders nested maps and translated fields as indented blocks instead of raw `map[string]interface{}` text; scalar slices render as comma-separated values
+
 ## [0.9.2] - 2026-04-15
 
 ### Added
+
 - CI workflow now uploads `stqry-skill.zip` to Bunny CDN on every tagged release, providing a stable download URL
+
+## [0.9.1] - 2026-04-14
+
+### Fixed
+
+- Skills reference: teach Claude that resource subcommands are always plural (`screens`, `collections`, …)
+
+### Added
+
+- CI workflow now uploads `stqry-skill.zip` to Bunny CDN on every tagged release, providing a stable download URL
+
+## [0.9.0] - 2026-04-15
+
+### Added
+
+- `stqry config show` — prints the resolved site config with source tracking (flag / local file / global)
+- `stqry config validate` — checks the resolved config and performs a live token verification against the API
+- CI workflow now uploads `stqry-skill.zip` to Bunny CDN on every tagged release, providing a stable download URL at `stqry-download/stqry-cli/stqry-skill.zip`
 
 ## [0.8.0] - 2026-04-14
 
