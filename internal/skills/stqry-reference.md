@@ -39,10 +39,6 @@ folder so it is picked up automatically. This avoids reconfiguring each session.
 
 # STQRY CLI Command Reference
 
-## Command Naming Rule
-
-**All resource subcommands are plural.** Use `screens`, `collections`, `media`, `projects`, `codes` — never the singular form. `stqry screen list`, `stqry collection list`, `stqry project get` do **not** exist and will error with `unknown command`. This holds for every verb (`list`, `get`, `create`, `update`, `delete`) and every resource. When in doubt, plural.
-
 ## Data Model Overview
 
 All content types are **top-level entities** — Screens, Collections, Media Items, Projects, and Codes exist independently and can be combined in different ways.
