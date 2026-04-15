@@ -197,6 +197,14 @@ func TestPrinterPrintError_JQ(t *testing.T) {
 	}
 }
 
+func TestFormatValue_ScalarSlice(t *testing.T) {
+	v := []interface{}{"foo", "bar", "baz"}
+	result := formatValue(v)
+	if result != "foo, bar, baz" {
+		t.Errorf("expected 'foo, bar, baz', got %q", result)
+	}
+}
+
 // TestPrinterPrintList_JQ_OverridesQuiet pins the documented behaviour:
 // when --jq is set, --quiet is a no-op (jq runs instead).
 func TestPrinterPrintList_JQ_OverridesQuiet(t *testing.T) {

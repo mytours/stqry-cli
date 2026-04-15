@@ -91,6 +91,12 @@ func formatValue(v interface{}) string {
 			return fmt.Sprintf("%d", int(val))
 		}
 		return fmt.Sprintf("%.2f", val)
+	case []interface{}:
+		parts := make([]string, 0, len(val))
+		for _, elem := range val {
+			parts = append(parts, formatValue(elem))
+		}
+		return strings.Join(parts, ", ")
 	default:
 		return fmt.Sprintf("%v", val)
 	}
