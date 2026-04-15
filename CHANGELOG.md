@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-04-15
+
+### Added
+
+- `--short-title` flag on `stqry collections create|update` and `stqry screens create|update`. The API requires `short_title`, so create commands previously failed with `Short title can't be blank` whenever `--title` was passed. When `--short-title` is omitted on create, it defaults to `--title`.
+
 ## [0.10.0] - 2026-04-15
 
 ### Added
