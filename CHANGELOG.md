@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `stqry media upload` now requires `--media-id`; running without it would orphan the uploaded file (invisible in STQRY Builder). Use `stqry media create` to create a new media item with a file.
+- Skills reference: teach Claude that resource subcommands are always plural (`screens`, `collections`, …)
 
 ### Changed
 
@@ -23,19 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.9.2] - 2026-04-15
 
-### Added
-
-- CI workflow now uploads `stqry-skill.zip` to Bunny CDN on every tagged release, providing a stable download URL
-
-## [0.9.1] - 2026-04-14
-
-### Fixed
-
-- Skills reference: teach Claude that resource subcommands are always plural (`screens`, `collections`, …)
-
-### Added
-
-- CI workflow now uploads `stqry-skill.zip` to Bunny CDN on every tagged release, providing a stable download URL
+- Version bump.
 
 ## [0.9.0] - 2026-04-15
 
@@ -44,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `stqry config show` — prints the resolved site config with source tracking (flag / local file / global)
 - `stqry config validate` — checks the resolved config and performs a live token verification against the API
 - CI workflow now uploads `stqry-skill.zip` to Bunny CDN on every tagged release, providing a stable download URL at `stqry-download/stqry-cli/stqry-skill.zip`
+- `API-COVERAGE.md` — maps all 66 public API operations to their CLI commands (85% coverage)
+- Expanded unit test coverage across codes, media, projects, and screens CLI commands; added E2E BATS stubs and `test-race`/`test-coverage` Makefile targets
 
 ## [0.8.0] - 2026-04-14
 
