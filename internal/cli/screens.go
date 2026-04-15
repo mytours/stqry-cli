@@ -132,31 +132,42 @@ func newScreensGetCmd() *cobra.Command {
 // ── screens create ────────────────────────────────────────────────────────────
 
 func newScreensCreateCmd() *cobra.Command {
-	var name, screenType, title string
+	var name, screenType, title, shortTitle string
 
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new screen",
 		Example: `  # Create a story screen
-  stqry screens create --name welcome --type story
+  stqry screens create --name welcome --type story --title "Welcome"
 
   # Create a web screen with a localised title
-  stqry screens create --name map-view --type web --title "Map View" --lang en`,
+  stqry screens create --name map-view --type web --title "Map View" --lang en
+
+  # Override the short title (used in compact UI views)
+  stqry screens create --name welcome --type story --title "Welcome to Our Tour" --short-title "Welcome"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateScreenType(screenType); err != nil {
 				return err
 			}
 
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
+			}
 			fields := map[string]interface{}{
 				"name": name,
 				"type": screenType,
 			}
 			if title != "" {
-				if flagLang != "" {
-					fields["title"] = map[string]interface{}{flagLang: title}
-				} else {
-					fields["title"] = map[string]interface{}{"en": title}
-				}
+				fields["title"] = map[string]interface{}{lang: title}
+			}
+			// The API requires short_title; default it to title when omitted.
+			effectiveShort := shortTitle
+			if effectiveShort == "" {
+				effectiveShort = title
+			}
+			if effectiveShort != "" {
+				fields["short_title"] = map[string]interface{}{lang: effectiveShort}
 			}
 
 			screen, err := api.CreateScreen(activeClient, fields)
@@ -170,6 +181,7 @@ func newScreensCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&name, "name", "", "Screen name (required)")
 	cmd.Flags().StringVar(&screenType, "type", "", fmt.Sprintf("Screen type (required; one of: %s)", strings.Join(validScreenTypes, ", ")))
 	cmd.Flags().StringVar(&title, "title", "", "Screen title")
+	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Screen short title (defaults to --title if omitted)")
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("type")
 
@@ -179,7 +191,7 @@ func newScreensCreateCmd() *cobra.Command {
 // ── screens update ────────────────────────────────────────────────────────────
 
 func newScreensUpdateCmd() *cobra.Command {
-	var name, title string
+	var name, title, shortTitle string
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -188,9 +200,16 @@ func newScreensUpdateCmd() *cobra.Command {
   stqry screens update 42 --name new-name
 
   # Update the title in English
-  stqry screens update 42 --title "Welcome Screen" --lang en`,
-		Args:  cobra.ExactArgs(1),
+  stqry screens update 42 --title "Welcome Screen" --lang en
+
+  # Update the short title
+  stqry screens update 42 --short-title "Welcome"`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
+			}
 			fields := map[string]interface{}{}
 			cmd.Flags().Visit(func(f *flag.Flag) {
 				switch f.Name {
@@ -202,6 +221,8 @@ func newScreensUpdateCmd() *cobra.Command {
 					} else {
 						fields["title"] = title
 					}
+				case "short-title":
+					fields["short_title"] = map[string]interface{}{lang: shortTitle}
 				}
 			})
 
@@ -215,6 +236,7 @@ func newScreensUpdateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&name, "name", "", "New screen name")
 	cmd.Flags().StringVar(&title, "title", "", "New screen title")
+	cmd.Flags().StringVar(&shortTitle, "short-title", "", "New screen short title")
 	cmd.ValidArgsFunction = completeScreenIDs
 
 	return cmd

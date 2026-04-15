@@ -125,30 +125,41 @@ func newCollectionsGetCmd() *cobra.Command {
 }
 
 func newCollectionsCreateCmd() *cobra.Command {
-	var name, collectionType, title string
+	var name, collectionType, title, shortTitle string
 
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a collection",
 		Example: `  # Create a list collection
-  stqry collections create --name highlights --type list
+  stqry collections create --name highlights --type list --title "Highlights"
 
   # Create a tour with a localised title
-  stqry collections create --name city-tour --type tour --title "City Tour" --lang en`,
+  stqry collections create --name city-tour --type tour --title "City Tour" --lang en
+
+  # Override the short title (used in compact UI views)
+  stqry collections create --name city-tour --type tour --title "Grand City Walking Tour" --short-title "City Tour"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateCollectionType(collectionType); err != nil {
 				return err
+			}
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
 			}
 			fields := map[string]interface{}{
 				"name": name,
 				"type": collectionType,
 			}
 			if title != "" {
-				if flagLang != "" {
-					fields["title"] = map[string]interface{}{flagLang: title}
-				} else {
-					fields["title"] = map[string]interface{}{"en": title}
-				}
+				fields["title"] = map[string]interface{}{lang: title}
+			}
+			// The API requires short_title; default it to title when omitted.
+			effectiveShort := shortTitle
+			if effectiveShort == "" {
+				effectiveShort = title
+			}
+			if effectiveShort != "" {
+				fields["short_title"] = map[string]interface{}{lang: effectiveShort}
 			}
 
 			col, err := api.CreateCollection(activeClient, fields)
@@ -163,6 +174,7 @@ func newCollectionsCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&name, "name", "", "Collection name (required)")
 	cmd.Flags().StringVar(&collectionType, "type", "", fmt.Sprintf("Collection type (required; one of: %s)", strings.Join(validCollectionTypes, ", ")))
 	cmd.Flags().StringVar(&title, "title", "", "Collection title")
+	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Collection short title (defaults to --title if omitted)")
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("type")
 
@@ -170,7 +182,7 @@ func newCollectionsCreateCmd() *cobra.Command {
 }
 
 func newCollectionsUpdateCmd() *cobra.Command {
-	var name, title string
+	var name, title, shortTitle string
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -179,19 +191,25 @@ func newCollectionsUpdateCmd() *cobra.Command {
   stqry collections update 42 --name new-name
 
   # Update the title in French
-  stqry collections update 42 --title "Tour de ville" --lang fr`,
+  stqry collections update 42 --title "Tour de ville" --lang fr
+
+  # Update the short title
+  stqry collections update 42 --short-title "City Tour"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
+			}
 			fields := map[string]interface{}{}
 			if name != "" {
 				fields["name"] = name
 			}
 			if title != "" {
-				if flagLang != "" {
-					fields["title"] = map[string]interface{}{flagLang: title}
-				} else {
-					fields["title"] = map[string]interface{}{"en": title}
-				}
+				fields["title"] = map[string]interface{}{lang: title}
+			}
+			if shortTitle != "" {
+				fields["short_title"] = map[string]interface{}{lang: shortTitle}
 			}
 
 			col, err := api.UpdateCollection(activeClient, args[0], fields)
@@ -205,6 +223,7 @@ func newCollectionsUpdateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&name, "name", "", "Collection name")
 	cmd.Flags().StringVar(&title, "title", "", "Collection title")
+	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Collection short title")
 	cmd.ValidArgsFunction = completeCollectionIDs
 
 	return cmd
