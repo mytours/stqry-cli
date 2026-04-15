@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-04-15
+
+### Added
+
+- `--short-title` flag on `stqry collections create|update` and `stqry screens create|update`. The API requires `short_title`, so create commands previously failed with `Short title can't be blank` whenever `--title` was passed. When `--short-title` is omitted on create, it defaults to `--title`.
+- `--body`, `--subtitle`, `--description`, `--media-item-id`, and `--text-position` flags on `stqry screens sections add|update` so rich story content (paragraph text, image captions, single-media attachments) can be authored end-to-end from the CLI. `--text-position` defaults to `none` for `single_media` sections, which the API otherwise rejects with `Text position is not included in the list`.
+- `--cover-image-media-item-id`, `--cover-image-grid-media-item-id`, `--cover-image-wide-media-item-id`, `--background-image-media-item-id`, and `--logo-media-item-id` flags on `stqry screens update` so screen header artwork can be set from the CLI.
+- `--description`, `--cover-image-media-item-id`, `--cover-image-grid-media-item-id`, `--cover-image-wide-media-item-id`, `--logo-media-item-id`, `--preview-media-item-id`, and `--map-view-enabled` flags on `stqry collections update` so collection metadata, artwork, and the map view can be set from the CLI.
+- `--lat`, `--lng`, `--map-type`, `--display-address`, and `--directions-enabled` flags on `stqry screens sections add` for building `location` sections. `--map-type` defaults to `single_location` when `--lat`/`--lng` are set.
+
 ## [0.10.2] - 2026-04-15
 
 ### Fixed
