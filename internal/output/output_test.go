@@ -197,6 +197,13 @@ func TestPrinterPrintError_JQ(t *testing.T) {
 	}
 }
 
+func TestFormatValue_EmptySlice(t *testing.T) {
+	result := formatValue([]interface{}{})
+	if result != "-" {
+		t.Errorf("expected '-' for empty slice, got %q", result)
+	}
+}
+
 func TestFormatValue_ScalarSlice(t *testing.T) {
 	v := []interface{}{"foo", "bar", "baz"}
 	result := formatValue(v)
