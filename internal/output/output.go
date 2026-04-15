@@ -100,7 +100,6 @@ func isScalar(v interface{}) bool {
 		}
 		return true
 	default:
-		_ = val
 		return false
 	}
 }

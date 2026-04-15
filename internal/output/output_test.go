@@ -226,6 +226,8 @@ func TestIsScalar(t *testing.T) {
 		{"map", map[string]interface{}{"en": "Hello"}, false},
 		{"slice of maps", []interface{}{map[string]interface{}{"id": 1.0}}, false},
 		{"mixed slice", []interface{}{"a", map[string]interface{}{"id": 1.0}}, false},
+		{"empty slice", []interface{}{}, true},
+		{"nested scalar slice", []interface{}{[]interface{}{"a", "b"}}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
