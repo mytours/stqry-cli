@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-15
+
+### Added
+
+- `stqry config init` now writes `AGENTS.md` to the current working directory, giving AI agents immediate project context
+
+### Fixed
+
+- `stqry media upload` now requires `--media-id`; running without it would orphan the uploaded file (invisible in STQRY Builder). Use `stqry media create` to create a new media item with a file.
+
 ### Changed
 
 - Human-readable output now renders nested maps and translated fields as indented blocks instead of raw `map[string]interface{}` text; scalar slices render as comma-separated values
