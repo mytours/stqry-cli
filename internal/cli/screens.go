@@ -192,6 +192,7 @@ func newScreensCreateCmd() *cobra.Command {
 
 func newScreensUpdateCmd() *cobra.Command {
 	var name, title, shortTitle string
+	var coverImageID, coverImageGridID, coverImageWideID, backgroundImageID, logoID int
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -202,9 +203,9 @@ func newScreensUpdateCmd() *cobra.Command {
   # Update the title in English
   stqry screens update 42 --title "Welcome Screen" --lang en
 
-  # Update the short title
-  stqry screens update 42 --short-title "Welcome"`,
-		Args:  cobra.ExactArgs(1),
+  # Set a cover image
+  stqry screens update 42 --cover-image-media-item-id 123`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lang := flagLang
 			if lang == "" {
@@ -219,6 +220,16 @@ func newScreensUpdateCmd() *cobra.Command {
 					fields["title"] = map[string]interface{}{lang: title}
 				case "short-title":
 					fields["short_title"] = map[string]interface{}{lang: shortTitle}
+				case "cover-image-media-item-id":
+					fields["cover_image_media_item_id"] = coverImageID
+				case "cover-image-grid-media-item-id":
+					fields["cover_image_grid_media_item_id"] = coverImageGridID
+				case "cover-image-wide-media-item-id":
+					fields["cover_image_wide_media_item_id"] = coverImageWideID
+				case "background-image-media-item-id":
+					fields["background_image_media_item_id"] = backgroundImageID
+				case "logo-media-item-id":
+					fields["logo_media_item_id"] = logoID
 				}
 			})
 
@@ -233,6 +244,11 @@ func newScreensUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&name, "name", "", "New screen name")
 	cmd.Flags().StringVar(&title, "title", "", "New screen title")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "New screen short title")
+	cmd.Flags().IntVar(&coverImageID, "cover-image-media-item-id", 0, "Cover image media item ID")
+	cmd.Flags().IntVar(&coverImageGridID, "cover-image-grid-media-item-id", 0, "Grid cover image media item ID")
+	cmd.Flags().IntVar(&coverImageWideID, "cover-image-wide-media-item-id", 0, "Wide cover image media item ID")
+	cmd.Flags().IntVar(&backgroundImageID, "background-image-media-item-id", 0, "Background image media item ID")
+	cmd.Flags().IntVar(&logoID, "logo-media-item-id", 0, "Logo media item ID")
 	cmd.ValidArgsFunction = completeScreenIDs
 
 	return cmd
@@ -352,17 +368,23 @@ func newSectionsGetCmd() *cobra.Command {
 // ── sections add ──────────────────────────────────────────────────────────────
 
 func newSectionsAddCmd() *cobra.Command {
-	var sectionType, title string
+	var sectionType, title, subtitle, body, description, textPosition, mapType, displayAddress string
+	var mediaItemID int
+	var lat, lng float64
+	var directionsEnabled bool
 
 	cmd := &cobra.Command{
 		Use:   "add <screen-id>",
 		Short: "Add a story section to a screen",
-		Example: `  # Add a text section to a screen
-  stqry screens sections add 42 --type text
+		Example: `  # Add a text section with body content
+  stqry screens sections add 42 --type text --title "About" --body "Welcome to our tour."
+
+  # Add a single_media section with an image
+  stqry screens sections add 42 --type single_media --media-item-id 99 --description "A photo caption"
 
   # Add a titled gallery section in French
-  stqry screens sections add 42 --type gallery --title "Galerie" --lang fr`,
-		Args:  cobra.ExactArgs(1),
+  stqry screens sections add 42 --type media_group --title "Galerie" --lang fr`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if sectionType == "" {
 				return fmt.Errorf("--type is required")
@@ -378,6 +400,48 @@ func newSectionsAddCmd() *cobra.Command {
 			if title != "" {
 				fields["title"] = map[string]interface{}{lang: title}
 			}
+			if subtitle != "" {
+				fields["subtitle"] = map[string]interface{}{lang: subtitle}
+			}
+			if body != "" {
+				fields["body"] = map[string]interface{}{lang: body}
+			}
+			if description != "" {
+				fields["description"] = map[string]interface{}{lang: description}
+			}
+			if mediaItemID != 0 {
+				fields["media_item_id"] = mediaItemID
+			}
+			// single_media sections require text_position; default to "none" if not provided.
+			if sectionType == "single_media" {
+				if textPosition == "" {
+					textPosition = "none"
+				}
+				fields["text_position"] = textPosition
+			} else if textPosition != "" {
+				fields["text_position"] = textPosition
+			}
+			// Location section fields. Visit() lets us distinguish "not passed" from "zero".
+			cmd.Flags().Visit(func(f *flag.Flag) {
+				switch f.Name {
+				case "lat":
+					fields["lat"] = lat
+				case "lng":
+					fields["lng"] = lng
+				case "map-type":
+					fields["map_type"] = mapType
+				case "display-address":
+					fields["display_address"] = map[string]interface{}{lang: displayAddress}
+				case "directions-enabled":
+					fields["directions_enabled"] = directionsEnabled
+				}
+			})
+			// Location sections need a map_type; default to single_location if lat/lng given without one.
+			if sectionType == "location" {
+				if _, ok := fields["map_type"]; !ok {
+					fields["map_type"] = "single_location"
+				}
+			}
 
 			section, err := api.CreateStorySection(activeClient, args[0], fields)
 			if err != nil {
@@ -389,6 +453,16 @@ func newSectionsAddCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&sectionType, "type", "", "Section type (required)")
 	cmd.Flags().StringVar(&title, "title", "", "Section title")
+	cmd.Flags().StringVar(&subtitle, "subtitle", "", "Section subtitle (text sections only)")
+	cmd.Flags().StringVar(&body, "body", "", "Section body (text sections only)")
+	cmd.Flags().StringVar(&description, "description", "", "Section description (media sections only)")
+	cmd.Flags().IntVar(&mediaItemID, "media-item-id", 0, "Media item ID (single_media sections only)")
+	cmd.Flags().StringVar(&textPosition, "text-position", "", "Text position for single_media sections (left, right, top, bottom, none; default: none)")
+	cmd.Flags().Float64Var(&lat, "lat", 0, "Latitude (location sections)")
+	cmd.Flags().Float64Var(&lng, "lng", 0, "Longitude (location sections)")
+	cmd.Flags().StringVar(&mapType, "map-type", "", "Map type for location sections (single_location, multiple_locations; default: single_location)")
+	cmd.Flags().StringVar(&displayAddress, "display-address", "", "Display address for location sections")
+	cmd.Flags().BoolVar(&directionsEnabled, "directions-enabled", false, "Enable directions for location sections")
 
 	return cmd
 }
@@ -396,7 +470,8 @@ func newSectionsAddCmd() *cobra.Command {
 // ── sections update ───────────────────────────────────────────────────────────
 
 func newSectionsUpdateCmd() *cobra.Command {
-	var screenID, title string
+	var screenID, title, subtitle, body, description, textPosition string
+	var mediaItemID int
 
 	cmd := &cobra.Command{
 		Use:   "update <section-id>",
@@ -404,9 +479,12 @@ func newSectionsUpdateCmd() *cobra.Command {
 		Example: `  # Update a section's title
   stqry screens sections update 99 --screen-id 42 --title "About"
 
-  # Update title in French
-  stqry screens sections update 99 --screen-id 42 --title "À propos" --lang fr`,
-		Args:  cobra.ExactArgs(1),
+  # Add body text to a text section
+  stqry screens sections update 99 --screen-id 42 --body "Detailed description..."
+
+  # Attach a media item to a single_media section
+  stqry screens sections update 99 --screen-id 42 --media-item-id 123`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if screenID == "" {
 				return fmt.Errorf("--screen-id is required")
@@ -421,6 +499,16 @@ func newSectionsUpdateCmd() *cobra.Command {
 				switch f.Name {
 				case "title":
 					fields["title"] = map[string]interface{}{lang: title}
+				case "subtitle":
+					fields["subtitle"] = map[string]interface{}{lang: subtitle}
+				case "body":
+					fields["body"] = map[string]interface{}{lang: body}
+				case "description":
+					fields["description"] = map[string]interface{}{lang: description}
+				case "media-item-id":
+					fields["media_item_id"] = mediaItemID
+				case "text-position":
+					fields["text_position"] = textPosition
 				}
 			})
 
@@ -434,6 +522,11 @@ func newSectionsUpdateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&screenID, "screen-id", "", "Screen ID (required)")
 	cmd.Flags().StringVar(&title, "title", "", "New section title")
+	cmd.Flags().StringVar(&subtitle, "subtitle", "", "New section subtitle (text sections only)")
+	cmd.Flags().StringVar(&body, "body", "", "New section body (text sections only)")
+	cmd.Flags().StringVar(&description, "description", "", "New section description (media sections only)")
+	cmd.Flags().IntVar(&mediaItemID, "media-item-id", 0, "New media item ID (single_media sections only)")
+	cmd.Flags().StringVar(&textPosition, "text-position", "", "Text position for single_media sections (left, right, top, bottom, none)")
 
 	return cmd
 }

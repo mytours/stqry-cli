@@ -8,6 +8,7 @@ import (
 	"github.com/mytours/stqry-cli/internal/api"
 	"github.com/mytours/stqry-cli/internal/output"
 	"github.com/spf13/cobra"
+	flag "github.com/spf13/pflag"
 )
 
 // validCollectionTypes mirrors Collection::SUBTYPES_SHORT in mytours-web
@@ -182,7 +183,9 @@ func newCollectionsCreateCmd() *cobra.Command {
 }
 
 func newCollectionsUpdateCmd() *cobra.Command {
-	var name, title, shortTitle string
+	var name, title, shortTitle, description string
+	var coverImageID, coverImageGridID, coverImageWideID, logoID, previewID int
+	var mapViewEnabled bool
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -193,8 +196,8 @@ func newCollectionsUpdateCmd() *cobra.Command {
   # Update the title in French
   stqry collections update 42 --title "Tour de ville" --lang fr
 
-  # Update the short title
-  stqry collections update 42 --short-title "City Tour"`,
+  # Set a cover image and description
+  stqry collections update 42 --cover-image-media-item-id 123 --description "A walking tour..."`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lang := flagLang
@@ -202,15 +205,30 @@ func newCollectionsUpdateCmd() *cobra.Command {
 				lang = "en"
 			}
 			fields := map[string]interface{}{}
-			if name != "" {
-				fields["name"] = name
-			}
-			if title != "" {
-				fields["title"] = map[string]interface{}{lang: title}
-			}
-			if shortTitle != "" {
-				fields["short_title"] = map[string]interface{}{lang: shortTitle}
-			}
+			cmd.Flags().Visit(func(f *flag.Flag) {
+				switch f.Name {
+				case "name":
+					fields["name"] = name
+				case "title":
+					fields["title"] = map[string]interface{}{lang: title}
+				case "short-title":
+					fields["short_title"] = map[string]interface{}{lang: shortTitle}
+				case "description":
+					fields["description"] = map[string]interface{}{lang: description}
+				case "cover-image-media-item-id":
+					fields["cover_image_media_item_id"] = coverImageID
+				case "cover-image-grid-media-item-id":
+					fields["cover_image_grid_media_item_id"] = coverImageGridID
+				case "cover-image-wide-media-item-id":
+					fields["cover_image_wide_media_item_id"] = coverImageWideID
+				case "logo-media-item-id":
+					fields["logo_media_item_id"] = logoID
+				case "preview-media-item-id":
+					fields["preview_media_item_id"] = previewID
+				case "map-view-enabled":
+					fields["map_view_enabled"] = mapViewEnabled
+				}
+			})
 
 			col, err := api.UpdateCollection(activeClient, args[0], fields)
 			if err != nil {
@@ -224,6 +242,13 @@ func newCollectionsUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&name, "name", "", "Collection name")
 	cmd.Flags().StringVar(&title, "title", "", "Collection title")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Collection short title")
+	cmd.Flags().StringVar(&description, "description", "", "Collection description")
+	cmd.Flags().IntVar(&coverImageID, "cover-image-media-item-id", 0, "Cover image media item ID")
+	cmd.Flags().IntVar(&coverImageGridID, "cover-image-grid-media-item-id", 0, "Grid cover image media item ID")
+	cmd.Flags().IntVar(&coverImageWideID, "cover-image-wide-media-item-id", 0, "Wide cover image media item ID")
+	cmd.Flags().IntVar(&logoID, "logo-media-item-id", 0, "Logo media item ID")
+	cmd.Flags().IntVar(&previewID, "preview-media-item-id", 0, "Preview image media item ID")
+	cmd.Flags().BoolVar(&mapViewEnabled, "map-view-enabled", false, "Enable the map view for the collection (tour map)")
 	cmd.ValidArgsFunction = completeCollectionIDs
 
 	return cmd
