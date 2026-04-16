@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `stqry screens create` and `stqry collections create` no longer require `--title`. When omitted, title (and short-title) default to `--name`.
+- `stqry media create --file` and `stqry media upload` now write upload progress (`Uploading: NN%`, `Processing: ...`) to stderr instead of stdout, so piping stdout through `jq` or using `--jq` returns clean JSON/IDs without progress text mixed in.
 
 ## [0.10.4] - 2026-04-15
 

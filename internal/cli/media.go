@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -153,16 +154,17 @@ func newMediaCreateCmd() *cobra.Command {
 
 			// If a file is provided, upload it first.
 			if filePath != "" {
-				fmt.Printf("Uploading %s...\n", filePath)
+				// Progress goes to stderr so --json/--quiet/--jq output on stdout stays parseable.
+				fmt.Fprintf(os.Stderr, "Uploading %s...\n", filePath)
 				uploadedFile, err := api.UploadFile(activeClient, filePath, "", func(written, total int64) {
 					if total > 0 {
 						pct := float64(written) / float64(total) * 100
-						fmt.Printf("\rUploading: %.0f%%", pct)
+						fmt.Fprintf(os.Stderr, "\rUploading: %.0f%%", pct)
 					}
 				}, func(msg string) {
-					fmt.Printf("\nProcessing: %s", msg)
+					fmt.Fprintf(os.Stderr, "\nProcessing: %s", msg)
 				})
-				fmt.Println()
+				fmt.Fprintln(os.Stderr)
 				if err != nil {
 					printer.PrintError(err)
 					return err
@@ -296,15 +298,16 @@ unlinkable from the CLI afterwards.`,
 
 			filePath := args[0]
 
+			// Progress goes to stderr so --json/--quiet/--jq output on stdout stays parseable.
 			uploadedFile, err := api.UploadFile(activeClient, filePath, "", func(written, total int64) {
 				if total > 0 {
 					pct := float64(written) / float64(total) * 100
-					fmt.Printf("\rUploading: %.0f%%", pct)
+					fmt.Fprintf(os.Stderr, "\rUploading: %.0f%%", pct)
 				}
 			}, func(msg string) {
-				fmt.Printf("\nProcessing: %s", msg)
+				fmt.Fprintf(os.Stderr, "\nProcessing: %s", msg)
 			})
-			fmt.Println()
+			fmt.Fprintln(os.Stderr)
 			if err != nil {
 				printer.PrintError(err)
 				return err
