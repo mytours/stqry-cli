@@ -15,6 +15,26 @@ import (
 // (app/models/screen.rb). Keep in sync if new subtypes are added server-side.
 var validScreenTypes = []string{"story", "web", "panorama", "ar", "kiosk"}
 
+// validSectionTypes mirrors the StorySection oneOf in docs/public_api.json.
+// Keep in sync if new section schemas are added server-side.
+var validSectionTypes = []string{
+	"text",
+	"single_media",
+	"media_group",
+	"image_slider",
+	"link_group",
+	"social_group",
+	"location",
+	"menu",
+	"opening_time_group",
+	"price_group",
+	"badge_group",
+	"quiz_question",
+	"quiz_score",
+	"form",
+	"custom_widget",
+}
+
 func validateScreenType(t string) error {
 	for _, v := range validScreenTypes {
 		if t == v {
@@ -22,6 +42,15 @@ func validateScreenType(t string) error {
 		}
 	}
 	return fmt.Errorf("invalid screen type %q (valid: %s)", t, strings.Join(validScreenTypes, ", "))
+}
+
+func validateSectionType(t string) error {
+	for _, v := range validSectionTypes {
+		if t == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid section type %q (valid: %s)", t, strings.Join(validSectionTypes, ", "))
 }
 
 func newScreensCmd() *cobra.Command {
@@ -387,8 +416,8 @@ func newSectionsAddCmd() *cobra.Command {
   stqry screens sections add 42 --type media_group --title "Galerie" --lang fr`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if sectionType == "" {
-				return fmt.Errorf("--type is required")
+			if err := validateSectionType(sectionType); err != nil {
+				return err
 			}
 
 			lang := flagLang
@@ -452,7 +481,8 @@ func newSectionsAddCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&sectionType, "type", "", "Section type (required)")
+	cmd.Flags().StringVar(&sectionType, "type", "", fmt.Sprintf("Section type (required; one of: %s)", strings.Join(validSectionTypes, ", ")))
+	cmd.MarkFlagRequired("type")
 	cmd.Flags().StringVar(&title, "title", "", "Section title")
 	cmd.Flags().StringVar(&subtitle, "subtitle", "", "Section subtitle (text sections only)")
 	cmd.Flags().StringVar(&body, "body", "", "Section body (text sections only)")
