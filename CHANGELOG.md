@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `stqry screens create` no longer requires `--title`. When omitted, title (and short-title) default to `--name`, matching the equivalent `stqry collections create` behavior from 0.10.4.
+- `stqry screens create` and `stqry collections create` no longer require `--title`. When omitted, title (and short-title) default to `--name`.
 
 ## [0.10.4] - 2026-04-15
 
