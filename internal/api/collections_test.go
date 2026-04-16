@@ -306,15 +306,20 @@ func TestReorderCollectionItems(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decoding body: %v", err)
 		}
-		ids, ok := body["ids"].([]interface{})
+		positions, ok := body["positions"].([]interface{})
 		if !ok {
-			t.Fatalf("expected body.ids to be a slice, got %T", body["ids"])
+			t.Fatalf("expected body.positions to be a slice, got %T", body["positions"])
 		}
-		if len(ids) != 2 {
-			t.Errorf("expected 2 ids, got %d", len(ids))
+		if len(positions) != 2 {
+			t.Errorf("expected 2 positions, got %d", len(positions))
 		}
-		if ids[0] != "2" || ids[1] != "1" {
-			t.Errorf("unexpected ids order: %v", ids)
+		first := positions[0].(map[string]interface{})
+		second := positions[1].(map[string]interface{})
+		if first["id"].(float64) != 2 || first["position"].(float64) != 0 {
+			t.Errorf("unexpected first position: %v", first)
+		}
+		if second["id"].(float64) != 1 || second["position"].(float64) != 1 {
+			t.Errorf("unexpected second position: %v", second)
 		}
 		w.WriteHeader(200)
 	}))

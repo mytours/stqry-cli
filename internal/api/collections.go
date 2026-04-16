@@ -1,6 +1,9 @@
 package api
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 // PaginationMeta holds pagination information returned by list endpoints.
 type PaginationMeta struct {
@@ -110,8 +113,17 @@ func DeleteCollectionItem(c *Client, collectionID, itemID string) error {
 }
 
 // ReorderCollectionItems sets the order of collection items by their IDs.
+// The API expects {"positions": [{"id": <int>, "position": <int>}, ...]}.
 func ReorderCollectionItems(c *Client, collectionID string, itemIDs []string) error {
 	path := fmt.Sprintf("/api/public/collections/%s/collection_items/update_positions", collectionID)
-	body := map[string]interface{}{"ids": itemIDs}
+	positions := make([]map[string]interface{}, 0, len(itemIDs))
+	for i, idStr := range itemIDs {
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			return fmt.Errorf("invalid collection item id %q: must be an integer", idStr)
+		}
+		positions = append(positions, map[string]interface{}{"id": id, "position": i})
+	}
+	body := map[string]interface{}{"positions": positions}
 	return c.Post(path, body, nil)
 }
