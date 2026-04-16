@@ -1,6 +1,9 @@
 package api
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 // ── Screens ──────────────────────────────────────────────────────────────────
 
@@ -122,9 +125,18 @@ func DeleteStorySection(c *Client, screenID, sectionID string) error {
 }
 
 // ReorderStorySections sets the order of story sections via update_positions.
+// The API expects {"positions": [{"id": <int>, "position": <int>}, ...]}.
 func ReorderStorySections(c *Client, screenID string, sectionIDs []string) error {
 	path := fmt.Sprintf("/api/public/screens/%s/story_sections/update_positions", screenID)
-	body := map[string]interface{}{"section_ids": sectionIDs}
+	positions := make([]map[string]interface{}, 0, len(sectionIDs))
+	for i, idStr := range sectionIDs {
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			return fmt.Errorf("invalid section id %q: must be an integer", idStr)
+		}
+		positions = append(positions, map[string]interface{}{"id": id, "position": i})
+	}
+	body := map[string]interface{}{"positions": positions}
 	return c.Post(path, body, nil)
 }
 

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `stqry screens create` and `stqry collections create` no longer require `--title`. When omitted, title (and short-title) default to `--name`.
 - `stqry media create --file` and `stqry media upload` now write upload progress (`Uploading: NN%`, `Processing: ...`) to stderr instead of stdout, so piping stdout through `jq` or using `--jq` returns clean JSON/IDs without progress text mixed in.
+- `stqry screens sections reorder` and `stqry collections items reorder` now send the request body shape the API expects (`{"positions": [{"id": N, "position": N}, ...]}`). Previously they sent `{"section_ids"/"ids": [...]}` which the API rejected with `positions parameter is required`, making both reorder commands unusable.
 
 ### Changed
 
