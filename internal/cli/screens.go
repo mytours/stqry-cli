@@ -158,17 +158,18 @@ func newScreensCreateCmd() *cobra.Command {
 				"name": name,
 				"type": screenType,
 			}
-			if title != "" {
-				fields["title"] = map[string]interface{}{lang: title}
+			// The API requires title; default it to name when omitted.
+			effectiveTitle := title
+			if effectiveTitle == "" {
+				effectiveTitle = name
 			}
+			fields["title"] = map[string]interface{}{lang: effectiveTitle}
 			// The API requires short_title; default it to title when omitted.
 			effectiveShort := shortTitle
 			if effectiveShort == "" {
-				effectiveShort = title
+				effectiveShort = effectiveTitle
 			}
-			if effectiveShort != "" {
-				fields["short_title"] = map[string]interface{}{lang: effectiveShort}
-			}
+			fields["short_title"] = map[string]interface{}{lang: effectiveShort}
 
 			screen, err := api.CreateScreen(activeClient, fields)
 			if err != nil {
@@ -180,7 +181,7 @@ func newScreensCreateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&name, "name", "", "Screen name (required)")
 	cmd.Flags().StringVar(&screenType, "type", "", fmt.Sprintf("Screen type (required; one of: %s)", strings.Join(validScreenTypes, ", ")))
-	cmd.Flags().StringVar(&title, "title", "", "Screen title")
+	cmd.Flags().StringVar(&title, "title", "", "Screen title (defaults to --name if omitted)")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Screen short title (defaults to --title if omitted)")
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("type")

@@ -151,17 +151,18 @@ func newCollectionsCreateCmd() *cobra.Command {
 				"name": name,
 				"type": collectionType,
 			}
-			if title != "" {
-				fields["title"] = map[string]interface{}{lang: title}
+			// The API requires title; default it to name when omitted.
+			effectiveTitle := title
+			if effectiveTitle == "" {
+				effectiveTitle = name
 			}
+			fields["title"] = map[string]interface{}{lang: effectiveTitle}
 			// The API requires short_title; default it to title when omitted.
 			effectiveShort := shortTitle
 			if effectiveShort == "" {
-				effectiveShort = title
+				effectiveShort = effectiveTitle
 			}
-			if effectiveShort != "" {
-				fields["short_title"] = map[string]interface{}{lang: effectiveShort}
-			}
+			fields["short_title"] = map[string]interface{}{lang: effectiveShort}
 
 			col, err := api.CreateCollection(activeClient, fields)
 			if err != nil {
@@ -174,7 +175,7 @@ func newCollectionsCreateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&name, "name", "", "Collection name (required)")
 	cmd.Flags().StringVar(&collectionType, "type", "", fmt.Sprintf("Collection type (required; one of: %s)", strings.Join(validCollectionTypes, ", ")))
-	cmd.Flags().StringVar(&title, "title", "", "Collection title")
+	cmd.Flags().StringVar(&title, "title", "", "Collection title (defaults to --name if omitted)")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Collection short title (defaults to --title if omitted)")
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("type")
