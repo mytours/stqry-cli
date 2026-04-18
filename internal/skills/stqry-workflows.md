@@ -26,6 +26,18 @@ Right: `Rochester had a subway - it was mostly above ground.`
 Wrong: `Stop 1 — The Missing Entrance`
 Right: `Stop 1 - The Missing Entrance`
 
+### `--name` is not a URL slug
+
+The `name` field on collections and screens is a flat-string display label. It is not a URL slug, an identifier, or a kebab-cased machine-readable string. Do not translate the title into kebab-case, snake_case, or any other slug-like form when setting `--name`. Never slugify anything.
+
+Best practice: pass `--title "City Walking Tour"` and let `--name` default to the title verbatim. If you want to set `--name` explicitly, use the same human-readable form as the title.
+
+Wrong: `stqry screens create --name "stop-1" --title "Stop 1 - The Opening"`
+Right: `stqry screens create --title "Stop 1 - The Opening"`
+
+Wrong: `stqry collections create --name "downtown-walking-tour" --title "Downtown Walking Tour"`
+Right: `stqry collections create --title "Downtown Walking Tour"`
+
 ---
 
 ## Workflow 1: Create a New Tour (Collection + Screens + Items + Sections)
@@ -49,9 +61,8 @@ Screens are created as standalone entities before they are linked into any colle
 
 ```bash
 stqry screens create \
-  --name "town-hall-overview" \
-  --type story \
   --title "Town Hall Overview" \
+  --type story \
   --json
 ```
 
@@ -162,9 +173,8 @@ This builds a rich screen with opening hours, external links, and image badges.
 
 ```bash
 stqry screens create \
-  --name "visitor-information" \
-  --type story \
   --title "Visitor Information" \
+  --type story \
   --json
 ```
 
@@ -331,8 +341,8 @@ AUDIO_ID=$(stqry media create --type audio --file audio/stop_1.mp3 \
 IMAGE_ID=$(stqry media create --type image --file images/stop_1.jpg \
   --name "Stop 1 image" --caption "$IMG_CAPTION" --attribution "$IMG_CREDIT" --lang en --jq '.id')
 
-# Create the screen (title defaults to --name)
-SCREEN_ID=$(stqry screens create --name "stop-1" --type story --title "Stop 1 - The Opening" --jq '.id')
+# Create the screen. --name is optional; it defaults to --title verbatim (no slugification).
+SCREEN_ID=$(stqry screens create --title "Stop 1 - The Opening" --type story --jq '.id')
 
 # Set the screen's own cover images (needed for list / grid / wide layouts).
 # Reuse the stop's image MediaItem unless you have a deliberate reason to differ.

@@ -167,30 +167,38 @@ func newScreensCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a new screen",
 		Example: `  # Create a story screen
-  stqry screens create --name welcome --type story --title "Welcome"
+  stqry screens create --title "Welcome" --type story
 
   # Create a web screen with a localised title
-  stqry screens create --name map-view --type web --title "Map View" --lang en
+  stqry screens create --title "Map View" --type web --lang en
 
   # Override the short title (used in compact UI views)
-  stqry screens create --name welcome --type story --title "Welcome to Our Tour" --short-title "Welcome"`,
+  stqry screens create --title "Welcome to Our Tour" --short-title "Welcome" --type story`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateScreenType(screenType); err != nil {
 				return err
+			}
+			if name == "" && title == "" {
+				return fmt.Errorf("either --name or --title is required")
 			}
 
 			lang := flagLang
 			if lang == "" {
 				lang = "en"
 			}
-			fields := map[string]interface{}{
-				"name": name,
-				"type": screenType,
+			// Default name to title and title to name verbatim. Do not slugify;
+			// the "name" field is just a flat-string display label, not a URL slug.
+			effectiveName := name
+			if effectiveName == "" {
+				effectiveName = title
 			}
-			// The API requires title; default it to name when omitted.
 			effectiveTitle := title
 			if effectiveTitle == "" {
 				effectiveTitle = name
+			}
+			fields := map[string]interface{}{
+				"name": effectiveName,
+				"type": screenType,
 			}
 			fields["title"] = map[string]interface{}{lang: effectiveTitle}
 			// The API requires short_title; default it to title when omitted.
@@ -208,11 +216,10 @@ func newScreensCreateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&name, "name", "", "Screen name (required)")
+	cmd.Flags().StringVar(&name, "name", "", "Screen name (defaults to --title if omitted; plain label, not a slug)")
 	cmd.Flags().StringVar(&screenType, "type", "", fmt.Sprintf("Screen type (required; one of: %s)", strings.Join(validScreenTypes, ", ")))
 	cmd.Flags().StringVar(&title, "title", "", "Screen title (defaults to --name if omitted)")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Screen short title (defaults to --title if omitted)")
-	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("type")
 
 	return cmd
@@ -228,7 +235,7 @@ func newScreensUpdateCmd() *cobra.Command {
 		Use:   "update <id>",
 		Short: "Update a screen",
 		Example: `  # Rename a screen
-  stqry screens update 42 --name new-name
+  stqry screens update 42 --name "New Name"
 
   # Update the title in English
   stqry screens update 42 --title "Welcome Screen" --lang en

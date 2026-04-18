@@ -382,6 +382,62 @@ func TestCollectionsUpdateCmdTourType(t *testing.T) {
 	}
 }
 
+// TestCollectionsCreateCmdNameDefaultsToTitle asserts that when only --title
+// is passed, --name is not required and defaults to the title verbatim (no
+// slugification, no kebab-case). The "name" field is a flat display label,
+// not a URL slug.
+func TestCollectionsCreateCmdNameDefaultsToTitle(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection": map[string]interface{}{"id": 1, "name": "Downtown Walking Tour", "type": "tour"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "create",
+		"--type=tour", "--title=Downtown Walking Tour"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if captured["name"] != "Downtown Walking Tour" {
+		t.Errorf("expected name to default to title verbatim (\"Downtown Walking Tour\"), got %v", captured["name"])
+	}
+	// Guard against accidental slugification.
+	for _, bad := range []string{"downtown-walking-tour", "downtown_walking_tour", "DowntownWalkingTour"} {
+		if captured["name"] == bad {
+			t.Errorf("name was slugified to %q; it must be verbatim", bad)
+		}
+	}
+}
+
+// TestCollectionsCreateCmdRequiresNameOrTitle asserts that passing neither
+// --name nor --title produces a local error instead of a server 422.
+func TestCollectionsCreateCmdRequiresNameOrTitle(t *testing.T) {
+	setupTestHome(t, "http://localhost:0")
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "create", "--type=tour"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when neither --name nor --title is given")
+	}
+	if !contains(err.Error(), "--name or --title") {
+		t.Errorf("expected error to mention \"--name or --title\", got %q", err.Error())
+	}
+}
+
 // TestProgressEnabledOffByDefault asserts progress is silent unless --progress
 // is passed — dd(1)-style opt-in. Scripted callers (the common case) get clean
 // stderr without needing any flag.

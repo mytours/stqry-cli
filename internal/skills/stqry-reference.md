@@ -164,7 +164,7 @@ Manage collections and their items.
 ```
 stqry collections list                   List collections
 stqry collections get <id>               Get a single collection
-stqry collections create --name <name> --type <type> [--title <t>] [--short-title <t>] [--description <d>] [--tour-type <tt>]  Create a collection
+stqry collections create --type <type> [--title <t>] [--name <n>] [--short-title <t>] [--description <d>] [--tour-type <tt>]  Create a collection (--title or --name required; name defaults to title verbatim, no slug)
 stqry collections update <id>            Update a collection
 stqry collections delete <id>            Delete a collection
 
