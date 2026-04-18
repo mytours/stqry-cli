@@ -297,10 +297,11 @@ This is the default recipe when a user asks for an audio / self-guided / walking
   - **Image sections:** don't put captions or credits in the section title. Image `MediaItem`s already have `caption`, `attribution`, and `description` fields — attach credits there via `stqry media create --caption --attribution` (or `stqry media update`), not on the section wrapper. A section title on an image just adds a redundant visual block above the photo.
   - **Audio sections:** don't put filler labels in the section title. But the audio `MediaItem` itself **must** carry a `--title` — that's the label the player surface uses (Builder's media library, the player row at the stop). Set it at create time (`stqry media create --type audio --title "..."`) or via `stqry media update --title "..."`. Using the stop's display name is a safe default. Leaving an audio item title-less means it shows up as a nameless row in the media library and a blank label in the player.
 - **Collection cover image** — reuse the most iconic stop image. Set `--cover-image-media-item-id`, `--cover-image-grid-media-item-id`, and `--cover-image-wide-media-item-id` on `stqry collections update` so every UI surface has a cover.
+- **Screen cover images** — every stop's screen also gets the same three cover fields set, pointing at that stop's own image (the one attached as the first section). Without this, stops show up as blank rows in list / grid / wide layouts of the tour. Set via `stqry screens update <screen-id> --cover-image-media-item-id <image-media-id> --cover-image-grid-media-item-id <id> --cover-image-wide-media-item-id <id>` after the image MediaItem is created. Reusing the same image for all three surfaces is fine; pick a different image only if the stop's list-tile image should differ from the in-screen hero image.
 - **Script tone** — conversational guide voice, hook → what you see → story → bridge to next stop.
 - **Images** — source from Wikimedia Commons / Wikipedia with a verifiable CC or public-domain license; record the URL and license in `images/LICENSES.md`.
 - **Language** — English only unless the user asks otherwise.
-- **Build order per stop** — narration script → audio → image → written on-screen text (distinct from script) → upload media → create screen → add sections → reorder to image/audio/text → link screen to collection → append IDs to `stqry_ids.json`.
+- **Build order per stop** — narration script → audio → image → written on-screen text (distinct from script) → upload media → create screen → set screen cover images (reuse the stop image) → add sections → reorder to image/audio/text → link screen to collection → append IDs to `stqry_ids.json`.
 - **Verification** — after building, run `stqry collections items list <id>` to confirm all stops are linked and `stqry screens sections list <screen-id>` for each screen. Do this silently; only surface a problem if one appears.
 
 ### Questions to ask the user
@@ -330,7 +331,14 @@ IMAGE_ID=$(stqry media create --type image --file images/stop_1.jpg \
   --name "Stop 1 image" --caption "$IMG_CAPTION" --attribution "$IMG_CREDIT" --lang en --jq '.id')
 
 # Create the screen (title defaults to --name)
-SCREEN_ID=$(stqry screens create --name "stop-1" --type story --title "Stop 1 — The Opening" --jq '.id')
+SCREEN_ID=$(stqry screens create --name "stop-1" --type story --title "Stop 1 - The Opening" --jq '.id')
+
+# Set the screen's own cover images (needed for list / grid / wide layouts).
+# Reuse the stop's image MediaItem unless you have a deliberate reason to differ.
+stqry screens update $SCREEN_ID \
+  --cover-image-media-item-id $IMAGE_ID \
+  --cover-image-grid-media-item-id $IMAGE_ID \
+  --cover-image-wide-media-item-id $IMAGE_ID
 
 # Add sections in any order, then reorder to image → audio → text.
 # NOTE 1: --body is the WRITTEN on-screen prose, authored separately from the
