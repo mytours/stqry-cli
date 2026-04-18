@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `stqry-workflows` skill gained a global "Content Conventions" section. First rule: where you would use an em dash, write a plain hyphen-minus (`-`) instead. Mechanical substitution, not a prompt to rewrite. Scoped to user-facing content (narration scripts, on-screen text, titles, captions, attributions, collection names / descriptions), not to the instructions or developer-facing artifacts like commit messages.
 - `stqry-workflows` skill gained Workflow 5 ("Author a Self-Guided Audio Tour") with opinionated conventions — image/text/audio section order per screen, cover-image setup at the collection, Wikimedia Commons for imagery, English default, a fixed directory layout — plus explicit anti-patterns so agents stop asking the user about directory layout, build order, verification procedure, and other plumbing.
 - Workflow 5 now calls out that the narration script (spoken word) and the `text` section body (written prose) are different artefacts and must be authored as different things. The `--body "$(cat scripts/stop_N.txt)"` shortcut is explicitly flagged as wrong; how to produce the written version is left up to the agent.
 - Workflow 5 per-stop section order changed from image/text/audio to image/audio/text. Audio sits right under the image so the user can tap play without scrolling; the written prose stays below as the fallback / deeper read.
