@@ -157,3 +157,160 @@ func TestJQFlagFiltersOutput(t *testing.T) {
 		t.Errorf("table header should not appear in jq output, got:\n%s", out)
 	}
 }
+
+// TestCollectionsCreateCmdDescription asserts that passing --description sends
+// description: {<lang>: value} on the create call, so callers don't need a
+// follow-up update to set a description.
+func TestCollectionsCreateCmdDescription(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || r.URL.Path != "/api/public/collections" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection": map[string]interface{}{"id": 1, "name": "ct", "type": "tour"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "create",
+		"--name=ct", "--type=tour", "--description=A walking tour"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	desc, ok := captured["description"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected description to be a translated-string map, got %v (type %T)", captured["description"], captured["description"])
+	}
+	if desc["en"] != "A walking tour" {
+		t.Errorf("expected description.en=\"A walking tour\", got %v", desc["en"])
+	}
+}
+
+// TestCollectionsCreateCmdOmitsDescription asserts that when --description is
+// not passed, the create payload does NOT include a description field (so the
+// API uses whatever default it applies).
+func TestCollectionsCreateCmdOmitsDescription(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection": map[string]interface{}{"id": 1, "name": "ct", "type": "tour"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "create",
+		"--name=ct", "--type=tour"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if _, present := captured["description"]; present {
+		t.Errorf("expected no description field when --description is omitted, got %v", captured["description"])
+	}
+}
+
+// TestCollectionsItemsAddCmdPosition asserts that passing --position sends
+// position as an integer in the create body.
+func TestCollectionsItemsAddCmdPosition(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || r.URL.Path != "/api/public/collections/42/collection_items" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 7, "item_type": "Screen", "item_id": 99, "position": 3},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "items", "add", "42",
+		"--item-type=Screen", "--item-id=99", "--position=3"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	// JSON numbers decode as float64.
+	pos, ok := captured["position"].(float64)
+	if !ok {
+		t.Fatalf("expected position to be a number, got %v (type %T)", captured["position"], captured["position"])
+	}
+	if int(pos) != 3 {
+		t.Errorf("expected position=3, got %v", pos)
+	}
+}
+
+// TestCollectionsItemsAddCmdOmitsPosition asserts that when --position is not
+// passed, the create body omits position entirely (so the API appends).
+func TestCollectionsItemsAddCmdOmitsPosition(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 7, "item_type": "Screen", "item_id": 99},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "items", "add", "42",
+		"--item-type=Screen", "--item-id=99"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if _, present := captured["position"]; present {
+		t.Errorf("expected no position field when --position is omitted, got %v", captured["position"])
+	}
+}
+
+// TestProgressEnabledOffByDefault asserts progress is silent unless --progress
+// is passed — dd(1)-style opt-in. Scripted callers (the common case) get clean
+// stderr without needing any flag.
+func TestProgressEnabledOffByDefault(t *testing.T) {
+	orig := flagProgress
+	t.Cleanup(func() { flagProgress = orig })
+
+	flagProgress = false
+	if progressEnabled() {
+		t.Error("expected progressEnabled() to be false when --progress is not set")
+	}
+
+	flagProgress = true
+	if !progressEnabled() {
+		t.Error("expected progressEnabled() to be true when --progress is set")
+	}
+}

@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `stqry-workflows` skill gained Workflow 5 ("Author a Self-Guided Audio Tour") with opinionated conventions — image/text/audio section order per screen, cover-image setup at the collection, Wikimedia Commons for imagery, English default, a fixed directory layout — plus explicit anti-patterns so agents stop asking the user about directory layout, build order, verification procedure, and other plumbing.
+- `--description` flag on `stqry collections create` so a description can be set in the same call as create, saving a follow-up `collections update` round trip.
+- `--position` flag on `stqry collections items add` so items can be inserted at a specific 0-based index in one call. Previously, building a collection in any order other than strictly append required a follow-up `collections items reorder`.
+- `--progress` global flag to opt in to upload progress lines on stderr. Modelled on `dd(1)`'s `status=progress`.
+
+### Changed
+
+- `stqry media create --file` and `stqry media upload` no longer emit upload progress by default. Scripted callers (the common case) now get clean stderr without needing `2>/dev/null`. Interactive users who want the visual feedback of a progress bar should pass `--progress`.
 
 ## [0.10.5] - 2026-04-16
 
