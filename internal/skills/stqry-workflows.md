@@ -12,6 +12,22 @@ These recipes show complete multi-step workflows for common STQRY content manage
 
 ---
 
+## Content Conventions
+
+Rules that apply to every recipe below. These govern the **user-facing content you author through the CLI** (narration scripts, on-screen text bodies, section titles, screen titles, collection names and descriptions, MediaItem titles, captions, attributions). They do not apply to these instructions, to code, to commit messages, or to chat responses back to the developer.
+
+### Use hyphen-minus, never em dash
+
+User-facing content must not contain em dash characters. Where you would normally write an em dash, write a plain hyphen-minus (`-`) instead. This is a mechanical substitution, not a prompt to rewrite the sentence.
+
+Wrong: `Rochester had a subway — it was mostly above ground.`
+Right: `Rochester had a subway - it was mostly above ground.`
+
+Wrong: `Stop 1 — The Missing Entrance`
+Right: `Stop 1 - The Missing Entrance`
+
+---
+
 ## Workflow 1: Create a New Tour (Collection + Screens + Items + Sections)
 
 A "tour" is a Collection that links to Screens via collection items. Screens are standalone entities — create them first, then link each one into the collection. A collection item is a join record with two fields: `item_type` (e.g. "Screen") and `item_id` (the ID of the screen being linked).
