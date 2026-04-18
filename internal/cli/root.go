@@ -13,11 +13,12 @@ import (
 )
 
 var (
-	flagSite   string
-	flagLang   string
-	flagJSON   bool
-	flagQuiet  bool
-	flagJQ     string
+	flagSite     string
+	flagLang     string
+	flagJSON     bool
+	flagQuiet    bool
+	flagJQ       string
+	flagProgress bool
 
 	globalConfig *config.GlobalConfig
 	activeClient *api.Client
@@ -115,6 +116,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.PersistentFlags().BoolVar(&flagJSON, "json", false, "Output as JSON")
 	rootCmd.PersistentFlags().BoolVar(&flagQuiet, "quiet", false, "Output minimal JSON (no envelope)")
 	rootCmd.PersistentFlags().StringVar(&flagJQ, "jq", "", "Filter output with a jq expression (overrides --quiet)")
+	rootCmd.PersistentFlags().BoolVar(&flagProgress, "progress", false, "Show upload progress on stderr (off by default; modelled on dd(1) status=progress)")
 
 	// Subcommands.
 	rootCmd.AddCommand(newConfigCmd())

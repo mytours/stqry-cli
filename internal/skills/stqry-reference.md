@@ -109,6 +109,7 @@ sites:
 | `--json` | bool | Output full JSON response envelope |
 | `--quiet` | bool | Output minimal JSON (no envelope) |
 | `--jq` | string | Filter output with a jq expression (overrides `--quiet`) |
+| `--progress` | bool | Show upload progress on stderr (off by default; `dd(1)`-style opt-in) |
 
 ### Extracting data with `--jq`
 
@@ -163,12 +164,12 @@ Manage collections and their items.
 ```
 stqry collections list                   List collections
 stqry collections get <id>               Get a single collection
-stqry collections create --name <name> --type <type>  Create a collection
+stqry collections create --name <name> --type <type> [--title <t>] [--short-title <t>] [--description <d>]  Create a collection
 stqry collections update <id>            Update a collection
 stqry collections delete <id>            Delete a collection
 
 stqry collections items list <collection-id>                    List items in a collection
-stqry collections items add <collection-id> --item-type <type> --item-id <id>  Add a screen or collection to a collection
+stqry collections items add <collection-id> --item-type <type> --item-id <id> [--position <n>]  Add a screen or collection to a collection
 stqry collections items reorder <collection-id> <item-id>...    Reorder items in a collection
 stqry collections items remove <collection-id> <item-id>        Remove an item from a collection
 ```

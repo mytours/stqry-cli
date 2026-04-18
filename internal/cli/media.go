@@ -154,17 +154,28 @@ func newMediaCreateCmd() *cobra.Command {
 
 			// If a file is provided, upload it first.
 			if filePath != "" {
-				// Progress goes to stderr so --json/--quiet/--jq output on stdout stays parseable.
-				fmt.Fprintf(os.Stderr, "Uploading %s...\n", filePath)
-				uploadedFile, err := api.UploadFile(activeClient, filePath, "", func(written, total int64) {
-					if total > 0 {
-						pct := float64(written) / float64(total) * 100
-						fmt.Fprintf(os.Stderr, "\rUploading: %.0f%%", pct)
+				// Progress goes to stderr so --json/--quiet/--jq output on stdout stays
+				// parseable. Fully suppressed when --no-progress is set or when stderr
+				// is not a TTY (scripted / piped callers).
+				showProgress := progressEnabled()
+				var onProgress func(written, total int64)
+				var onStatus func(string)
+				if showProgress {
+					fmt.Fprintf(os.Stderr, "Uploading %s...\n", filePath)
+					onProgress = func(written, total int64) {
+						if total > 0 {
+							pct := float64(written) / float64(total) * 100
+							fmt.Fprintf(os.Stderr, "\rUploading: %.0f%%", pct)
+						}
 					}
-				}, func(msg string) {
-					fmt.Fprintf(os.Stderr, "\nProcessing: %s", msg)
-				})
-				fmt.Fprintln(os.Stderr)
+					onStatus = func(msg string) {
+						fmt.Fprintf(os.Stderr, "\nProcessing: %s", msg)
+					}
+				}
+				uploadedFile, err := api.UploadFile(activeClient, filePath, "", onProgress, onStatus)
+				if showProgress {
+					fmt.Fprintln(os.Stderr)
+				}
 				if err != nil {
 					printer.PrintError(err)
 					return err
@@ -298,16 +309,27 @@ unlinkable from the CLI afterwards.`,
 
 			filePath := args[0]
 
-			// Progress goes to stderr so --json/--quiet/--jq output on stdout stays parseable.
-			uploadedFile, err := api.UploadFile(activeClient, filePath, "", func(written, total int64) {
-				if total > 0 {
-					pct := float64(written) / float64(total) * 100
-					fmt.Fprintf(os.Stderr, "\rUploading: %.0f%%", pct)
+			// Progress goes to stderr so --json/--quiet/--jq output on stdout stays
+			// parseable. Opt-in via --progress (off by default, dd(1)-style).
+			showProgress := progressEnabled()
+			var onProgress func(written, total int64)
+			var onStatus func(string)
+			if showProgress {
+				fmt.Fprintf(os.Stderr, "Uploading %s...\n", filePath)
+				onProgress = func(written, total int64) {
+					if total > 0 {
+						pct := float64(written) / float64(total) * 100
+						fmt.Fprintf(os.Stderr, "\rUploading: %.0f%%", pct)
+					}
 				}
-			}, func(msg string) {
-				fmt.Fprintf(os.Stderr, "\nProcessing: %s", msg)
-			})
-			fmt.Fprintln(os.Stderr)
+				onStatus = func(msg string) {
+					fmt.Fprintf(os.Stderr, "\nProcessing: %s", msg)
+				}
+			}
+			uploadedFile, err := api.UploadFile(activeClient, filePath, "", onProgress, onStatus)
+			if showProgress {
+				fmt.Fprintln(os.Stderr)
+			}
 			if err != nil {
 				printer.PrintError(err)
 				return err

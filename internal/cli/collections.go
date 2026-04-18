@@ -126,7 +126,7 @@ func newCollectionsGetCmd() *cobra.Command {
 }
 
 func newCollectionsCreateCmd() *cobra.Command {
-	var name, collectionType, title, shortTitle string
+	var name, collectionType, title, shortTitle, description string
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -138,7 +138,10 @@ func newCollectionsCreateCmd() *cobra.Command {
   stqry collections create --name city-tour --type tour --title "City Tour" --lang en
 
   # Override the short title (used in compact UI views)
-  stqry collections create --name city-tour --type tour --title "Grand City Walking Tour" --short-title "City Tour"`,
+  stqry collections create --name city-tour --type tour --title "Grand City Walking Tour" --short-title "City Tour"
+
+  # Create a tour with a description (saves a follow-up update call)
+  stqry collections create --name city-tour --type tour --description "A walking tour of downtown"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateCollectionType(collectionType); err != nil {
 				return err
@@ -163,6 +166,9 @@ func newCollectionsCreateCmd() *cobra.Command {
 				effectiveShort = effectiveTitle
 			}
 			fields["short_title"] = map[string]interface{}{lang: effectiveShort}
+			if description != "" {
+				fields["description"] = map[string]interface{}{lang: description}
+			}
 
 			col, err := api.CreateCollection(activeClient, fields)
 			if err != nil {
@@ -177,6 +183,7 @@ func newCollectionsCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&collectionType, "type", "", fmt.Sprintf("Collection type (required; one of: %s)", strings.Join(validCollectionTypes, ", ")))
 	cmd.Flags().StringVar(&title, "title", "", "Collection title (defaults to --name if omitted)")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Collection short title (defaults to --title if omitted)")
+	cmd.Flags().StringVar(&description, "description", "", "Collection description")
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("type")
 
@@ -327,12 +334,16 @@ func newCollectionsItemsListCmd() *cobra.Command {
 
 func newCollectionsItemsAddCmd() *cobra.Command {
 	var itemType, itemID string
+	var position int
 
 	cmd := &cobra.Command{
 		Use:   "add <collection-id>",
 		Short: "Add an item to a collection",
-		Example: `  # Add a screen to a collection
+		Example: `  # Add a screen to a collection (appended to the end)
   stqry collections items add 42 --item-type Screen --item-id 99
+
+  # Insert at a specific position (0-based) so a follow-up reorder is not needed
+  stqry collections items add 42 --item-type Screen --item-id 99 --position 0
 
   # Add to a specific site
   stqry collections items add 42 --item-type Screen --item-id 99 --site mysite`,
@@ -341,6 +352,9 @@ func newCollectionsItemsAddCmd() *cobra.Command {
 			fields := map[string]interface{}{
 				"item_type": itemType,
 				"item_id":   itemID,
+			}
+			if cmd.Flags().Changed("position") {
+				fields["position"] = position
 			}
 			item, err := api.CreateCollectionItem(activeClient, args[0], fields)
 			if err != nil {
@@ -353,6 +367,7 @@ func newCollectionsItemsAddCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&itemType, "item-type", "", "Item type (required)")
 	cmd.Flags().StringVar(&itemID, "item-id", "", "Item ID (required)")
+	cmd.Flags().IntVar(&position, "position", 0, "Position in the collection (0-based; omit to append to the end)")
 	cmd.MarkFlagRequired("item-type")
 	cmd.MarkFlagRequired("item-id")
 	cmd.ValidArgsFunction = completeCollectionIDs
