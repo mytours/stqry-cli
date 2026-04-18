@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -215,9 +216,24 @@ func newConfigListSitesCmd() *cobra.Command {
 	}
 }
 
-func writeAgentsMD(dir string) error {
-	// 0644: AGENTS.md contains no secrets; world-readable is intentional.
-	return os.WriteFile(filepath.Join(dir, "AGENTS.md"), agentsmd.Content, 0644)
+// writeClaudeMD writes the embedded CLAUDE.md to dir if and only if no
+// CLAUDE.md already exists there. Returns (true, nil) when it wrote the file,
+// (false, nil) when an existing file was left untouched.
+func writeClaudeMD(dir string) (bool, error) {
+	path := filepath.Join(dir, "CLAUDE.md")
+	// 0644: CLAUDE.md contains no secrets; world-readable is intentional.
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return false, nil
+		}
+		return false, err
+	}
+	defer f.Close()
+	if _, err := f.Write(agentsmd.Content); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // config init [--name=X] [--token=X] [--region=X | --api-url=X]
@@ -248,11 +264,16 @@ func newConfigInitCmd() *cobra.Command {
 				if err := config.SaveDirectoryConfig(cwd, dirCfg); err != nil {
 					return fmt.Errorf("saving directory config: %w", err)
 				}
-				if err := writeAgentsMD(cwd); err != nil {
-					return fmt.Errorf("writing AGENTS.md: %w", err)
+				wroteClaudeMD, err := writeClaudeMD(cwd)
+				if err != nil {
+					return fmt.Errorf("writing CLAUDE.md: %w", err)
 				}
 				if !flagQuiet && !flagJSON {
-					fmt.Printf("Initialised stqry.yaml with inline credentials and wrote AGENTS.md.\n")
+					if wroteClaudeMD {
+						fmt.Printf("Initialised stqry.yaml with inline credentials and wrote CLAUDE.md.\n")
+					} else {
+						fmt.Printf("Initialised stqry.yaml with inline credentials. CLAUDE.md already exists, left untouched.\n")
+					}
 				}
 				return nil
 			}
@@ -278,12 +299,17 @@ func newConfigInitCmd() *cobra.Command {
 			if err := config.SaveDirectoryConfig(cwd, dirCfg); err != nil {
 				return fmt.Errorf("saving directory config: %w", err)
 			}
-			if err := writeAgentsMD(cwd); err != nil {
-				return fmt.Errorf("writing AGENTS.md: %w", err)
+			wroteClaudeMD, err := writeClaudeMD(cwd)
+			if err != nil {
+				return fmt.Errorf("writing CLAUDE.md: %w", err)
 			}
 
 			if !flagQuiet && !flagJSON {
-				fmt.Printf("Initialised stqry.yaml for site %q and wrote AGENTS.md.\n", name)
+				if wroteClaudeMD {
+					fmt.Printf("Initialised stqry.yaml for site %q and wrote CLAUDE.md.\n", name)
+				} else {
+					fmt.Printf("Initialised stqry.yaml for site %q. CLAUDE.md already exists, left untouched.\n", name)
+				}
 			}
 			return nil
 		},

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `stqry config init` now writes `CLAUDE.md` instead of `AGENTS.md`, and only writes it when no `CLAUDE.md` exists in the CWD yet (it will never clobber a hand-authored one). The embedded contents are minimal on purpose: a one-paragraph pointer that tells Claude Code to load the `/stqry-reference` and `/stqry-workflows` skills for anything STQRY-related. Everything that used to live in `AGENTS.md` is already covered by those two skills.
+
 ### Added
 
 - `stqry-workflows` skill gained a global "Content Conventions" section. First rule: where you would use an em dash, write a plain hyphen-minus (`-`) instead. Mechanical substitution, not a prompt to rewrite. Scoped to user-facing content (narration scripts, on-screen text, titles, captions, attributions, collection names / descriptions), not to the instructions or developer-facing artifacts like commit messages.
