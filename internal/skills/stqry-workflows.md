@@ -30,12 +30,12 @@ Right: `Stop 1 - The Missing Entrance`
 
 The `--body` field on `text` sections is rendered as HTML by the STQRY player. Markdown is **not** parsed - asterisks, underscores, hash headings, and hyphen list bullets render as literal characters. Authoring text bodies in markdown produces visibly broken output (`**bold**` shows up with the asterisks; `- item` shows up with the hyphen).
 
-Use HTML tags directly: `<strong>`, `<em>`, `<p>`, `<ul>`/`<ol>`/`<li>`, `<br>`, `<a href="...">`. Do not use `<h1>`/`<h2>` inside a body - the section's `--title` is the heading. If you want a sub-heading inside the body, use `<strong>` or `<p><strong>...</strong></p>`.
+Use HTML tags directly: `<p>`, `<strong>`, `<em>`, `<ul>`/`<ol>`/`<li>`, `<br>`, `<a href="...">`.
 
 This rule applies to `--body` on `stqry screens sections add` and `stqry screens sections update`. It does not apply to other fields - titles, captions, attributions, descriptions are plain text.
 
-Wrong: `--body "**Where to find her:** 282 Rush Scottsville Rd."`
-Right: `--body "<p><strong>Where to find her:</strong> 282 Rush Scottsville Rd.</p>"`
+Wrong: `--body "**important:** the museum is open weekends only."`
+Right: `--body "<p><strong>important:</strong> the museum is open weekends only.</p>"`
 
 Wrong:
 ```
@@ -46,6 +46,54 @@ Right:
 ```
 <ul><li>Apples</li><li>Pears</li></ul>
 ```
+
+### Two text sections per screen is a good default, written as flowing prose
+
+Two `text` sections per screen tends to work well and is a sensible default. A long stack of short text sections in sequence reads like slop - choppy, list-shaped, drained of voice - so if you find yourself reaching for a fourth or fifth, step back and consider whether the content is really a punch list that wants to be flowing prose. Sometimes one section is enough, and occasionally three is genuinely the right shape; it's a preference, not a hard limit.
+
+Companion rule to "Don't inline sub-headings as `<strong>`": the answer to "I have five sub-headings" is usually not "five sections" and is not "one section with `<strong>` sub-headings inside the body". More often it's "rewrite as continuous prose that doesn't need sub-headings, split across one or two sections".
+
+**Pattern A - observation + deeper read.** Section 1 frames what the visitor is looking at right now (title like "What you're looking at"), section 2 carries the deeper story or context behind it (title like "How it survived", "What might come next").
+
+**Pattern B - directions + the stop itself.** Section 1 is short practical orientation - an address, how to get there, what entrance to use, where to stand for the best view (title like "Directions", "Where to find it", "Address"). Section 2 is the substance about the stop - history, what happened here, what to notice. This is often the most useful shape for a tour, because the reader needs the "how do I get there" answer first and doesn't want to hunt for it inside a narrative paragraph.
+
+Wrong (five short sections, slop):
+```
+section 1: --title "What you're looking at"    --body "<p>Car 60, the only surviving subway car...</p>"
+section 2: --title "Where to find her"         --body "<p>282 Rush Scottsville Rd.</p>"
+section 3: --title "Don't miss next door"      --body "<p>The NYMT museum...</p>"
+section 4: --title "When to visit"             --body "<p>Weekends, May to October.</p>"
+section 5: --title "How she survived"          --body "<p>Rescued from scrap in 1956...</p>"
+```
+
+Right, Pattern A (observation + deeper read):
+```
+section 1: --title "What you're looking at"
+           --body "<p>Car 60 is the only surviving passenger car... lives now at the
+                   Rochester & Genesee Valley Railroad Museum at 282 Rush Scottsville Rd,
+                   typically open weekends from May through October.</p>"
+
+section 2: --title "How she survived"
+           --body "<p>Car 60 was rescued from the cutting torch at the very last minute...
+                   Walk a few yards next door to the New York Museum of Transportation,
+                   connected by a heritage track on the same ticket...</p>"
+```
+
+Right, Pattern B (directions + the stop):
+```
+section 1: --title "Directions"
+           --body "<p>Rochester & Genesee Valley Railroad Museum, 282 Rush Scottsville Rd,
+                   Rush NY. Typically open weekends, May through October. One ticket also
+                   gets you next door to the New York Museum of Transportation via the
+                   connecting heritage track.</p>"
+
+section 2: --title "Car 60"
+           --body "<p>Car 60 is the only surviving passenger car from Rochester's twelve-car
+                   subway fleet. Built in 1916... rescued from scrap in 1956... under active
+                   restoration since 2016...</p>"
+```
+
+When one section is enough: stops with a single short observation and no deeper story. Don't pad to two for symmetry's sake.
 
 ### `--name` is not a URL slug
 
@@ -320,11 +368,12 @@ This is the default recipe when a user asks for an audio / self-guided / walking
   - `images/LICENSES.md` — image source URL + license per stop
   - `stqry_ids.json` — captured collection / screen / section / media IDs (for re-runs)
 - **Narration script vs. on-screen text are different artefacts.** The audio script is spoken word — rhythm, pauses, "you're standing in front of...", stage directions for the ear. The on-screen text is written prose — scannable, read silently, no TTS pacing, no "welcome to the tour" pleasantries the reader just saw on the previous screen. They serve different senses and must be authored as different things. **Do not pipe `scripts/stop_N.txt` into the `text` section's `--body`.** How you produce the written version — condensed summary, parallel rewrite, expanded caption, structured bullet list, anything — is your call. Just do not treat script and screen text as a single asset. Persist the written text somewhere (a `text/` directory alongside `scripts/`, inline in your build routine, whatever fits) so re-runs are idempotent.
-- **Per-stop screen composition** — one `story` screen per stop with three sections, in this order (image, then audio, then text — audio sits right under the image so the user can tap play without scrolling, and the written prose sits below as the fallback / deeper read):
+- **Per-stop screen composition** — one `story` screen per stop with the image first, then audio, then one or two text sections of flowing prose (two is the preferred default). Audio sits right under the image so the user can tap play without scrolling, and the written prose sits below as the fallback / deeper read:
   1. `single_media` section pointing at the cover image
   2. `single_media` section pointing at the audio file
-  3. `text` section containing the **written** on-screen prose (not the script)
-- **Section titles.** Only the `text` section should get a `--title` — a sub-heading that frames the prose differently from the stop name in the screen title ("What you're looking at", "The short version"). Leave image and audio section titles blank:
+  3. `text` section - the **written** on-screen prose (not the script). Two patterns work well: (A) what the visitor is observing right now, or (B) directions / address for the stop.
+  4. *(preferred)* a second `text` section carrying the deeper story / context about the stop. Use it unless there's genuinely not enough substance to fill one. Occasionally a third section is the right shape, but a long stack of short sections reads like slop - see "Two text sections per screen is a good default" in Content Conventions.
+- **Section titles.** Only `text` sections get a `--title`. For Pattern A: section 1 frames what the visitor is looking at ("What you're looking at", "What's down there"), section 2 cues the deeper read ("How she survived", "What might come next"). For Pattern B: section 1 is "Directions" / "Where to find it" / "Address", section 2 is the name of the thing or the story hook. Leave image and audio section titles blank:
   - **Image sections:** don't put captions or credits in the section title. Image `MediaItem`s already have `caption`, `attribution`, and `description` fields — attach credits there via `stqry media create --caption --attribution` (or `stqry media update`), not on the section wrapper. A section title on an image just adds a redundant visual block above the photo.
   - **Audio sections:** don't put filler labels in the section title. But the audio `MediaItem` itself **must** carry a `--title` — that's the label the player surface uses (Builder's media library, the player row at the stop). Set it at create time (`stqry media create --type audio --title "..."`) or via `stqry media update --title "..."`. Using the stop's display name is a safe default. Leaving an audio item title-less means it shows up as a nameless row in the media library and a blank label in the player.
 - **Tour type** — set `--tour-type` on the collection so client apps can show the right icon and copy. For a self-guided audio walk it's `walking`. Other common values: `cycling`, `driving`, `bus`, `museum`, `nature_trail`, `historic_house`. The full enum is in `stqry collections create --help`. Pick the best fit based on what the user told you about the tour; if in doubt, `walking` is a safe default for any on-foot itinerary.
@@ -333,7 +382,7 @@ This is the default recipe when a user asks for an audio / self-guided / walking
 - **Script tone** — conversational guide voice, hook → what you see → story → bridge to next stop.
 - **Images** — source from Wikimedia Commons / Wikipedia with a verifiable CC or public-domain license; record the URL and license in `images/LICENSES.md`.
 - **Language** — English only unless the user asks otherwise.
-- **Build order per stop** — narration script → audio → image → written on-screen text (distinct from script) → upload media → create screen → set screen cover images (reuse the stop image) → add sections → reorder to image/audio/text → link screen to collection → append IDs to `stqry_ids.json`.
+- **Build order per stop** — narration script → audio → image → written on-screen text as one or two flowing-prose sections (distinct from script) → upload media → create screen → set screen cover images (reuse the stop image) → add image / audio / text sections → reorder to image / audio / text-1 / text-2 → link screen to collection → append IDs to `stqry_ids.json`.
 - **Verification** — after building, run `stqry collections items list <id>` to confirm all stops are linked and `stqry screens sections list <screen-id>` for each screen. Do this silently; only surface a problem if one appears.
 
 ### Questions to ask the user
@@ -372,20 +421,28 @@ stqry screens update $SCREEN_ID \
   --cover-image-grid-media-item-id $IMAGE_ID \
   --cover-image-wide-media-item-id $IMAGE_ID
 
-# Add sections in any order, then reorder to image → audio → text.
+# Add sections, then reorder to image → audio → text-1 → (text-2).
 # NOTE 1: --body is the WRITTEN on-screen prose, authored separately from the
 # narration script in scripts/stop_N.txt. They are not interchangeable — see
 # "Narration script vs. on-screen text" in Conventions above.
 # NOTE 2: --body is HTML, not markdown — see "Use HTML in text section bodies"
 # in Content Conventions. Use <p>, <strong>, <em>, <ul>/<li>, <a>; do not use
 # **bold**, _italic_, # headings, or `- ` list bullets.
-# NOTE 3: only the text section gets a --title (a sub-heading). Image/audio
-# sections get no title — credits belong on the MediaItem's own attribution /
-# description fields, and "Narration" labels are visual noise on a play button.
+# NOTE 3: two text sections is the preferred default — see "Two text sections
+# per screen is a good default" in Content Conventions. Pattern A is
+# observation + deeper read; Pattern B is directions/address + the stop itself.
+# Sometimes one section is enough; occasionally three is the right shape. If
+# you have multiple sub-headings, the usual answer is to rewrite as flowing
+# prose, not to create one section per sub-heading and not to inline <strong>
+# sub-headings inside one body.
+# NOTE 4: only text sections get a --title. Image/audio sections get no title —
+# credits belong on the MediaItem's own attribution / description fields, and
+# "Narration" labels are visual noise on a play button.
 IMG_SEC=$(stqry screens sections add $SCREEN_ID --type single_media --media-item-id $IMAGE_ID --jq '.id')
-TXT_SEC=$(stqry screens sections add $SCREEN_ID --type text --title "$TXT_HEADING" --body "$STOP_TEXT" --jq '.id')
 AUD_SEC=$(stqry screens sections add $SCREEN_ID --type single_media --media-item-id $AUDIO_ID --jq '.id')
-stqry screens sections reorder $SCREEN_ID $IMG_SEC $AUD_SEC $TXT_SEC
+TXT1_SEC=$(stqry screens sections add $SCREEN_ID --type text --title "$TEXT1_TITLE" --body "$TEXT1_HTML" --jq '.id')
+TXT2_SEC=$(stqry screens sections add $SCREEN_ID --type text --title "$TEXT2_TITLE" --body "$TEXT2_HTML" --jq '.id')
+stqry screens sections reorder $SCREEN_ID $IMG_SEC $AUD_SEC $TXT1_SEC $TXT2_SEC
 
 # Link screen into the tour collection
 stqry collections items add <collection-id> --item-type Screen --item-id $SCREEN_ID --jq '.id'
