@@ -15,6 +15,15 @@ import (
 // (app/models/collection.rb). Keep in sync if new subtypes are added.
 var validCollectionTypes = []string{"list", "tour", "organization", "menu", "search"}
 
+// validTourTypes mirrors the CollectionPartial.tour_type enum in
+// docs/public_api.json. Set on `type: tour` collections to drive tour-specific
+// iconography and copy in client apps (e.g. a walking icon for a city walk).
+var validTourTypes = []string{
+	"walking", "4wd", "aboriginal_site", "airplane", "bus", "canoeing",
+	"cycling", "driving", "gallery", "helicopter", "historic_house",
+	"horse_trail", "museum", "nature_trail", "scavenger_hunt", "ship", "train",
+}
+
 func validateCollectionType(t string) error {
 	for _, v := range validCollectionTypes {
 		if t == v {
@@ -22,6 +31,18 @@ func validateCollectionType(t string) error {
 		}
 	}
 	return fmt.Errorf("invalid collection type %q (valid: %s)", t, strings.Join(validCollectionTypes, ", "))
+}
+
+func validateTourType(t string) error {
+	if t == "" {
+		return nil
+	}
+	for _, v := range validTourTypes {
+		if t == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid tour type %q (valid: %s)", t, strings.Join(validTourTypes, ", "))
 }
 
 func newCollectionsCmd() *cobra.Command {
@@ -126,7 +147,7 @@ func newCollectionsGetCmd() *cobra.Command {
 }
 
 func newCollectionsCreateCmd() *cobra.Command {
-	var name, collectionType, title, shortTitle, description string
+	var name, collectionType, title, shortTitle, description, tourType string
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -141,9 +162,15 @@ func newCollectionsCreateCmd() *cobra.Command {
   stqry collections create --name city-tour --type tour --title "Grand City Walking Tour" --short-title "City Tour"
 
   # Create a tour with a description (saves a follow-up update call)
-  stqry collections create --name city-tour --type tour --description "A walking tour of downtown"`,
+  stqry collections create --name city-tour --type tour --description "A walking tour of downtown"
+
+  # Tag the tour's mode of transport so clients can show the right icon / copy
+  stqry collections create --name city-tour --type tour --tour-type walking`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateCollectionType(collectionType); err != nil {
+				return err
+			}
+			if err := validateTourType(tourType); err != nil {
 				return err
 			}
 			lang := flagLang
@@ -169,6 +196,9 @@ func newCollectionsCreateCmd() *cobra.Command {
 			if description != "" {
 				fields["description"] = map[string]interface{}{lang: description}
 			}
+			if tourType != "" {
+				fields["tour_type"] = tourType
+			}
 
 			col, err := api.CreateCollection(activeClient, fields)
 			if err != nil {
@@ -184,6 +214,7 @@ func newCollectionsCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&title, "title", "", "Collection title (defaults to --name if omitted)")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Collection short title (defaults to --title if omitted)")
 	cmd.Flags().StringVar(&description, "description", "", "Collection description")
+	cmd.Flags().StringVar(&tourType, "tour-type", "", fmt.Sprintf("Tour mode of transport / venue (one of: %s)", strings.Join(validTourTypes, ", ")))
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("type")
 
@@ -191,7 +222,7 @@ func newCollectionsCreateCmd() *cobra.Command {
 }
 
 func newCollectionsUpdateCmd() *cobra.Command {
-	var name, title, shortTitle, description string
+	var name, title, shortTitle, description, tourType string
 	var coverImageID, coverImageGridID, coverImageWideID, logoID, previewID int
 	var mapViewEnabled bool
 
@@ -205,9 +236,15 @@ func newCollectionsUpdateCmd() *cobra.Command {
   stqry collections update 42 --title "Tour de ville" --lang fr
 
   # Set a cover image and description
-  stqry collections update 42 --cover-image-media-item-id 123 --description "A walking tour..."`,
+  stqry collections update 42 --cover-image-media-item-id 123 --description "A walking tour..."
+
+  # Tag the tour's mode of transport so clients can show the right icon / copy
+  stqry collections update 42 --tour-type walking`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateTourType(tourType); err != nil {
+				return err
+			}
 			lang := flagLang
 			if lang == "" {
 				lang = "en"
@@ -223,6 +260,8 @@ func newCollectionsUpdateCmd() *cobra.Command {
 					fields["short_title"] = map[string]interface{}{lang: shortTitle}
 				case "description":
 					fields["description"] = map[string]interface{}{lang: description}
+				case "tour-type":
+					fields["tour_type"] = tourType
 				case "cover-image-media-item-id":
 					fields["cover_image_media_item_id"] = coverImageID
 				case "cover-image-grid-media-item-id":
@@ -251,6 +290,7 @@ func newCollectionsUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&title, "title", "", "Collection title")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Collection short title")
 	cmd.Flags().StringVar(&description, "description", "", "Collection description")
+	cmd.Flags().StringVar(&tourType, "tour-type", "", fmt.Sprintf("Tour mode of transport / venue (one of: %s)", strings.Join(validTourTypes, ", ")))
 	cmd.Flags().IntVar(&coverImageID, "cover-image-media-item-id", 0, "Cover image media item ID")
 	cmd.Flags().IntVar(&coverImageGridID, "cover-image-grid-media-item-id", 0, "Grid cover image media item ID")
 	cmd.Flags().IntVar(&coverImageWideID, "cover-image-wide-media-item-id", 0, "Wide cover image media item ID")
