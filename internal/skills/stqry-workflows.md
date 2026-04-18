@@ -26,6 +26,27 @@ Right: `Rochester had a subway - it was mostly above ground.`
 Wrong: `Stop 1 — The Missing Entrance`
 Right: `Stop 1 - The Missing Entrance`
 
+### Use HTML in text section bodies, never markdown
+
+The `--body` field on `text` sections is rendered as HTML by the STQRY player. Markdown is **not** parsed - asterisks, underscores, hash headings, and hyphen list bullets render as literal characters. Authoring text bodies in markdown produces visibly broken output (`**bold**` shows up with the asterisks; `- item` shows up with the hyphen).
+
+Use HTML tags directly: `<strong>`, `<em>`, `<p>`, `<ul>`/`<ol>`/`<li>`, `<br>`, `<a href="...">`. Do not use `<h1>`/`<h2>` inside a body - the section's `--title` is the heading. If you want a sub-heading inside the body, use `<strong>` or `<p><strong>...</strong></p>`.
+
+This rule applies to `--body` on `stqry screens sections add` and `stqry screens sections update`. It does not apply to other fields - titles, captions, attributions, descriptions are plain text.
+
+Wrong: `--body "**Where to find her:** 282 Rush Scottsville Rd."`
+Right: `--body "<p><strong>Where to find her:</strong> 282 Rush Scottsville Rd.</p>"`
+
+Wrong:
+```
+- Apples
+- Pears
+```
+Right:
+```
+<ul><li>Apples</li><li>Pears</li></ul>
+```
+
 ### `--name` is not a URL slug
 
 The `name` field on collections and screens is a flat-string display label. It is not a URL slug, an identifier, or a kebab-cased machine-readable string. Do not translate the title into kebab-case, snake_case, or any other slug-like form when setting `--name`. Never slugify anything.
@@ -355,7 +376,10 @@ stqry screens update $SCREEN_ID \
 # NOTE 1: --body is the WRITTEN on-screen prose, authored separately from the
 # narration script in scripts/stop_N.txt. They are not interchangeable — see
 # "Narration script vs. on-screen text" in Conventions above.
-# NOTE 2: only the text section gets a --title (a sub-heading). Image/audio
+# NOTE 2: --body is HTML, not markdown — see "Use HTML in text section bodies"
+# in Content Conventions. Use <p>, <strong>, <em>, <ul>/<li>, <a>; do not use
+# **bold**, _italic_, # headings, or `- ` list bullets.
+# NOTE 3: only the text section gets a --title (a sub-heading). Image/audio
 # sections get no title — credits belong on the MediaItem's own attribution /
 # description fields, and "Narration" labels are visual noise on a play button.
 IMG_SEC=$(stqry screens sections add $SCREEN_ID --type single_media --media-item-id $IMAGE_ID --jq '.id')
