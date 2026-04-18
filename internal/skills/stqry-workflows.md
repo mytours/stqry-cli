@@ -257,3 +257,63 @@ stqry screens get <screen-id> --lang de --json
 - Use `--jq` to extract or reshape output inline (e.g. `--jq '.title'`), or `--quiet` for compact JSON suitable for diffing or logging.
 - When scripting bulk translations, iterate over language codes and wrap each `update` in an error check.
 - Language codes follow IETF BCP 47: `en`, `fr`, `de`, `es`, `zh-Hans`, `zh-Hant`, `pt-BR`, etc.
+
+---
+
+## Workflow 5: Author a Self-Guided Audio Tour
+
+This is the default recipe when a user asks for an audio / self-guided / walking tour. The choices below are conventions, not questions — don't surface them to the user.
+
+### Conventions
+
+- **Directory layout** inside the project root:
+  - `scripts/stop_N.txt` — narration source of truth
+  - `audio/stop_N.mp3` — narration audio per stop
+  - `images/stop_N.jpg` — cover image per stop
+  - `images/LICENSES.md` — image source URL + license per stop
+  - `stqry_ids.json` — captured collection / screen / section / media IDs (for re-runs)
+- **Per-stop screen composition** — one `story` screen per stop with three sections, in this order:
+  1. `single_media` section pointing at the cover image
+  2. `text` section with the narration script in `--body` (so users who can't play audio can still read)
+  3. `single_media` section pointing at the audio file
+- **Collection cover image** — reuse the most iconic stop image. Set `--cover-image-media-item-id`, `--cover-image-grid-media-item-id`, and `--cover-image-wide-media-item-id` on `stqry collections update` so every UI surface has a cover.
+- **Script tone** — conversational guide voice, hook → what you see → story → bridge to next stop.
+- **Images** — source from Wikimedia Commons / Wikipedia with a verifiable CC or public-domain license; record the URL and license in `images/LICENSES.md`.
+- **Language** — English only unless the user asks otherwise.
+- **Build order per stop** — script → audio → image → upload media → create screen → add sections (image, text, audio) → reorder to image/text/audio → link screen to collection → append IDs to `stqry_ids.json`.
+- **Verification** — after building, run `stqry collections items list <id>` to confirm all stops are linked and `stqry screens sections list <screen-id>` for each screen. Do this silently; only surface a problem if one appears.
+
+### Questions to ask the user
+
+Ask about the things only the user can decide:
+
+- Tour subject and approximate number of stops
+- Walking / driving / mixed route
+- Whether they already have audio files, or want you to generate them (and which TTS tool to use)
+- Whether they already have specific stop photos or want Commons-sourced CC images
+- Any language beyond English
+
+### Anti-patterns (do NOT do these)
+
+- Do not ask "want me to show you the directory layout?" or "want me to proceed?" — just proceed.
+- Do not ask the user to validate file naming, build order, verification procedure, or idempotency plans.
+- Do not ask permission to fix obvious mistakes you made mid-build. Fix them and continue.
+
+### Commands
+
+```bash
+AUDIO_ID=$(stqry media create --type audio --file audio/stop_1.mp3 --name "Stop 1 audio" --lang en --jq '.id')
+IMAGE_ID=$(stqry media create --type image --file images/stop_1.jpg --name "Stop 1 image" --lang en --jq '.id')
+
+# Create the screen (title defaults to --name)
+SCREEN_ID=$(stqry screens create --name "stop-1" --type story --title "Stop 1 — The Opening" --jq '.id')
+
+# Add sections in any order, then reorder to image → text → audio
+IMG_SEC=$(stqry screens sections add $SCREEN_ID --type single_media --media-item-id $IMAGE_ID --jq '.id')
+TXT_SEC=$(stqry screens sections add $SCREEN_ID --type text --body "$(cat scripts/stop_1.txt)" --jq '.id')
+AUD_SEC=$(stqry screens sections add $SCREEN_ID --type single_media --media-item-id $AUDIO_ID --jq '.id')
+stqry screens sections reorder $SCREEN_ID $IMG_SEC $TXT_SEC $AUD_SEC
+
+# Link screen into the tour collection
+stqry collections items add <collection-id> --item-type Screen --item-id $SCREEN_ID --jq '.id'
+```
