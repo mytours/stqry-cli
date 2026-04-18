@@ -223,14 +223,21 @@ stqry media delete <id>                               Delete a media item
 
 `stqry media upload` requires `--media-id` and only exists to attach a new file to a media item that already exists (e.g. replacing a file or adding a language variant). It will refuse to run without `--media-id`. Running without it is not supported because the resulting uploaded file would be orphaned — invisible in STQRY Builder and unlinkable from the CLI afterwards.
 
-Flags for `stqry media create`:
+Flags for `stqry media create` and `stqry media update`:
 
 | Flag | Description |
 |------|-------------|
-| `--type` | Media item type (required). One of: `map`, `webpackage`, `animation`, `audio`, `image`, `video`, `webvideo`, `ar`, `data` |
-| `--file` | Path to the file to upload |
-| `--name` | Media item name |
-| `--lang` | Language code for the uploaded file (global flag) |
+| `--type` | Media item type (required on create). One of: `map`, `webpackage`, `animation`, `audio`, `image`, `video`, `webvideo`, `ar`, `data` |
+| `--file` | Path to the file to upload (create only) |
+| `--name` | Media item name (internal label; not shown to end users) |
+| `--caption` | **Image** caption (TranslatedString) |
+| `--attribution` | **Image** credit line, e.g. "Photo by A. Borchert · CC BY-SA 4.0" (TranslatedString) |
+| `--description` | **Image** long description (TranslatedString) |
+| `--title` | **Audio** display title (TranslatedString) |
+| `--transcription` | **Audio** transcription for accessibility (TranslatedString) |
+| `--lang` | Language code (global flag) — used as the locale key for all TranslatedString fields above |
+
+**Put credits on the MediaItem, not on the section.** When attaching a CC/public-domain image to a tour stop, set `--caption` and `--attribution` on `stqry media create` / `update`. Do not put the credit in the enclosing section's `--title` — that wraps a redundant label around the image. Similarly, an audio section does not need a "Narration · 2 min" title; use `--title` on the audio MediaItem itself if a display title is needed.
 
 Flags for `stqry media upload`:
 

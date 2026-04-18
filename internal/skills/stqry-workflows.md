@@ -277,6 +277,9 @@ This is the default recipe when a user asks for an audio / self-guided / walking
   1. `single_media` section pointing at the cover image
   2. `single_media` section pointing at the audio file
   3. `text` section containing the **written** on-screen prose (not the script)
+- **Section titles.** Only the `text` section should get a `--title` — a sub-heading that frames the prose differently from the stop name in the screen title ("What you're looking at", "The short version"). Leave image and audio section titles blank:
+  - **Image sections:** don't put captions or credits in the section title. Image `MediaItem`s already have `caption`, `attribution`, and `description` fields — attach credits there via `stqry media create --caption --attribution` (or `stqry media update`), not on the section wrapper. A section title on an image just adds a redundant visual block above the photo.
+  - **Audio sections:** don't put filler labels in the section title. But the audio `MediaItem` itself **must** carry a `--title` — that's the label the player surface uses (Builder's media library, the player row at the stop). Set it at create time (`stqry media create --type audio --title "..."`) or via `stqry media update --title "..."`. Using the stop's display name is a safe default. Leaving an audio item title-less means it shows up as a nameless row in the media library and a blank label in the player.
 - **Collection cover image** — reuse the most iconic stop image. Set `--cover-image-media-item-id`, `--cover-image-grid-media-item-id`, and `--cover-image-wide-media-item-id` on `stqry collections update` so every UI surface has a cover.
 - **Script tone** — conversational guide voice, hook → what you see → story → bridge to next stop.
 - **Images** — source from Wikimedia Commons / Wikipedia with a verifiable CC or public-domain license; record the URL and license in `images/LICENSES.md`.
@@ -303,18 +306,25 @@ Ask about the things only the user can decide:
 ### Commands
 
 ```bash
-AUDIO_ID=$(stqry media create --type audio --file audio/stop_1.mp3 --name "Stop 1 audio" --lang en --jq '.id')
-IMAGE_ID=$(stqry media create --type image --file images/stop_1.jpg --name "Stop 1 image" --lang en --jq '.id')
+# Always pass --title on audio so the player surface has a label.
+# Always pass --caption / --attribution on images so credits live on the MediaItem.
+AUDIO_ID=$(stqry media create --type audio --file audio/stop_1.mp3 \
+  --name "Stop 1 audio" --title "$STOP_TITLE" --lang en --jq '.id')
+IMAGE_ID=$(stqry media create --type image --file images/stop_1.jpg \
+  --name "Stop 1 image" --caption "$IMG_CAPTION" --attribution "$IMG_CREDIT" --lang en --jq '.id')
 
 # Create the screen (title defaults to --name)
 SCREEN_ID=$(stqry screens create --name "stop-1" --type story --title "Stop 1 — The Opening" --jq '.id')
 
 # Add sections in any order, then reorder to image → audio → text.
-# NOTE: --body is the WRITTEN on-screen prose, authored separately from the
+# NOTE 1: --body is the WRITTEN on-screen prose, authored separately from the
 # narration script in scripts/stop_N.txt. They are not interchangeable — see
 # "Narration script vs. on-screen text" in Conventions above.
+# NOTE 2: only the text section gets a --title (a sub-heading). Image/audio
+# sections get no title — credits belong on the MediaItem's own attribution /
+# description fields, and "Narration" labels are visual noise on a play button.
 IMG_SEC=$(stqry screens sections add $SCREEN_ID --type single_media --media-item-id $IMAGE_ID --jq '.id')
-TXT_SEC=$(stqry screens sections add $SCREEN_ID --type text --body "$STOP_TEXT" --jq '.id')
+TXT_SEC=$(stqry screens sections add $SCREEN_ID --type text --title "$TXT_HEADING" --body "$STOP_TEXT" --jq '.id')
 AUD_SEC=$(stqry screens sections add $SCREEN_ID --type single_media --media-item-id $AUDIO_ID --jq '.id')
 stqry screens sections reorder $SCREEN_ID $IMG_SEC $AUD_SEC $TXT_SEC
 

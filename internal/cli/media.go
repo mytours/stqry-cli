@@ -9,6 +9,7 @@ import (
 	"github.com/mytours/stqry-cli/internal/api"
 	"github.com/mytours/stqry-cli/internal/output"
 	"github.com/spf13/cobra"
+	flag "github.com/spf13/pflag"
 )
 
 func validateMediaType(t string) error {
@@ -128,9 +129,10 @@ func newMediaGetCmd() *cobra.Command {
 	return cmd
 }
 
-// media create --file=<path> --type=X [--name=X] [--lang=X]
+// media create --file=<path> --type=X [--name=X] [--lang=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X]
 func newMediaCreateCmd() *cobra.Command {
 	var filePath, mediaType, name string
+	var caption, attribution, description, title, transcription string
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -138,11 +140,23 @@ func newMediaCreateCmd() *cobra.Command {
 		Example: `  # Create an image media item with a file
   stqry media create --type image --file ./photo.jpg
 
+  # Create an image with a caption and CC attribution on the media item itself
+  stqry media create --type image --file ./photo.jpg \
+    --caption "Court Street subway entrance, c. 1928" \
+    --attribution "Rochester Subway Archive · public domain"
+
   # Create a video media item with a name and language
-  stqry media create --type video --file ./tour.mp4 --name "City Tour" --lang en`,
+  stqry media create --type video --file ./tour.mp4 --name "City Tour" --lang en
+
+  # Create an audio item with a transcription (accessibility)
+  stqry media create --type audio --file ./stop_1.mp3 --transcription "Welcome to the tour..."`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateMediaType(mediaType); err != nil {
 				return err
+			}
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
 			}
 
 			fields := map[string]interface{}{
@@ -151,12 +165,26 @@ func newMediaCreateCmd() *cobra.Command {
 			if name != "" {
 				fields["name"] = name
 			}
+			if caption != "" {
+				fields["caption"] = map[string]interface{}{lang: caption}
+			}
+			if attribution != "" {
+				fields["attribution"] = map[string]interface{}{lang: attribution}
+			}
+			if description != "" {
+				fields["description"] = map[string]interface{}{lang: description}
+			}
+			if title != "" {
+				fields["title"] = map[string]interface{}{lang: title}
+			}
+			if transcription != "" {
+				fields["transcription"] = map[string]interface{}{lang: transcription}
+			}
 
 			// If a file is provided, upload it first.
 			if filePath != "" {
 				// Progress goes to stderr so --json/--quiet/--jq output on stdout stays
-				// parseable. Fully suppressed when --no-progress is set or when stderr
-				// is not a TTY (scripted / piped callers).
+				// parseable. Opt-in via --progress (off by default, dd(1)-style).
 				showProgress := progressEnabled()
 				var onProgress func(written, total int64)
 				var onStatus func(string)
@@ -188,9 +216,8 @@ func newMediaCreateCmd() *cobra.Command {
 					uploadedFileID = strconv.Itoa(int(id))
 				}
 
-				lang := flagLang
-				if lang != "" {
-					fields["file_uploaded_file_id"] = map[string]interface{}{lang: uploadedFileID}
+				if flagLang != "" {
+					fields["file_uploaded_file_id"] = map[string]interface{}{flagLang: uploadedFileID}
 				} else {
 					fields["file_uploaded_file_id"] = uploadedFileID
 				}
@@ -207,27 +234,58 @@ func newMediaCreateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&filePath, "file", "", "Path to file to upload")
 	cmd.Flags().StringVar(&mediaType, "type", "", fmt.Sprintf("Media item type (required; one of: %s)", strings.Join(api.ValidMediaTypes, ", ")))
-	cmd.Flags().StringVar(&name, "name", "", "Media item name")
+	cmd.Flags().StringVar(&name, "name", "", "Media item name (internal label; not shown to end users)")
+	cmd.Flags().StringVar(&caption, "caption", "", "Image caption (image media items)")
+	cmd.Flags().StringVar(&attribution, "attribution", "", "Credit / attribution line (image media items — e.g. \"Photo by X · CC BY 4.0\")")
+	cmd.Flags().StringVar(&description, "description", "", "Long description (image media items)")
+	cmd.Flags().StringVar(&title, "title", "", "Display title (audio media items)")
+	cmd.Flags().StringVar(&transcription, "transcription", "", "Transcription (audio media items — accessibility)")
 	cmd.MarkFlagRequired("type")
 
 	return cmd
 }
 
-// media update <id> [--name=X]
+// media update <id> [--name=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X]
 func newMediaUpdateCmd() *cobra.Command {
-	var name string
+	var name, caption, attribution, description, title, transcription string
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
 		Short: "Update a media item",
 		Example: `  # Rename a media item
-  stqry media update 55 --name "New Banner"`,
-		Args:  cobra.ExactArgs(1),
+  stqry media update 55 --name "New Banner"
+
+  # Set caption + attribution on an image (credits belong on the MediaItem, not the section)
+  stqry media update 55 --caption "Subway tunnel, 2001" --attribution "Photo by A. Borchert · CC BY-SA 4.0"
+
+  # Set transcription on an audio item for accessibility
+  stqry media update 72 --transcription "Welcome to the tour..." --lang en
+
+  # Clear a field (pass empty string)
+  stqry media update 55 --attribution ""`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fields := map[string]interface{}{}
-			if name != "" {
-				fields["name"] = name
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
 			}
+			fields := map[string]interface{}{}
+			cmd.Flags().Visit(func(f *flag.Flag) {
+				switch f.Name {
+				case "name":
+					fields["name"] = name
+				case "caption":
+					fields["caption"] = map[string]interface{}{lang: caption}
+				case "attribution":
+					fields["attribution"] = map[string]interface{}{lang: attribution}
+				case "description":
+					fields["description"] = map[string]interface{}{lang: description}
+				case "title":
+					fields["title"] = map[string]interface{}{lang: title}
+				case "transcription":
+					fields["transcription"] = map[string]interface{}{lang: transcription}
+				}
+			})
 
 			item, err := api.UpdateMediaItem(activeClient, args[0], fields)
 			if err != nil {
@@ -238,7 +296,12 @@ func newMediaUpdateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&name, "name", "", "New name for the media item")
+	cmd.Flags().StringVar(&name, "name", "", "Media item name (internal label; not shown to end users)")
+	cmd.Flags().StringVar(&caption, "caption", "", "Image caption (image media items)")
+	cmd.Flags().StringVar(&attribution, "attribution", "", "Credit / attribution line (image media items — e.g. \"Photo by X · CC BY 4.0\")")
+	cmd.Flags().StringVar(&description, "description", "", "Long description (image media items)")
+	cmd.Flags().StringVar(&title, "title", "", "Display title (audio media items)")
+	cmd.Flags().StringVar(&transcription, "transcription", "", "Transcription (audio media items — accessibility)")
 	cmd.ValidArgsFunction = completeMediaIDs
 
 	return cmd
