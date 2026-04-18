@@ -149,10 +149,13 @@ stqry screens get 12345 --jq '.name'
 Manage site configuration.
 
 ```
-stqry config list                        List all configured sites
-stqry config add <name>                  Add or update a site
-stqry config remove <name>               Remove a site
-stqry config show [<name>]               Show config for a site (or current)
+stqry config list-sites                                              List all configured sites
+stqry config add-site --name <n> --token <t> --region <r>            Add a site to global config (region: us, ca, eu, sg, au; or pass --api-url for a custom endpoint)
+stqry config edit-site <name> [--token <t>] [--api-url <url>]        Update an existing site's token or API URL
+stqry config remove-site <name>                                      Remove a site from global config
+stqry config init [--name <n>]                                       Write stqry.yaml in the current directory, pinning it to a site
+stqry config show [<name>]                                           Show the fully resolved configuration with source tracking
+stqry config validate                                                Check config file syntax and token validity
 ```
 
 ---
