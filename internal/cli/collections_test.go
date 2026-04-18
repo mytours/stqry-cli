@@ -297,6 +297,91 @@ func TestCollectionsItemsAddCmdOmitsPosition(t *testing.T) {
 	}
 }
 
+// TestCollectionsCreateCmdTourType asserts that --tour-type is sent as a flat
+// string field (not a TranslatedString). Tour type is an enum, not localised.
+func TestCollectionsCreateCmdTourType(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection": map[string]interface{}{"id": 1, "name": "ct", "type": "tour", "tour_type": "walking"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "create",
+		"--name=ct", "--type=tour", "--tour-type=walking"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if captured["tour_type"] != "walking" {
+		t.Errorf("expected tour_type=\"walking\" (flat string), got %v (type %T)", captured["tour_type"], captured["tour_type"])
+	}
+}
+
+// TestCollectionsCreateCmdInvalidTourType asserts client-side rejection of
+// bogus tour types so callers get a fast local error with the valid list
+// instead of a vague server 422.
+func TestCollectionsCreateCmdInvalidTourType(t *testing.T) {
+	setupTestHome(t, "http://localhost:0")
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "create",
+		"--name=ct", "--type=tour", "--tour-type=spaceship"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for invalid tour type, got nil")
+	}
+	if !contains(err.Error(), "invalid tour type") {
+		t.Errorf("expected error to mention \"invalid tour type\", got %q", err.Error())
+	}
+	if !contains(err.Error(), "walking") {
+		t.Errorf("expected error to list valid types (walking), got %q", err.Error())
+	}
+}
+
+// TestCollectionsUpdateCmdTourType asserts --tour-type on update PATCHes the
+// flat string field.
+func TestCollectionsUpdateCmdTourType(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection": map[string]interface{}{"id": 42, "tour_type": "cycling"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "update", "42", "--tour-type=cycling"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if captured["tour_type"] != "cycling" {
+		t.Errorf("expected tour_type=\"cycling\" in PATCH body, got %v", captured["tour_type"])
+	}
+}
+
 // TestProgressEnabledOffByDefault asserts progress is silent unless --progress
 // is passed — dd(1)-style opt-in. Scripted callers (the common case) get clean
 // stderr without needing any flag.
