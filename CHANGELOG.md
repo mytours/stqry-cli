@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `stqry collections create` and `stqry screens create` no longer require `--name`. `--title` alone is enough; when `--name` is omitted it defaults to the title verbatim (no slugification, no kebab-case). The `name` field is a flat display label, not a URL slug, and had been mis-advertised that way in examples for a long time. Passing neither flag now produces a local error instead of a server 422.
+- Examples in `collections` / `screens` command help, `stqry-workflows` skill (Workflows 1, 3, 6), and `stqry-reference` skill no longer use kebab-case slugs like `--name city-tour` or `--name stop-1`. Replaced with either `--title "City Tour"` alone or explicit human-readable values. A new "No URL slugs on --name" rule in the workflows skill documents the principle.
 - `stqry media create --file` and `stqry media upload` no longer emit upload progress by default. Scripted callers (the common case) now get clean stderr without needing `2>/dev/null`. Interactive users who want the visual feedback of a progress bar should pass `--progress`.
 
 ## [0.10.5] - 2026-04-16

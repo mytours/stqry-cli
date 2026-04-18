@@ -53,7 +53,7 @@ func newCollectionsCmd() *cobra.Command {
   stqry collections list
 
   # Create a tour collection
-  stqry collections create --name city-tour --type tour`,
+  stqry collections create --title "City Tour" --type tour`,
 	}
 
 	cmd.AddCommand(newCollectionsListCmd())
@@ -153,19 +153,19 @@ func newCollectionsCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a collection",
 		Example: `  # Create a list collection
-  stqry collections create --name highlights --type list --title "Highlights"
+  stqry collections create --title "Highlights" --type list
 
   # Create a tour with a localised title
-  stqry collections create --name city-tour --type tour --title "City Tour" --lang en
+  stqry collections create --title "City Tour" --type tour --lang en
 
   # Override the short title (used in compact UI views)
-  stqry collections create --name city-tour --type tour --title "Grand City Walking Tour" --short-title "City Tour"
+  stqry collections create --title "Grand City Walking Tour" --short-title "City Tour" --type tour
 
   # Create a tour with a description (saves a follow-up update call)
-  stqry collections create --name city-tour --type tour --description "A walking tour of downtown"
+  stqry collections create --title "City Tour" --type tour --description "A walking tour of downtown"
 
   # Tag the tour's mode of transport so clients can show the right icon / copy
-  stqry collections create --name city-tour --type tour --tour-type walking`,
+  stqry collections create --title "City Tour" --type tour --tour-type walking`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateCollectionType(collectionType); err != nil {
 				return err
@@ -173,18 +173,26 @@ func newCollectionsCreateCmd() *cobra.Command {
 			if err := validateTourType(tourType); err != nil {
 				return err
 			}
+			if name == "" && title == "" {
+				return fmt.Errorf("either --name or --title is required")
+			}
 			lang := flagLang
 			if lang == "" {
 				lang = "en"
 			}
-			fields := map[string]interface{}{
-				"name": name,
-				"type": collectionType,
+			// Default name to title and title to name verbatim. Do not slugify;
+			// the "name" field is just a flat-string display label, not a URL slug.
+			effectiveName := name
+			if effectiveName == "" {
+				effectiveName = title
 			}
-			// The API requires title; default it to name when omitted.
 			effectiveTitle := title
 			if effectiveTitle == "" {
 				effectiveTitle = name
+			}
+			fields := map[string]interface{}{
+				"name": effectiveName,
+				"type": collectionType,
 			}
 			fields["title"] = map[string]interface{}{lang: effectiveTitle}
 			// The API requires short_title; default it to title when omitted.
@@ -209,13 +217,12 @@ func newCollectionsCreateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&name, "name", "", "Collection name (required)")
+	cmd.Flags().StringVar(&name, "name", "", "Collection name (defaults to --title if omitted; plain label, not a slug)")
 	cmd.Flags().StringVar(&collectionType, "type", "", fmt.Sprintf("Collection type (required; one of: %s)", strings.Join(validCollectionTypes, ", ")))
 	cmd.Flags().StringVar(&title, "title", "", "Collection title (defaults to --name if omitted)")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Collection short title (defaults to --title if omitted)")
 	cmd.Flags().StringVar(&description, "description", "", "Collection description")
 	cmd.Flags().StringVar(&tourType, "tour-type", "", fmt.Sprintf("Tour mode of transport / venue (one of: %s)", strings.Join(validTourTypes, ", ")))
-	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("type")
 
 	return cmd
@@ -230,7 +237,7 @@ func newCollectionsUpdateCmd() *cobra.Command {
 		Use:   "update <id>",
 		Short: "Update a collection",
 		Example: `  # Rename a collection
-  stqry collections update 42 --name new-name
+  stqry collections update 42 --name "New Name"
 
   # Update the title in French
   stqry collections update 42 --title "Tour de ville" --lang fr
