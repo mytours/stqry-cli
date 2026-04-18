@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `stqry-workflows` skill gained Workflow 5 ("Author a Self-Guided Audio Tour") with opinionated conventions — image/text/audio section order per screen, cover-image setup at the collection, Wikimedia Commons for imagery, English default, a fixed directory layout — plus explicit anti-patterns so agents stop asking the user about directory layout, build order, verification procedure, and other plumbing.
+
 ## [0.10.5] - 2026-04-16
 
 ### Fixed
