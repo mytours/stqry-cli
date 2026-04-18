@@ -267,20 +267,21 @@ This is the default recipe when a user asks for an audio / self-guided / walking
 ### Conventions
 
 - **Directory layout** inside the project root:
-  - `scripts/stop_N.txt` — narration source of truth
+  - `scripts/stop_N.txt` — **narration script** source of truth (spoken word; fed to TTS)
   - `audio/stop_N.mp3` — narration audio per stop
   - `images/stop_N.jpg` — cover image per stop
   - `images/LICENSES.md` — image source URL + license per stop
   - `stqry_ids.json` — captured collection / screen / section / media IDs (for re-runs)
+- **Narration script vs. on-screen text are different artefacts.** The audio script is spoken word — rhythm, pauses, "you're standing in front of...", stage directions for the ear. The on-screen text is written prose — scannable, read silently, no TTS pacing, no "welcome to the tour" pleasantries the reader just saw on the previous screen. They serve different senses and must be authored as different things. **Do not pipe `scripts/stop_N.txt` into the `text` section's `--body`.** How you produce the written version — condensed summary, parallel rewrite, expanded caption, structured bullet list, anything — is your call. Just do not treat script and screen text as a single asset. Persist the written text somewhere (a `text/` directory alongside `scripts/`, inline in your build routine, whatever fits) so re-runs are idempotent.
 - **Per-stop screen composition** — one `story` screen per stop with three sections, in this order:
   1. `single_media` section pointing at the cover image
-  2. `text` section with the narration script in `--body` (so users who can't play audio can still read)
+  2. `text` section containing the **written** on-screen prose (not the script)
   3. `single_media` section pointing at the audio file
 - **Collection cover image** — reuse the most iconic stop image. Set `--cover-image-media-item-id`, `--cover-image-grid-media-item-id`, and `--cover-image-wide-media-item-id` on `stqry collections update` so every UI surface has a cover.
 - **Script tone** — conversational guide voice, hook → what you see → story → bridge to next stop.
 - **Images** — source from Wikimedia Commons / Wikipedia with a verifiable CC or public-domain license; record the URL and license in `images/LICENSES.md`.
 - **Language** — English only unless the user asks otherwise.
-- **Build order per stop** — script → audio → image → upload media → create screen → add sections (image, text, audio) → reorder to image/text/audio → link screen to collection → append IDs to `stqry_ids.json`.
+- **Build order per stop** — narration script → audio → image → written on-screen text (distinct from script) → upload media → create screen → add sections (image, text, audio) → reorder to image/text/audio → link screen to collection → append IDs to `stqry_ids.json`.
 - **Verification** — after building, run `stqry collections items list <id>` to confirm all stops are linked and `stqry screens sections list <screen-id>` for each screen. Do this silently; only surface a problem if one appears.
 
 ### Questions to ask the user
@@ -308,9 +309,12 @@ IMAGE_ID=$(stqry media create --type image --file images/stop_1.jpg --name "Stop
 # Create the screen (title defaults to --name)
 SCREEN_ID=$(stqry screens create --name "stop-1" --type story --title "Stop 1 — The Opening" --jq '.id')
 
-# Add sections in any order, then reorder to image → text → audio
+# Add sections in any order, then reorder to image → text → audio.
+# NOTE: --body is the WRITTEN on-screen prose, authored separately from the
+# narration script in scripts/stop_N.txt. They are not interchangeable — see
+# "Narration script vs. on-screen text" in Conventions above.
 IMG_SEC=$(stqry screens sections add $SCREEN_ID --type single_media --media-item-id $IMAGE_ID --jq '.id')
-TXT_SEC=$(stqry screens sections add $SCREEN_ID --type text --body "$(cat scripts/stop_1.txt)" --jq '.id')
+TXT_SEC=$(stqry screens sections add $SCREEN_ID --type text --body "$STOP_TEXT" --jq '.id')
 AUD_SEC=$(stqry screens sections add $SCREEN_ID --type single_media --media-item-id $AUDIO_ID --jq '.id')
 stqry screens sections reorder $SCREEN_ID $IMG_SEC $TXT_SEC $AUD_SEC
 

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `stqry-workflows` skill gained Workflow 5 ("Author a Self-Guided Audio Tour") with opinionated conventions — image/text/audio section order per screen, cover-image setup at the collection, Wikimedia Commons for imagery, English default, a fixed directory layout — plus explicit anti-patterns so agents stop asking the user about directory layout, build order, verification procedure, and other plumbing.
+- Workflow 5 now calls out that the narration script (spoken word) and the `text` section body (written prose) are different artefacts and must be authored as different things. The `--body "$(cat scripts/stop_N.txt)"` shortcut is explicitly flagged as wrong; how to produce the written version is left up to the agent.
 - `--description` flag on `stqry collections create` so a description can be set in the same call as create, saving a follow-up `collections update` round trip.
 - `--position` flag on `stqry collections items add` so items can be inserted at a specific 0-based index in one call. Previously, building a collection in any order other than strictly append required a follow-up `collections items reorder`.
 - `--progress` global flag to opt in to upload progress lines on stderr. Modelled on `dd(1)`'s `status=progress`.
