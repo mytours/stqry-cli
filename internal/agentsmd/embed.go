@@ -2,5 +2,5 @@ package agentsmd
 
 import _ "embed"
 
-//go:embed AGENTS.md
+//go:embed CLAUDE.md
 var Content []byte

@@ -85,7 +85,7 @@ pip install stqry
 stqry --version   # verify
 ```
 
-MCP server setup is not required in Claude Cowork. See [AGENTS.md](AGENTS.md) for full agent integration guidance.
+MCP server setup is not required in Claude Cowork - use the CLI as a subprocess.
 
 #### Keeping skills up to date
 

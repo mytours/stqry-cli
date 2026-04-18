@@ -195,7 +195,7 @@ func captureStdout(t *testing.T, fn func()) string {
 }
 
 func TestConfigInitCmd(t *testing.T) {
-	t.Run("named site writes stqry.yaml and AGENTS.md", func(t *testing.T) {
+	t.Run("named site writes stqry.yaml and CLAUDE.md", func(t *testing.T) {
 		tmpHome := t.TempDir()
 		t.Setenv("HOME", tmpHome)
 
@@ -233,26 +233,23 @@ func TestConfigInitCmd(t *testing.T) {
 			t.Fatal("stqry.yaml not written to CWD")
 		}
 
-		// AGENTS.md must exist and match embedded content
-		data, err := os.ReadFile(filepath.Join(tmpCWD, "AGENTS.md"))
+		// CLAUDE.md must exist and match embedded content
+		data, err := os.ReadFile(filepath.Join(tmpCWD, "CLAUDE.md"))
 		if err != nil {
-			t.Fatalf("AGENTS.md not written to CWD: %v", err)
+			t.Fatalf("CLAUDE.md not written to CWD: %v", err)
 		}
 		if !bytes.Equal(data, agentsmd.Content) {
-			t.Error("AGENTS.md content does not match agentsmd.Content")
+			t.Error("CLAUDE.md content does not match agentsmd.Content")
 		}
 
 		// Success message must be a single combined line
-		want := `Initialised stqry.yaml for site "mysite" and wrote AGENTS.md.`
+		want := `Initialised stqry.yaml for site "mysite" and wrote CLAUDE.md.`
 		if !contains(out, want) {
 			t.Errorf("expected output to contain %q, got:\n%s", want, out)
 		}
-		if contains(out, "Copied AGENTS.md") {
-			t.Errorf("expected single combined message, but output still has separate 'Copied AGENTS.md' line:\n%s", out)
-		}
 	})
 
-	t.Run("inline credentials writes stqry.yaml and AGENTS.md", func(t *testing.T) {
+	t.Run("inline credentials writes stqry.yaml and CLAUDE.md", func(t *testing.T) {
 		tmpHome := t.TempDir()
 		t.Setenv("HOME", tmpHome)
 
@@ -276,25 +273,22 @@ func TestConfigInitCmd(t *testing.T) {
 			t.Fatalf("Execute: %v", execErr)
 		}
 
-		data, err := os.ReadFile(filepath.Join(tmpCWD, "AGENTS.md"))
+		data, err := os.ReadFile(filepath.Join(tmpCWD, "CLAUDE.md"))
 		if err != nil {
-			t.Fatalf("AGENTS.md not written: %v", err)
+			t.Fatalf("CLAUDE.md not written: %v", err)
 		}
 		if !bytes.Equal(data, agentsmd.Content) {
-			t.Error("AGENTS.md content does not match agentsmd.Content")
+			t.Error("CLAUDE.md content does not match agentsmd.Content")
 		}
 
 		// Success message must be a single combined line
-		want := "Initialised stqry.yaml with inline credentials and wrote AGENTS.md."
+		want := "Initialised stqry.yaml with inline credentials and wrote CLAUDE.md."
 		if !contains(out, want) {
 			t.Errorf("expected output to contain %q, got:\n%s", want, out)
 		}
-		if contains(out, "Copied AGENTS.md") {
-			t.Errorf("expected single combined message, but output still has separate 'Copied AGENTS.md' line:\n%s", out)
-		}
 	})
 
-	t.Run("re-running overwrites existing AGENTS.md", func(t *testing.T) {
+	t.Run("re-running leaves existing CLAUDE.md untouched", func(t *testing.T) {
 		tmpHome := t.TempDir()
 		t.Setenv("HOME", tmpHome)
 
@@ -308,27 +302,33 @@ func TestConfigInitCmd(t *testing.T) {
 			t.Fatalf("chdir: %v", err)
 		}
 
-		// Write a sentinel value to AGENTS.md before init runs
-		sentinel := []byte("old content — should be overwritten")
-		if err := os.WriteFile(filepath.Join(tmpCWD, "AGENTS.md"), sentinel, 0644); err != nil {
+		// Pre-existing CLAUDE.md (hand-authored project instructions) must not be clobbered.
+		sentinel := []byte("hand-written project instructions - must not be overwritten")
+		if err := os.WriteFile(filepath.Join(tmpCWD, "CLAUDE.md"), sentinel, 0644); err != nil {
 			t.Fatalf("writing sentinel: %v", err)
 		}
 
-		cmd := newRootCmd()
-		cmd.SetArgs([]string{"config", "init", "--token=tok123", "--region=us"})
-		if err := cmd.Execute(); err != nil {
-			t.Fatalf("Execute: %v", err)
+		var execErr error
+		out := captureStdout(t, func() {
+			cmd := newRootCmd()
+			cmd.SetArgs([]string{"config", "init", "--token=tok123", "--region=us"})
+			execErr = cmd.Execute()
+		})
+		if execErr != nil {
+			t.Fatalf("Execute: %v", execErr)
 		}
 
-		data, err := os.ReadFile(filepath.Join(tmpCWD, "AGENTS.md"))
+		data, err := os.ReadFile(filepath.Join(tmpCWD, "CLAUDE.md"))
 		if err != nil {
-			t.Fatalf("AGENTS.md not found: %v", err)
+			t.Fatalf("CLAUDE.md not found: %v", err)
 		}
-		if bytes.Equal(data, sentinel) {
-			t.Error("AGENTS.md was not overwritten — sentinel content still present")
+		if !bytes.Equal(data, sentinel) {
+			t.Error("CLAUDE.md was overwritten - existing content must be preserved")
 		}
-		if !bytes.Equal(data, agentsmd.Content) {
-			t.Error("AGENTS.md content does not match agentsmd.Content after overwrite")
+
+		want := "CLAUDE.md already exists, left untouched"
+		if !contains(out, want) {
+			t.Errorf("expected output to mention skipped CLAUDE.md, got:\n%s", out)
 		}
 	})
 }
