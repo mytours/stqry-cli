@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.6] - 2026-04-17
+
 ### Changed
 
 - `stqry config init` now writes `CLAUDE.md` instead of `AGENTS.md`, and only writes it when no `CLAUDE.md` exists in the CWD yet (it will never clobber a hand-authored one). The embedded contents are minimal on purpose: a one-paragraph pointer that tells Claude Code to load the `/stqry-reference` and `/stqry-workflows` skills for anything STQRY-related. Everything that used to live in `AGENTS.md` is already covered by those two skills.
