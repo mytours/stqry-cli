@@ -95,6 +95,16 @@ section 2: --title "Car 60"
 
 When one section is enough: stops with a single short observation and no deeper story. Don't pad to two for symmetry's sake.
 
+### Research before deciding the stop list
+
+Before committing to a list of tour stops, **always research first**. Do not generate stops from training knowledge alone - venues close, move, rename, or never existed the way you remember them; notable sites shift between guidebook editions; your internal recall is stale.
+
+Pull fresh information before drafting the list: web-search the subject or neighborhood, read Wikipedia for landmarks, check a recent local source (city tourism site, local blog, news article). Then build the stop list from that research.
+
+This applies whether the user gives you a subject ("Victorian London ghost walks"), a neighborhood ("downtown Rochester"), or a specific theme. Even if the user names stops explicitly, verify each one is real and accessible before building around it.
+
+Apply this rule in Workflow 1 (generic tour) and Workflow 5 (self-guided audio tour), and any time a "list of stops" is an input to the work.
+
 ### `--name` is not a URL slug
 
 The `name` field on collections and screens is a flat-string display label. It is not a URL slug, an identifier, or a kebab-cased machine-readable string. Do not translate the title into kebab-case, snake_case, or any other slug-like form when setting `--name`. Never slugify anything.
