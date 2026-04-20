@@ -216,24 +216,81 @@ func newConfigListSitesCmd() *cobra.Command {
 	}
 }
 
-// writeClaudeMD writes the embedded CLAUDE.md to dir if and only if no
-// CLAUDE.md already exists there. Returns (true, nil) when it wrote the file,
-// (false, nil) when an existing file was left untouched.
-func writeClaudeMD(dir string) (bool, error) {
-	path := filepath.Join(dir, "CLAUDE.md")
-	// 0644: CLAUDE.md contains no secrets; world-readable is intentional.
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-	if err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return false, nil
+// agentDocs enumerates the embedded agent-facing docs that `config init`
+// writes to the CWD. AGENTS.md is the generic, AI-agnostic doc; CLAUDE.md is
+// a minimal Claude-specific pointer to the installed skills. We write both.
+var agentDocs = []struct {
+	name    string
+	content []byte
+}{
+	{"AGENTS.md", agentsmd.AgentsContent},
+	{"CLAUDE.md", agentsmd.ClaudeContent},
+}
+
+// writeAgentDocs writes each embedded agent doc to dir, skipping any file that
+// already exists (to never clobber hand-authored instructions). Returns the
+// names of files actually written and the names of files that were skipped.
+func writeAgentDocs(dir string) (wrote, skipped []string, err error) {
+	for _, d := range agentDocs {
+		path := filepath.Join(dir, d.name)
+		// 0644: agent docs contain no secrets; world-readable is intentional.
+		f, openErr := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+		if openErr != nil {
+			if errors.Is(openErr, os.ErrExist) {
+				skipped = append(skipped, d.name)
+				continue
+			}
+			return wrote, skipped, openErr
 		}
-		return false, err
+		if _, writeErr := f.Write(d.content); writeErr != nil {
+			f.Close()
+			return wrote, skipped, writeErr
+		}
+		f.Close()
+		wrote = append(wrote, d.name)
 	}
-	defer f.Close()
-	if _, err := f.Write(agentsmd.Content); err != nil {
-		return false, err
+	return wrote, skipped, nil
+}
+
+// agentDocsSummary returns the trailing text to append to the "Initialised
+// stqry.yaml ..." line, describing what writeAgentDocs did. Examples:
+//
+//	" and wrote AGENTS.md and CLAUDE.md."
+//	" and wrote AGENTS.md. CLAUDE.md already exists, left untouched."
+//	". AGENTS.md and CLAUDE.md already exist, left untouched."
+func agentDocsSummary(wrote, skipped []string) string {
+	var b strings.Builder
+	if len(wrote) > 0 {
+		b.WriteString(" and wrote ")
+		b.WriteString(joinAnd(wrote))
+		b.WriteString(".")
+	} else {
+		b.WriteString(".")
 	}
-	return true, nil
+	if len(skipped) > 0 {
+		verb := "exists"
+		if len(skipped) > 1 {
+			verb = "exist"
+		}
+		b.WriteString(" ")
+		b.WriteString(joinAnd(skipped))
+		b.WriteString(" already ")
+		b.WriteString(verb)
+		b.WriteString(", left untouched.")
+	}
+	return b.String()
+}
+
+func joinAnd(xs []string) string {
+	switch len(xs) {
+	case 0:
+		return ""
+	case 1:
+		return xs[0]
+	case 2:
+		return xs[0] + " and " + xs[1]
+	}
+	return strings.Join(xs[:len(xs)-1], ", ") + ", and " + xs[len(xs)-1]
 }
 
 // config init [--name=X] [--token=X] [--region=X | --api-url=X]
@@ -264,16 +321,12 @@ func newConfigInitCmd() *cobra.Command {
 				if err := config.SaveDirectoryConfig(cwd, dirCfg); err != nil {
 					return fmt.Errorf("saving directory config: %w", err)
 				}
-				wroteClaudeMD, err := writeClaudeMD(cwd)
+				wrote, skipped, err := writeAgentDocs(cwd)
 				if err != nil {
-					return fmt.Errorf("writing CLAUDE.md: %w", err)
+					return fmt.Errorf("writing agent docs: %w", err)
 				}
 				if !flagQuiet && !flagJSON {
-					if wroteClaudeMD {
-						fmt.Printf("Initialised stqry.yaml with inline credentials and wrote CLAUDE.md.\n")
-					} else {
-						fmt.Printf("Initialised stqry.yaml with inline credentials. CLAUDE.md already exists, left untouched.\n")
-					}
+					fmt.Printf("Initialised stqry.yaml with inline credentials%s\n", agentDocsSummary(wrote, skipped))
 				}
 				return nil
 			}
@@ -299,17 +352,13 @@ func newConfigInitCmd() *cobra.Command {
 			if err := config.SaveDirectoryConfig(cwd, dirCfg); err != nil {
 				return fmt.Errorf("saving directory config: %w", err)
 			}
-			wroteClaudeMD, err := writeClaudeMD(cwd)
+			wrote, skipped, err := writeAgentDocs(cwd)
 			if err != nil {
-				return fmt.Errorf("writing CLAUDE.md: %w", err)
+				return fmt.Errorf("writing agent docs: %w", err)
 			}
 
 			if !flagQuiet && !flagJSON {
-				if wroteClaudeMD {
-					fmt.Printf("Initialised stqry.yaml for site %q and wrote CLAUDE.md.\n", name)
-				} else {
-					fmt.Printf("Initialised stqry.yaml for site %q. CLAUDE.md already exists, left untouched.\n", name)
-				}
+				fmt.Printf("Initialised stqry.yaml for site %q%s\n", name, agentDocsSummary(wrote, skipped))
 			}
 			return nil
 		},
