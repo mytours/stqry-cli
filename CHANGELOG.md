@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `stqry config init` now writes both `AGENTS.md` (the AI-agnostic project primer) and `CLAUDE.md` (a minimal Claude-specific pointer to the installed skills). Either file is left untouched if one already exists, so hand-authored docs are never clobbered. Reverses the 0.10.6 change that dropped `AGENTS.md` — both files are now written so non-Claude agents have an `AGENTS.md` to read and Claude Code still gets a `CLAUDE.md`.
+- `--name` is again the canonical flag in `stqry collections create` / `stqry screens create` examples (CLI help, `stqry-workflows`, `stqry-reference`). The 0.10.6 docs swap to `--title "City Tour"` addressed the "name is slugified" problem by switching flags; the real fix was to stop slugifying the value, not to abandon the flag. Field-naming convention: the API field is `name`, so the flag is `--name`. `name` and `title` are two distinct fields — `name` is a flat display label, `title` is a separate translatable field — and the CLI flags mirror that: `--name` for the label, `--title` for the title (with optional `--lang`). Behaviour is unchanged — both flags still work, and each still defaults to the other when omitted.
 
 ## [0.10.6] - 2026-04-17
 

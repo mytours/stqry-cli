@@ -61,7 +61,7 @@ func newScreensCmd() *cobra.Command {
   stqry screens list
 
   # Create a story screen
-  stqry screens create --name welcome --type story`,
+  stqry screens create --name "Welcome" --type story`,
 	}
 
 	cmd.AddCommand(newScreensListCmd())
@@ -167,13 +167,13 @@ func newScreensCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a new screen",
 		Example: `  # Create a story screen
-  stqry screens create --title "Welcome" --type story
+  stqry screens create --name "Welcome" --type story
 
-  # Create a web screen with a localised title
-  stqry screens create --title "Map View" --type web --lang en
+  # Set the translatable title field (defaults to the primary language when --lang is omitted)
+  stqry screens create --name "Map View" --title "Vue carte" --type web --lang fr
 
   # Override the short title (used in compact UI views)
-  stqry screens create --title "Welcome to Our Tour" --short-title "Welcome" --type story`,
+  stqry screens create --name "Welcome to Our Tour" --short-title "Welcome" --type story`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateScreenType(screenType); err != nil {
 				return err
