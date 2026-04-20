@@ -53,7 +53,7 @@ func newCollectionsCmd() *cobra.Command {
   stqry collections list
 
   # Create a tour collection
-  stqry collections create --title "City Tour" --type tour`,
+  stqry collections create --name "City Tour" --type tour`,
 	}
 
 	cmd.AddCommand(newCollectionsListCmd())
@@ -153,19 +153,19 @@ func newCollectionsCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a collection",
 		Example: `  # Create a list collection
-  stqry collections create --title "Highlights" --type list
+  stqry collections create --name "Highlights" --type list
 
-  # Create a tour with a localised title
-  stqry collections create --title "City Tour" --type tour --lang en
+  # Set the translatable title field (defaults to the primary language when --lang is omitted)
+  stqry collections create --name "City Tour" --title "Tour de ville" --type tour --lang fr
 
   # Override the short title (used in compact UI views)
-  stqry collections create --title "Grand City Walking Tour" --short-title "City Tour" --type tour
+  stqry collections create --name "Grand City Walking Tour" --short-title "City Tour" --type tour
 
   # Create a tour with a description (saves a follow-up update call)
-  stqry collections create --title "City Tour" --type tour --description "A walking tour of downtown"
+  stqry collections create --name "City Tour" --type tour --description "A walking tour of downtown"
 
   # Tag the tour's mode of transport so clients can show the right icon / copy
-  stqry collections create --title "City Tour" --type tour --tour-type walking`,
+  stqry collections create --name "City Tour" --type tour --tour-type walking`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateCollectionType(collectionType); err != nil {
 				return err

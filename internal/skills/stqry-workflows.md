@@ -109,13 +109,13 @@ Apply this rule in Workflow 1 (generic tour) and Workflow 5 (self-guided audio t
 
 The `name` field on collections and screens is a flat-string display label. It is not a URL slug, an identifier, or a kebab-cased machine-readable string. Do not translate the title into kebab-case, snake_case, or any other slug-like form when setting `--name`. Never slugify anything.
 
-Best practice: pass `--title "City Walking Tour"` and let `--name` default to the title verbatim. If you want to set `--name` explicitly, use the same human-readable form as the title.
+`name` and `title` are two different fields on collections and screens. `name` is a flat display label; `title` is a separate, translatable field. The CLI flag mirrors the field, so pass `--name` to set the name and `--title` to set the title — they are not interchangeable. When creating a collection or screen, `--name` is the canonical flag for the label; add `--title` as well when you want to populate the title field (optionally with `--lang` for a non-default locale).
 
-Wrong: `stqry screens create --name "stop-1" --title "Stop 1 - The Opening"`
-Right: `stqry screens create --title "Stop 1 - The Opening"`
+Wrong: `stqry screens create --name "stop-1"`
+Right: `stqry screens create --name "Stop 1 - The Opening"`
 
-Wrong: `stqry collections create --name "downtown-walking-tour" --title "Downtown Walking Tour"`
-Right: `stqry collections create --title "Downtown Walking Tour"`
+Wrong: `stqry collections create --name "downtown-walking-tour"`
+Right: `stqry collections create --name "Downtown Walking Tour"`
 
 ---
 
@@ -140,7 +140,7 @@ Screens are created as standalone entities before they are linked into any colle
 
 ```bash
 stqry screens create \
-  --title "Town Hall Overview" \
+  --name "Town Hall Overview" \
   --type story \
   --json
 ```
@@ -252,7 +252,7 @@ This builds a rich screen with opening hours, external links, and image badges.
 
 ```bash
 stqry screens create \
-  --title "Visitor Information" \
+  --name "Visitor Information" \
   --type story \
   --json
 ```
@@ -421,8 +421,8 @@ AUDIO_ID=$(stqry media create --type audio --file audio/stop_1.mp3 \
 IMAGE_ID=$(stqry media create --type image --file images/stop_1.jpg \
   --name "Stop 1 image" --caption "$IMG_CAPTION" --attribution "$IMG_CREDIT" --lang en --jq '.id')
 
-# Create the screen. --name is optional; it defaults to --title verbatim (no slugification).
-SCREEN_ID=$(stqry screens create --title "Stop 1 - The Opening" --type story --jq '.id')
+# Create the screen. Use --name with the full human-readable label (no slugification).
+SCREEN_ID=$(stqry screens create --name "Stop 1 - The Opening" --type story --jq '.id')
 
 # Set the screen's own cover images (needed for list / grid / wide layouts).
 # Reuse the stop's image MediaItem unless you have a deliberate reason to differ.

@@ -167,7 +167,7 @@ Manage collections and their items.
 ```
 stqry collections list                   List collections
 stqry collections get <id>               Get a single collection
-stqry collections create --type <type> [--title <t>] [--name <n>] [--short-title <t>] [--description <d>] [--tour-type <tt>]  Create a collection (--title or --name required; name defaults to title verbatim, no slug)
+stqry collections create --type <type> [--name <n>] [--title <t>] [--short-title <t>] [--description <d>] [--tour-type <tt>]  Create a collection (--name or --title required). `name` and `title` are separate fields: `name` is a flat label, `title` is translatable. Pass --name for the label; add --title (with optional --lang) to populate the translatable title.
 stqry collections update <id>            Update a collection
 stqry collections delete <id>            Delete a collection
 
@@ -186,7 +186,7 @@ Manage screens and their sections / sub-items.
 ```
 stqry screens list                                  List screens
 stqry screens get <id>                              Get a single screen
-stqry screens create --name <name> --type <type>    Create a screen
+stqry screens create --name <name> --type <type> [--title <t>] [--short-title <t>]    Create a screen. `name` (flat label) and `title` (translatable) are separate fields; pass --name for the label, and --title (with optional --lang) to populate the translatable title.
 stqry screens update <id>                           Update a screen
 stqry screens delete <id>                           Delete a screen
 
