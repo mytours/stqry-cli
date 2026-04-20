@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.7] - 2026-04-20
+
 ### Changed
 
 - `stqry config init` now writes both `AGENTS.md` (the AI-agnostic project primer) and `CLAUDE.md` (a minimal Claude-specific pointer to the installed skills). Either file is left untouched if one already exists, so hand-authored docs are never clobbered. Reverses the 0.10.6 change that dropped `AGENTS.md` — both files are now written so non-Claude agents have an `AGENTS.md` to read and Claude Code still gets a `CLAUDE.md`.
