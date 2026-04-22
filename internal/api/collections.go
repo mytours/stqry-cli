@@ -114,6 +114,10 @@ func DeleteCollectionItem(c *Client, collectionID, itemID string) error {
 
 // ReorderCollectionItems sets the order of collection items by their IDs.
 // The API expects {"positions": [{"id": <int>, "position": <int>}, ...]}.
+//
+// Positions are 1-based. The API treats `position: 0` as unset and clamps
+// it to 1, which collided the first argument with the second (both landed
+// at position 1) when we sent a 0-based sequence.
 func ReorderCollectionItems(c *Client, collectionID string, itemIDs []string) error {
 	path := fmt.Sprintf("/api/public/collections/%s/collection_items/update_positions", collectionID)
 	positions := make([]map[string]interface{}, 0, len(itemIDs))
@@ -122,7 +126,7 @@ func ReorderCollectionItems(c *Client, collectionID string, itemIDs []string) er
 		if err != nil {
 			return fmt.Errorf("invalid collection item id %q: must be an integer", idStr)
 		}
-		positions = append(positions, map[string]interface{}{"id": id, "position": i})
+		positions = append(positions, map[string]interface{}{"id": id, "position": i + 1})
 	}
 	body := map[string]interface{}{"positions": positions}
 	return c.Post(path, body, nil)

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `stqry collections items reorder` and `stqry screens sections reorder` were sending 0-based positions (`0, 1, 2, …`) to the `update_positions` endpoints. The API treats `position: 0` as unset and clamps it to 1, which left the first two items sharing position 1. The list endpoint then sorted the tie by id, so the output order depended on creation order rather than the reorder arguments — a silent bug when the desired order happened to match insertion order, visible when it didn't. Positions are now sent 1-based (`1, 2, 3, …`) so every item gets a distinct stored position.
+
 ## [0.10.8] - 2026-04-22
 
 ### Removed

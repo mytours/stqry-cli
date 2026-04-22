@@ -315,10 +315,12 @@ func TestReorderCollectionItems(t *testing.T) {
 		}
 		first := positions[0].(map[string]interface{})
 		second := positions[1].(map[string]interface{})
-		if first["id"].(float64) != 2 || first["position"].(float64) != 0 {
+		// Positions are 1-based: the API treats position 0 as unset
+		// and clamps it to 1, which would collide the first two items.
+		if first["id"].(float64) != 2 || first["position"].(float64) != 1 {
 			t.Errorf("unexpected first position: %v", first)
 		}
-		if second["id"].(float64) != 1 || second["position"].(float64) != 1 {
+		if second["id"].(float64) != 1 || second["position"].(float64) != 2 {
 			t.Errorf("unexpected second position: %v", second)
 		}
 		w.WriteHeader(200)

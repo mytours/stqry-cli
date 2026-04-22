@@ -126,6 +126,8 @@ func DeleteStorySection(c *Client, screenID, sectionID string) error {
 
 // ReorderStorySections sets the order of story sections via update_positions.
 // The API expects {"positions": [{"id": <int>, "position": <int>}, ...]}.
+//
+// Positions are 1-based; see ReorderCollectionItems for why.
 func ReorderStorySections(c *Client, screenID string, sectionIDs []string) error {
 	path := fmt.Sprintf("/api/public/screens/%s/story_sections/update_positions", screenID)
 	positions := make([]map[string]interface{}, 0, len(sectionIDs))
@@ -134,7 +136,7 @@ func ReorderStorySections(c *Client, screenID string, sectionIDs []string) error
 		if err != nil {
 			return fmt.Errorf("invalid section id %q: must be an integer", idStr)
 		}
-		positions = append(positions, map[string]interface{}{"id": id, "position": i})
+		positions = append(positions, map[string]interface{}{"id": id, "position": i + 1})
 	}
 	body := map[string]interface{}{"positions": positions}
 	return c.Post(path, body, nil)
