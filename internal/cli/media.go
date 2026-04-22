@@ -129,10 +129,11 @@ func newMediaGetCmd() *cobra.Command {
 	return cmd
 }
 
-// media create --file=<path> --type=X [--name=X] [--lang=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X]
+// media create --file=<path> --type=X [--name=X] [--lang=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X] [--thumbnail-media-item-id=X]
 func newMediaCreateCmd() *cobra.Command {
 	var filePath, mediaType, name string
 	var caption, attribution, description, title, transcription string
+	var thumbnailMediaItemID int
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -149,7 +150,11 @@ func newMediaCreateCmd() *cobra.Command {
   stqry media create --type video --file ./tour.mp4 --name "City Tour" --lang en
 
   # Create an audio item with a transcription (accessibility)
-  stqry media create --type audio --file ./stop_1.mp3 --transcription "Welcome to the tour..."`,
+  stqry media create --type audio --file ./stop_1.mp3 --transcription "Welcome to the tour..."
+
+  # Create an audio item with an image thumbnail (poster) — the referenced
+  # image media item shows up wherever the audio is rendered
+  stqry media create --type audio --file ./stop_1.mp3 --title "Stop 1" --thumbnail-media-item-id 99`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateMediaType(mediaType); err != nil {
 				return err
@@ -179,6 +184,9 @@ func newMediaCreateCmd() *cobra.Command {
 			}
 			if transcription != "" {
 				fields["transcription"] = map[string]interface{}{lang: transcription}
+			}
+			if cmd.Flags().Changed("thumbnail-media-item-id") {
+				fields["thumbnail_media_item_id"] = thumbnailMediaItemID
 			}
 
 			// If a file is provided, upload it first.
@@ -240,14 +248,16 @@ func newMediaCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&description, "description", "", "Long description (image media items)")
 	cmd.Flags().StringVar(&title, "title", "", "Display title (audio media items)")
 	cmd.Flags().StringVar(&transcription, "transcription", "", "Transcription (audio media items — accessibility)")
+	cmd.Flags().IntVar(&thumbnailMediaItemID, "thumbnail-media-item-id", 0, "Image media item ID to use as the thumbnail / poster (audio / video media items)")
 	cmd.MarkFlagRequired("type")
 
 	return cmd
 }
 
-// media update <id> [--name=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X]
+// media update <id> [--name=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X] [--thumbnail-media-item-id=X]
 func newMediaUpdateCmd() *cobra.Command {
 	var name, caption, attribution, description, title, transcription string
+	var thumbnailMediaItemID int
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -260,6 +270,9 @@ func newMediaUpdateCmd() *cobra.Command {
 
   # Set transcription on an audio item for accessibility
   stqry media update 72 --transcription "Welcome to the tour..." --lang en
+
+  # Attach an image as the thumbnail / poster for an audio item
+  stqry media update 72 --thumbnail-media-item-id 99
 
   # Clear a field (pass empty string)
   stqry media update 55 --attribution ""`,
@@ -284,6 +297,8 @@ func newMediaUpdateCmd() *cobra.Command {
 					fields["title"] = map[string]interface{}{lang: title}
 				case "transcription":
 					fields["transcription"] = map[string]interface{}{lang: transcription}
+				case "thumbnail-media-item-id":
+					fields["thumbnail_media_item_id"] = thumbnailMediaItemID
 				}
 			})
 
@@ -302,6 +317,7 @@ func newMediaUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&description, "description", "", "Long description (image media items)")
 	cmd.Flags().StringVar(&title, "title", "", "Display title (audio media items)")
 	cmd.Flags().StringVar(&transcription, "transcription", "", "Transcription (audio media items — accessibility)")
+	cmd.Flags().IntVar(&thumbnailMediaItemID, "thumbnail-media-item-id", 0, "Image media item ID to use as the thumbnail / poster (audio / video media items; pass 0 to clear)")
 	cmd.ValidArgsFunction = completeMediaIDs
 
 	return cmd
