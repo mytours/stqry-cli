@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Guidance in the `stqry-workflows` skill that encouraged Claude to add its own content. Dropped the "Two text sections per screen" prose patterns (Pattern A / Pattern B with example paragraphs), the "Research before deciding the stop list" rule, and the Workflow 5 anti-patterns block ("just proceed", "don't ask the user"). Also pruned Workflow 5 conventions that encoded content decisions the CLI shouldn't be making: script tone, Wikimedia Commons image sourcing, English-only default, the narration-script-vs-on-screen-text authoring instructions, and "safe default" fallbacks for tour type / audio title. The skill is now a technical recipe.
+- `stqry-workflows` no longer frames Claude as a content producer in the self-guided audio tour recipe. Workflow 5 renamed from "Author a Self-Guided Audio Tour" to "Build a Self-Guided Audio Tour". Dropped `scripts/stop_N.txt` (TTS input) and `images/LICENSES.md` (Commons-sourced image licensing) from the directory layout. The per-stop build order now begins with "collect audio, image, and text from the user" instead of "narration script → audio → image → on-screen text". The "Questions to ask the user" no longer offers Claude as an audio generator ("want you to generate them … TTS") or image sourcer ("Commons-sourced CC images"); each stop's audio, photo, and on-screen text are user-supplied.
 
 ## [0.10.7] - 2026-04-20
 
