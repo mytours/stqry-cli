@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.9] - 2026-04-22
+
 ### Added
 
 - Geofence flags on `stqry collections items update`: `--radius` (meters), `--geofence-lat`, `--geofence-lng`, `--geofence-content`. When any of these is set the command performs a GET-then-PATCH to merge into the item's existing `gps_settings`, so passing just `--radius 50` does not wipe out a stop's existing `geofence_lat` / `geofence_lng`. The existing `--geofence` mode flag now validates against the real enum (`off`, `gps`, `beacon`) — the previous docstring advertised `off, on` but `on` was never a valid value. Addresses the "set 50m radius for all tour stops" request by making the per-item capability available; `stqry collections items list <id> --jq '.[].id'` piped into a `for` loop over `update` is the bulk pattern (no dedicated bulk subcommand — added one first, backed it out based on feedback that a shell loop is the CLI-idiomatic approach).
