@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Guidance in the `stqry-workflows` skill that encouraged Claude to add its own content. Dropped the "Two text sections per screen" prose patterns (Pattern A / Pattern B with example paragraphs), the "Research before deciding the stop list" rule, and the Workflow 5 anti-patterns block ("just proceed", "don't ask the user"). Also pruned Workflow 5 conventions that encoded content decisions the CLI shouldn't be making: script tone, Wikimedia Commons image sourcing, English-only default, the narration-script-vs-on-screen-text authoring instructions, and "safe default" fallbacks for tour type / audio title. The skill is now a technical recipe.
+
 ## [0.10.7] - 2026-04-20
 
 ### Changed
