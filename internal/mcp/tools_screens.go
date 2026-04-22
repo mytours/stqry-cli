@@ -416,7 +416,7 @@ func registerSubItemTools(s *server.MCPServer, flagSite string, sess *Session, l
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
-			item, err := api.CreateSectionSubItem(client, screenID, sectionID, apiPath, singularKey, fields)
+			item, err := api.CreateSectionSubItem(client, screenID, sectionID, apiPath, fields)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("creating %s: %v", singularKey, err)), nil
 			}
@@ -467,7 +467,7 @@ func registerSubItemTools(s *server.MCPServer, flagSite string, sess *Session, l
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("resolving client: %v", err)), nil
 			}
-			item, err := api.UpdateSectionSubItem(client, screenID, sectionID, apiPath, id, singularKey, fields)
+			item, err := api.UpdateSectionSubItem(client, screenID, sectionID, apiPath, id, fields)
 			if err != nil {
 				return mcpgo.NewToolResultError(fmt.Sprintf("updating %s: %v", singularKey, err)), nil
 			}

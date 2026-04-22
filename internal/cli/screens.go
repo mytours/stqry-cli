@@ -366,12 +366,12 @@ func newSectionsCmd() *cobra.Command {
 	cmd.AddCommand(newSectionsReorderCmd())
 
 	// Sub-item type commands
-	cmd.AddCommand(newSectionSubItemCmd("badges", "badge_items", "badge_item"))
-	cmd.AddCommand(newSectionSubItemCmd("links", "link_items", "link_item"))
-	cmd.AddCommand(newSectionSubItemCmd("media", "media_items", "media_item"))
-	cmd.AddCommand(newSectionSubItemCmd("prices", "price_items", "price_item"))
-	cmd.AddCommand(newSectionSubItemCmd("social", "social_items", "social_item"))
-	cmd.AddCommand(newSectionSubItemCmd("hours", "opening_time_items", "opening_time_item"))
+	cmd.AddCommand(newSectionSubItemCmd("badges", "badge_items"))
+	cmd.AddCommand(newSectionSubItemCmd("links", "link_items"))
+	cmd.AddCommand(newSectionSubItemCmd("media", "media_items"))
+	cmd.AddCommand(newSectionSubItemCmd("prices", "price_items"))
+	cmd.AddCommand(newSectionSubItemCmd("social", "social_items"))
+	cmd.AddCommand(newSectionSubItemCmd("hours", "opening_time_items"))
 
 	return cmd
 }
@@ -650,16 +650,16 @@ func newSectionsReorderCmd() *cobra.Command {
 // ── generic sub-item command factory ─────────────────────────────────────────
 
 // newSectionSubItemCmd creates a command group for a sub-item type (e.g. badges).
-// cmdName is the CLI name, apiPath is the plural API segment, singularKey is the singular.
-func newSectionSubItemCmd(cmdName, apiPath, singularKey string) *cobra.Command {
+// cmdName is the CLI name, apiPath is the plural API segment.
+func newSectionSubItemCmd(cmdName, apiPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   cmdName,
 		Short: fmt.Sprintf("Manage %s sub-items", cmdName),
 	}
 
 	cmd.AddCommand(newSubItemListCmd(cmdName, apiPath))
-	cmd.AddCommand(newSubItemAddCmd(cmdName, apiPath, singularKey))
-	cmd.AddCommand(newSubItemUpdateCmd(cmdName, apiPath, singularKey))
+	cmd.AddCommand(newSubItemAddCmd(cmdName, apiPath))
+	cmd.AddCommand(newSubItemUpdateCmd(cmdName, apiPath))
 	cmd.AddCommand(newSubItemRemoveCmd(cmdName, apiPath))
 
 	type subItemExamples struct {
@@ -743,12 +743,12 @@ func newSubItemListCmd(cmdName, apiPath string) *cobra.Command {
 }
 
 // newSubItemAddCmd builds the add subcommand for a sub-item type.
-func newSubItemAddCmd(cmdName, apiPath, singularKey string) *cobra.Command {
+func newSubItemAddCmd(cmdName, apiPath string) *cobra.Command {
 	var screenID, sectionID string
 
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: fmt.Sprintf("Add a %s", singularKey),
+		Short: fmt.Sprintf("Add a %s item", cmdName),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if screenID == "" {
 				return fmt.Errorf("--screen-id is required")
@@ -766,7 +766,7 @@ func newSubItemAddCmd(cmdName, apiPath, singularKey string) *cobra.Command {
 				fields[f.Name] = f.Value.String()
 			})
 
-			item, err := api.CreateSectionSubItem(activeClient, screenID, sectionID, apiPath, singularKey, fields)
+			item, err := api.CreateSectionSubItem(activeClient, screenID, sectionID, apiPath, fields)
 			if err != nil {
 				return err
 			}
@@ -803,12 +803,12 @@ func newSubItemAddCmd(cmdName, apiPath, singularKey string) *cobra.Command {
 }
 
 // newSubItemUpdateCmd builds the update subcommand for a sub-item type.
-func newSubItemUpdateCmd(cmdName, apiPath, singularKey string) *cobra.Command {
+func newSubItemUpdateCmd(cmdName, apiPath string) *cobra.Command {
 	var screenID, sectionID string
 
 	cmd := &cobra.Command{
 		Use:   "update <item-id>",
-		Short: fmt.Sprintf("Update a %s", singularKey),
+		Short: fmt.Sprintf("Update a %s item", cmdName),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if screenID == "" {
@@ -826,7 +826,7 @@ func newSubItemUpdateCmd(cmdName, apiPath, singularKey string) *cobra.Command {
 				fields[f.Name] = f.Value.String()
 			})
 
-			item, err := api.UpdateSectionSubItem(activeClient, screenID, sectionID, apiPath, args[0], singularKey, fields)
+			item, err := api.UpdateSectionSubItem(activeClient, screenID, sectionID, apiPath, args[0], fields)
 			if err != nil {
 				return err
 			}

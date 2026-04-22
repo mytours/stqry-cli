@@ -115,8 +115,10 @@ func TestListSectionSubItems(t *testing.T) {
 			t.Errorf("expected path %s, got %s", expected, r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
+		// Real API wraps sub-item index responses under "items" regardless of
+		// type; see StorySection*ItemsIndexResponse in docs/public_api.json.
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			subItemType: []interface{}{
+			"items": []interface{}{
 				map[string]interface{}{"id": "100", "badge_id": "badge-abc"},
 				map[string]interface{}{"id": "101", "badge_id": "badge-def"},
 			},
@@ -130,7 +132,7 @@ func TestListSectionSubItems(t *testing.T) {
 		t.Fatalf("ListSectionSubItems: %v", err)
 	}
 	if len(items) != 2 {
-		t.Errorf("expected 2 badge_items, got %d", len(items))
+		t.Errorf("expected 2 items, got %d", len(items))
 	}
 	if items[0]["badge_id"] != "badge-abc" {
 		t.Errorf("unexpected badge_id: %v", items[0]["badge_id"])
@@ -141,7 +143,7 @@ func TestListSectionSubItemsEmpty(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"badge_items": []interface{}{},
+			"items": []interface{}{},
 		})
 	}))
 	defer server.Close()
@@ -450,14 +452,16 @@ func TestCreateSectionSubItem(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
+		// Real API wraps sub-item create responses under "item"; see
+		// StorySection*ItemsCreateResponse schemas in docs/public_api.json.
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"badge_item": map[string]interface{}{"id": "200", "badge_id": "badge-xyz"},
+			"item": map[string]interface{}{"id": "200", "badge_id": "badge-xyz"},
 		})
 	}))
 	defer server.Close()
 
 	c := NewClient(server.URL, "test-token")
-	item, err := CreateSectionSubItem(c, "42", "10", "badge_items", "badge_item", map[string]interface{}{"badge_id": "badge-xyz"})
+	item, err := CreateSectionSubItem(c, "42", "10", "badge_items", map[string]interface{}{"badge_id": "badge-xyz"})
 	if err != nil {
 		t.Fatalf("CreateSectionSubItem: %v", err)
 	}
@@ -486,13 +490,13 @@ func TestUpdateSectionSubItem(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"badge_item": map[string]interface{}{"id": "100", "badge_id": "badge-updated"},
+			"item": map[string]interface{}{"id": "100", "badge_id": "badge-updated"},
 		})
 	}))
 	defer server.Close()
 
 	c := NewClient(server.URL, "test-token")
-	item, err := UpdateSectionSubItem(c, "42", "10", "badge_items", "100", "badge_item", map[string]interface{}{"badge_id": "badge-updated"})
+	item, err := UpdateSectionSubItem(c, "42", "10", "badge_items", "100", map[string]interface{}{"badge_id": "badge-updated"})
 	if err != nil {
 		t.Fatalf("UpdateSectionSubItem: %v", err)
 	}

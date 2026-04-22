@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `stqry collections items reorder` and `stqry screens sections reorder` were sending 0-based positions (`0, 1, 2, …`) to the `update_positions` endpoints. The API treats `position: 0` as unset and clamps it to 1, which left the first two items sharing position 1. The list endpoint then sorted the tie by id, so the output order depended on creation order rather than the reorder arguments — a silent bug when the desired order happened to match insertion order, visible when it didn't. Positions are now sent 1-based (`1, 2, 3, …`) so every item gets a distinct stored position.
+- `stqry screens sections {badges,links,media,prices,social,hours} {add,update}` were returning the raw `{data: ..., meta: null}` response envelope instead of the created/updated item, so `--jq` filters on the returned id got null. The api helpers were looking for per-type envelope keys like `link_item` / `badge_item`, but the real API wraps responses under the generic `item` / `items` (per the `StorySection*ItemsIndex/CreateResponse` schemas in `docs/public_api.json`). Fixed by hardcoding the envelope keys in `api.screens` and dropping the unused `singularKey` argument from the shared sub-item helpers.
 
 ## [0.10.8] - 2026-04-22
 
