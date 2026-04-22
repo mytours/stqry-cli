@@ -152,6 +152,22 @@ done
 
 `update` with `--radius` merges into each item's existing `gps_settings`, so repeated calls don't clobber `geofence_lat` / `geofence_lng`.
 
+### Screen header layouts (prefer over a top single_media section)
+
+Each screen has a `header_layout` field that drives what renders above the first section. Options: `none`, `image`, `image_and_title`, `short`, `tall`. When the screen already has `cover_image_media_item_id` set, flipping `header_layout` to `image` or `image_and_title` or `tall` promotes that image into the screen header — no redundant single_media section at the top of each stop.
+
+```bash
+# Promote every tour stop's cover image into an image_and_title header,
+# deleting the first single_media section (which duplicates the cover).
+for sid in $(stqry collections items list 42 --jq '.[].item_id'); do
+  first_media=$(stqry screens sections list "$sid" --jq 'map(select(.type=="single_media"))[0].id')
+  [ -n "$first_media" ] && stqry screens sections remove "$first_media" --screen-id "$sid"
+  stqry screens update "$sid" --header-layout image_and_title
+done
+```
+
+`--header-layout` is also available on `stqry screens create`, so new stops can be built with the header already configured.
+
 ### Map pin colour for a whole tour
 
 Each tour stop's map pin colour lives on the collection item: `map_pin_colour` (CSS hex) alongside `map_pin_icon` and `map_pin_style`. Set via `--map-pin-colour` on `collections items update`. Validated client-side — the server requires a CSS hex (with or without leading `#`); free-text names like `red` return HTTP 422.
@@ -222,8 +238,8 @@ Manage screens and their sections / sub-items.
 ```
 stqry screens list                                  List screens
 stqry screens get <id>                              Get a single screen
-stqry screens create --name <name> --type <type> [--title <t>] [--short-title <t>]    Create a screen. `name` (flat label) and `title` (translatable) are separate fields; pass --name for the label, and --title (with optional --lang) to populate the translatable title.
-stqry screens update <id>                           Update a screen
+stqry screens create --name <name> --type <type> [--title <t>] [--short-title <t>] [--header-layout <l>]    Create a screen. `name` (flat label) and `title` (translatable) are separate fields; pass --name for the label, and --title (with optional --lang) to populate the translatable title. `--header-layout` sets what's rendered above the first section (one of: none, image, image_and_title, short, tall).
+stqry screens update <id> [--header-layout <l>] [--cover-image-media-item-id <n>] [--background-image-media-item-id <n>] [--logo-media-item-id <n>] ...    Update a screen. Set `--header-layout` (none, image, image_and_title, short, tall) to promote the cover image into the screen header instead of carrying it as a redundant single_media section at the top.
 stqry screens delete <id>                           Delete a screen
 
 # Sections

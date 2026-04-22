@@ -15,6 +15,11 @@ import (
 // (app/models/screen.rb). Keep in sync if new subtypes are added server-side.
 var validScreenTypes = []string{"story", "web", "panorama", "ar", "kiosk"}
 
+// validHeaderLayouts mirrors the ScreenPartial.header_layout enum in
+// docs/public_api.json. Controls what's rendered above the first section on a
+// screen (e.g. a full-bleed cover image vs. no header at all).
+var validHeaderLayouts = []string{"none", "image", "image_and_title", "short", "tall"}
+
 // validSectionTypes mirrors the StorySection oneOf in docs/public_api.json.
 // Keep in sync if new section schemas are added server-side.
 var validSectionTypes = []string{
@@ -42,6 +47,18 @@ func validateScreenType(t string) error {
 		}
 	}
 	return fmt.Errorf("invalid screen type %q (valid: %s)", t, strings.Join(validScreenTypes, ", "))
+}
+
+func validateHeaderLayout(l string) error {
+	if l == "" {
+		return nil
+	}
+	for _, v := range validHeaderLayouts {
+		if l == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid header layout %q (valid: %s)", l, strings.Join(validHeaderLayouts, ", "))
 }
 
 func validateSectionType(t string) error {
@@ -161,7 +178,7 @@ func newScreensGetCmd() *cobra.Command {
 // ── screens create ────────────────────────────────────────────────────────────
 
 func newScreensCreateCmd() *cobra.Command {
-	var name, screenType, title, shortTitle string
+	var name, screenType, title, shortTitle, headerLayout string
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -173,9 +190,15 @@ func newScreensCreateCmd() *cobra.Command {
   stqry screens create --name "Map View" --title "Vue carte" --type web --lang fr
 
   # Override the short title (used in compact UI views)
-  stqry screens create --name "Welcome to Our Tour" --short-title "Welcome" --type story`,
+  stqry screens create --name "Welcome to Our Tour" --short-title "Welcome" --type story
+
+  # Pick a screen header layout up front
+  stqry screens create --name "Stop 1 - Museum" --type story --header-layout image_and_title`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateScreenType(screenType); err != nil {
+				return err
+			}
+			if err := validateHeaderLayout(headerLayout); err != nil {
 				return err
 			}
 			if name == "" && title == "" {
@@ -207,6 +230,9 @@ func newScreensCreateCmd() *cobra.Command {
 				effectiveShort = effectiveTitle
 			}
 			fields["short_title"] = map[string]interface{}{lang: effectiveShort}
+			if headerLayout != "" {
+				fields["header_layout"] = headerLayout
+			}
 
 			screen, err := api.CreateScreen(activeClient, fields)
 			if err != nil {
@@ -220,6 +246,7 @@ func newScreensCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&screenType, "type", "", fmt.Sprintf("Screen type (required; one of: %s)", strings.Join(validScreenTypes, ", ")))
 	cmd.Flags().StringVar(&title, "title", "", "Screen title (defaults to --name if omitted)")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "Screen short title (defaults to --title if omitted)")
+	cmd.Flags().StringVar(&headerLayout, "header-layout", "", fmt.Sprintf("Header layout (one of: %s). Drives what's rendered above the first section; use instead of a redundant single_media section at the top.", strings.Join(validHeaderLayouts, ", ")))
 	cmd.MarkFlagRequired("type")
 
 	return cmd
@@ -228,7 +255,7 @@ func newScreensCreateCmd() *cobra.Command {
 // ── screens update ────────────────────────────────────────────────────────────
 
 func newScreensUpdateCmd() *cobra.Command {
-	var name, title, shortTitle string
+	var name, title, shortTitle, headerLayout string
 	var coverImageID, coverImageGridID, coverImageWideID, backgroundImageID, logoID int
 
 	cmd := &cobra.Command{
@@ -241,9 +268,16 @@ func newScreensUpdateCmd() *cobra.Command {
   stqry screens update 42 --title "Welcome Screen" --lang en
 
   # Set a cover image
-  stqry screens update 42 --cover-image-media-item-id 123`,
+  stqry screens update 42 --cover-image-media-item-id 123
+
+  # Promote the cover image to the screen header (instead of a single_media
+  # section at the top of the screen)
+  stqry screens update 42 --header-layout image_and_title`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateHeaderLayout(headerLayout); err != nil {
+				return err
+			}
 			lang := flagLang
 			if lang == "" {
 				lang = "en"
@@ -257,6 +291,8 @@ func newScreensUpdateCmd() *cobra.Command {
 					fields["title"] = map[string]interface{}{lang: title}
 				case "short-title":
 					fields["short_title"] = map[string]interface{}{lang: shortTitle}
+				case "header-layout":
+					fields["header_layout"] = headerLayout
 				case "cover-image-media-item-id":
 					fields["cover_image_media_item_id"] = coverImageID
 				case "cover-image-grid-media-item-id":
@@ -281,6 +317,7 @@ func newScreensUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&name, "name", "", "New screen name")
 	cmd.Flags().StringVar(&title, "title", "", "New screen title")
 	cmd.Flags().StringVar(&shortTitle, "short-title", "", "New screen short title")
+	cmd.Flags().StringVar(&headerLayout, "header-layout", "", fmt.Sprintf("Header layout (one of: %s). Drives what's rendered above the first section; use instead of a redundant single_media section at the top.", strings.Join(validHeaderLayouts, ", ")))
 	cmd.Flags().IntVar(&coverImageID, "cover-image-media-item-id", 0, "Cover image media item ID")
 	cmd.Flags().IntVar(&coverImageGridID, "cover-image-grid-media-item-id", 0, "Grid cover image media item ID")
 	cmd.Flags().IntVar(&coverImageWideID, "cover-image-wide-media-item-id", 0, "Wide cover image media item ID")
