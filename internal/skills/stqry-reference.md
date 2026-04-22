@@ -168,6 +168,19 @@ done
 
 `--header-layout` is also available on `stqry screens create`, so new stops can be built with the header already configured.
 
+### link_group layout (turn links into buttons)
+
+Each `link_group` section has a `--layout` setting that drives how its links render (list rows vs buttons vs icons-only etc.). The individual items under a link_group are `link_items`; their `link_type` picks both the behaviour and the icon — a `url` link gets a globe, a `tiktok` link gets the TikTok logo, and so on. You can't pick among stock icons; `--icon-type clear` hides the icon.
+
+```bash
+# Across a whole tour, flip every link_group section to button_with_icon.
+for sid in $(stqry collections items list 42 --jq '.[].item_id'); do
+  for sec in $(stqry screens sections list "$sid" --jq 'map(select(.type=="link_group"))[].id'); do
+    stqry screens sections update "$sec" --screen-id "$sid" --layout button_with_icon
+  done
+done
+```
+
 ### Map pin colour for a whole tour
 
 Each tour stop's map pin colour lives on the collection item: `map_pin_colour` (CSS hex) alongside `map_pin_icon` and `map_pin_style`. Set via `--map-pin-colour` on `collections items update`. Validated client-side — the server requires a CSS hex (with or without leading `#`); free-text names like `red` return HTTP 422.
@@ -246,18 +259,25 @@ stqry screens delete <id>                           Delete a screen
 stqry screens sections list <screen-id>
 stqry screens sections get <section-id> --screen-id <screen-id>
 stqry screens sections add <screen-id> --type <type>
-stqry screens sections update <section-id> --screen-id <screen-id>
+stqry screens sections update <section-id> --screen-id <screen-id> [--layout <l>] [--title <t>] [--body <html>] ...
 stqry screens sections remove <section-id> --screen-id <screen-id>
 stqry screens sections reorder <screen-id> <section-id>...
 
+# Layouts (pass to `sections update --layout`):
+#   link_group:   list, button, icon, list_no_icon, button_no_icon, list_with_icon, button_with_icon, grid_image, wide_image, horizontal_slider
+#   social_group: icons, list
+# Validated client-side against the union.
+
 # Sub-items (attached to a section; all require --screen-id and --section-id)
 stqry screens sections badges   list|add|update|remove --screen-id <id> --section-id <id>
-stqry screens sections links    list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections links    list|add|update|remove --screen-id <id> --section-id <id> [--link-type <t>] [--link-text <s>] [--url <u>] [--username <u>] [--icon-type <t>] [--item-type <t>] [--item-id <n>] [--position <n>]
 stqry screens sections media    list|add|update|remove --screen-id <id> --section-id <id>
 stqry screens sections prices   list|add|update|remove --screen-id <id> --section-id <id>
-stqry screens sections social   list|add|update|remove --screen-id <id> --section-id <id>
+stqry screens sections social   list|add|update|remove --screen-id <id> --section-id <id> [--social-network <n>] [--username <u>] [--link-text <s>] [--position <n>]
 stqry screens sections hours    list|add|update|remove --screen-id <id> --section-id <id>
 ```
+
+**Link items.** The `--link-type` enum is the full set `twitter, whatsapp, wechat, facebook, instagram, pinterest, youtube, vimeo, linkedin, tiktok, weibo, bluesky, internal, url, email, phone, live_tours, settings, badges, favourites, download, app_rating, search`. For a URL link use `--link-type url --url <destination> --link-text <label>`; for a social handle use `--link-type <network> --username <handle> --link-text <label>` (the URL is derived server-side from the handle). For a link pointing at another piece of STQRY content use `--link-type internal --item-type <Screen|Collection|CollectionItem|MediaItem|Bundle|CrossRegionLink> --item-id <id>`. The icon is auto-chosen from `--link-type` (globe for `url`, the network's logo for social types, etc.) — there is no way to pick among stock icons. `--icon-type clear` hides the icon; `media_item` is an internal Builder mode and isn't configurable from this CLI. All link-text / url / username fields are TranslatedString and respect `--lang`.
 
 ---
 
