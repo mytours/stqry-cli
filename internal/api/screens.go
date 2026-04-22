@@ -144,6 +144,16 @@ func ReorderStorySections(c *Client, screenID string, sectionIDs []string) error
 
 // ── Generic Section Sub-Items ─────────────────────────────────────────────────
 
+// Every story-section sub-item endpoint (badges, links, media, prices,
+// social, hours) uses the same response envelope: `{"items": [...]}` for
+// index and `{"item": {...}}` for create/update. See the
+// StorySection*ItemsIndexResponse / StorySection*ItemsCreateResponse
+// definitions in docs/public_api.json.
+const (
+	subItemIndexKey  = "items"
+	subItemSingleKey = "item"
+)
+
 // ListSectionSubItems returns sub-items of a given type for a story section.
 // subItemType is the plural API path segment (e.g. "badge_items").
 func ListSectionSubItems(c *Client, screenID, sectionID, subItemType string) ([]map[string]interface{}, error) {
@@ -152,7 +162,7 @@ func ListSectionSubItems(c *Client, screenID, sectionID, subItemType string) ([]
 	if err := c.Get(path, nil, &raw); err != nil {
 		return nil, err
 	}
-	if arr, ok := raw[subItemType].([]interface{}); ok {
+	if arr, ok := raw[subItemIndexKey].([]interface{}); ok {
 		result := make([]map[string]interface{}, 0, len(arr))
 		for _, item := range arr {
 			if m, ok := item.(map[string]interface{}); ok {
@@ -165,26 +175,26 @@ func ListSectionSubItems(c *Client, screenID, sectionID, subItemType string) ([]
 }
 
 // CreateSectionSubItem creates a sub-item of the given type.
-func CreateSectionSubItem(c *Client, screenID, sectionID, subItemType, singularKey string, fields map[string]interface{}) (map[string]interface{}, error) {
+func CreateSectionSubItem(c *Client, screenID, sectionID, subItemType string, fields map[string]interface{}) (map[string]interface{}, error) {
 	path := fmt.Sprintf("/api/public/screens/%s/story_sections/%s/%s", screenID, sectionID, subItemType)
 	var resp map[string]interface{}
 	if err := c.Post(path, fields, &resp); err != nil {
 		return nil, err
 	}
-	if item, ok := resp[singularKey].(map[string]interface{}); ok {
+	if item, ok := resp[subItemSingleKey].(map[string]interface{}); ok {
 		return item, nil
 	}
 	return resp, nil
 }
 
 // UpdateSectionSubItem updates an existing sub-item.
-func UpdateSectionSubItem(c *Client, screenID, sectionID, subItemType, itemID, singularKey string, fields map[string]interface{}) (map[string]interface{}, error) {
+func UpdateSectionSubItem(c *Client, screenID, sectionID, subItemType, itemID string, fields map[string]interface{}) (map[string]interface{}, error) {
 	path := fmt.Sprintf("/api/public/screens/%s/story_sections/%s/%s/%s", screenID, sectionID, subItemType, itemID)
 	var resp map[string]interface{}
 	if err := c.Patch(path, fields, &resp); err != nil {
 		return nil, err
 	}
-	if item, ok := resp[singularKey].(map[string]interface{}); ok {
+	if item, ok := resp[subItemSingleKey].(map[string]interface{}); ok {
 		return item, nil
 	}
 	return resp, nil
