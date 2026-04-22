@@ -20,6 +20,40 @@ var validScreenTypes = []string{"story", "web", "panorama", "ar", "kiosk"}
 // screen (e.g. a full-bleed cover image vs. no header at all).
 var validHeaderLayouts = []string{"none", "image", "image_and_title", "short", "tall"}
 
+// validLinkTypes mirrors StorySectionLinkItemPartial.link_type in
+// docs/public_api.json. Drives icon / behaviour for each link inside a
+// link_group section.
+var validLinkTypes = []string{
+	"twitter", "whatsapp", "wechat", "facebook", "instagram", "pinterest",
+	"youtube", "vimeo", "linkedin", "tiktok", "weibo", "bluesky",
+	"internal", "url", "email", "phone",
+	"live_tours", "settings", "badges", "favourites", "download", "app_rating", "search",
+}
+
+// validIconTypes mirrors StorySectionLinkItemPartial.icon_type.
+var validIconTypes = []string{"media_item", "stock_icon", "clear"}
+
+// validLinkItemTypes mirrors StorySectionLinkItemPartial.item_type (the
+// linked-resource type for `link_type: internal` links).
+var validLinkItemTypes = []string{
+	"Bundle", "Collection", "CollectionItem", "Screen", "MediaItem", "CrossRegionLink",
+}
+
+// validSocialNetworks mirrors StorySectionSocialItemPartial.social_network.
+var validSocialNetworks = []string{
+	"twitter", "whatsapp", "wechat", "facebook", "instagram", "pinterest",
+	"youtube", "vimeo", "linkedin", "tiktok", "weibo", "bluesky",
+}
+
+// validSectionLayouts is the union of `layout` values accepted by story
+// sections that have one: link_group (10 values) and social_group (icons,
+// list). Other section types don't carry a layout field.
+var validSectionLayouts = []string{
+	"list", "button", "icon", "list_no_icon", "button_no_icon",
+	"list_with_icon", "button_with_icon", "grid_image", "wide_image",
+	"horizontal_slider", "icons",
+}
+
 // validSectionTypes mirrors the StorySection oneOf in docs/public_api.json.
 // Keep in sync if new section schemas are added server-side.
 var validSectionTypes = []string{
@@ -50,15 +84,25 @@ func validateScreenType(t string) error {
 }
 
 func validateHeaderLayout(l string) error {
-	if l == "" {
+	return validateEnum("header layout", l, validHeaderLayouts)
+}
+
+func validateLinkType(t string) error      { return validateEnum("link type", t, validLinkTypes) }
+func validateIconType(t string) error      { return validateEnum("icon type", t, validIconTypes) }
+func validateLinkItemType(t string) error  { return validateEnum("item type", t, validLinkItemTypes) }
+func validateSocialNetwork(n string) error { return validateEnum("social network", n, validSocialNetworks) }
+func validateSectionLayout(l string) error { return validateEnum("section layout", l, validSectionLayouts) }
+
+func validateEnum(label, value string, valid []string) error {
+	if value == "" {
 		return nil
 	}
-	for _, v := range validHeaderLayouts {
-		if l == v {
+	for _, v := range valid {
+		if value == v {
 			return nil
 		}
 	}
-	return fmt.Errorf("invalid header layout %q (valid: %s)", l, strings.Join(validHeaderLayouts, ", "))
+	return fmt.Errorf("invalid %s %q (valid: %s)", label, value, strings.Join(valid, ", "))
 }
 
 func validateSectionType(t string) error {
@@ -545,7 +589,7 @@ func newSectionsAddCmd() *cobra.Command {
 // ── sections update ───────────────────────────────────────────────────────────
 
 func newSectionsUpdateCmd() *cobra.Command {
-	var screenID, title, subtitle, body, description, textPosition string
+	var screenID, title, subtitle, body, description, textPosition, layout string
 	var mediaItemID int
 
 	cmd := &cobra.Command{
@@ -558,11 +602,18 @@ func newSectionsUpdateCmd() *cobra.Command {
   stqry screens sections update 99 --screen-id 42 --body "Detailed description..."
 
   # Attach a media item to a single_media section
-  stqry screens sections update 99 --screen-id 42 --media-item-id 123`,
+  stqry screens sections update 99 --screen-id 42 --media-item-id 123
+
+  # Change a link_group section's layout from list to buttons (all links
+  # inside the section render as buttons instead of list rows).
+  stqry screens sections update 99 --screen-id 42 --layout button_with_icon`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if screenID == "" {
 				return fmt.Errorf("--screen-id is required")
+			}
+			if err := validateSectionLayout(layout); err != nil {
+				return err
 			}
 
 			lang := flagLang
@@ -584,6 +635,8 @@ func newSectionsUpdateCmd() *cobra.Command {
 					fields["media_item_id"] = mediaItemID
 				case "text-position":
 					fields["text_position"] = textPosition
+				case "layout":
+					fields["layout"] = layout
 				}
 			})
 
@@ -602,6 +655,7 @@ func newSectionsUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&description, "description", "", "New section description (media sections only)")
 	cmd.Flags().IntVar(&mediaItemID, "media-item-id", 0, "New media item ID (single_media sections only)")
 	cmd.Flags().StringVar(&textPosition, "text-position", "", "Text position for single_media sections (left, right, top, bottom, none)")
+	cmd.Flags().StringVar(&layout, "layout", "", fmt.Sprintf("Section layout. link_group: list, button, icon, list_no_icon, button_no_icon, list_with_icon, button_with_icon, grid_image, wide_image, horizontal_slider. social_group: icons, list. (union validated: %s)", strings.Join(validSectionLayouts, ", ")))
 
 	return cmd
 }
@@ -674,9 +728,9 @@ func newSectionSubItemCmd(cmdName, apiPath string) *cobra.Command {
 			add:   "  # Add a badge to a section\n  stqry screens sections badges add --screen-id 42 --section-id 99 --badge-id 7",
 		},
 		"links": {
-			group: "  # List links in a section\n  stqry screens sections links list --screen-id 42 --section-id 99\n\n  # Add a web link to a section\n  stqry screens sections links add --screen-id 42 --section-id 99 --link-type web --url https://example.com --label \"Visit Site\"",
+			group: "  # List links in a section\n  stqry screens sections links list --screen-id 42 --section-id 99\n\n  # Add a URL link (icon is auto-chosen from --link-type; url gets a globe)\n  stqry screens sections links add --screen-id 42 --section-id 99 \\\n    --link-type url --url https://example.com --link-text \"Visit site\"\n\n  # Add a social link (handle in --username; icon is the network's logo)\n  stqry screens sections links add --screen-id 42 --section-id 99 \\\n    --link-type instagram --username @example --link-text \"Follow on Instagram\"\n\n  # Add an internal link to another screen\n  stqry screens sections links add --screen-id 42 --section-id 99 \\\n    --link-type internal --item-type Screen --item-id 100 --link-text \"Related stop\"",
 			list:  "  # List links in a section\n  stqry screens sections links list --screen-id 42 --section-id 99",
-			add:   "  # Add a web link to a section\n  stqry screens sections links add --screen-id 42 --section-id 99 --link-type web --url https://example.com --label \"Visit Site\"",
+			add:   "  # Add a URL link (icon is auto-chosen from --link-type)\n  stqry screens sections links add --screen-id 42 --section-id 99 \\\n    --link-type url --url https://example.com --link-text \"Visit site\"",
 		},
 		"media": {
 			group: "  # List media items in a section\n  stqry screens sections media list --screen-id 42 --section-id 99\n\n  # Add a media item to a section\n  stqry screens sections media add --screen-id 42 --section-id 99 --media-item-id 55",
@@ -689,9 +743,9 @@ func newSectionSubItemCmd(cmdName, apiPath string) *cobra.Command {
 			add:   "  # Add a price to a section\n  stqry screens sections prices add --screen-id 42 --section-id 99 --price-cents 1500 --price-currency USD --description \"Adult\"",
 		},
 		"social": {
-			group: "  # List social items in a section\n  stqry screens sections social list --screen-id 42 --section-id 99\n\n  # Add a social link to a section\n  stqry screens sections social add --screen-id 42 --section-id 99 --social-network instagram --url https://instagram.com/example",
+			group: "  # List social items in a section\n  stqry screens sections social list --screen-id 42 --section-id 99\n\n  # Add a social handle to a social_group section\n  stqry screens sections social add --screen-id 42 --section-id 99 \\\n    --social-network instagram --username @example --link-text \"Follow us\"",
 			list:  "  # List social items in a section\n  stqry screens sections social list --screen-id 42 --section-id 99",
-			add:   "  # Add a social link to a section\n  stqry screens sections social add --screen-id 42 --section-id 99 --social-network instagram --url https://instagram.com/example",
+			add:   "  # Add a social handle to a social_group section\n  stqry screens sections social add --screen-id 42 --section-id 99 \\\n    --social-network instagram --username @example --link-text \"Follow us\"",
 		},
 		"hours": {
 			group: "  # List opening hours in a section\n  stqry screens sections hours list --screen-id 42 --section-id 99\n\n  # Add an opening hours entry\n  stqry screens sections hours add --screen-id 42 --section-id 99 --description \"Monday-Friday\" --time \"9:00-17:00\"",
@@ -757,14 +811,14 @@ func newSubItemAddCmd(cmdName, apiPath string) *cobra.Command {
 				return fmt.Errorf("--section-id is required")
 			}
 
-			fields := map[string]interface{}{}
-			cmd.Flags().Visit(func(f *flag.Flag) {
-				// Skip meta flags
-				if f.Name == "screen-id" || f.Name == "section-id" {
-					return
-				}
-				fields[f.Name] = f.Value.String()
-			})
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
+			}
+			fields, err := buildSubItemFields(cmd, cmdName, lang)
+			if err != nil {
+				return err
+			}
 
 			item, err := api.CreateSectionSubItem(activeClient, screenID, sectionID, apiPath, fields)
 			if err != nil {
@@ -776,29 +830,7 @@ func newSubItemAddCmd(cmdName, apiPath string) *cobra.Command {
 
 	cmd.Flags().StringVar(&screenID, "screen-id", "", "Screen ID (required)")
 	cmd.Flags().StringVar(&sectionID, "section-id", "", "Section ID (required)")
-
-	// Type-specific flags
-	switch cmdName {
-	case "badges":
-		cmd.Flags().String("badge-id", "", "Badge ID")
-	case "links":
-		cmd.Flags().String("link-type", "", "Link type")
-		cmd.Flags().String("url", "", "URL")
-		cmd.Flags().String("label", "", "Label")
-	case "media":
-		cmd.Flags().String("media-item-id", "", "Media item ID")
-	case "prices":
-		cmd.Flags().Int("price-cents", 0, "Price in cents")
-		cmd.Flags().String("price-currency", "", "Price currency code")
-		cmd.Flags().String("description", "", "Price description")
-	case "social":
-		cmd.Flags().String("social-network", "", "Social network name")
-		cmd.Flags().String("url", "", "URL")
-	case "hours":
-		cmd.Flags().String("description", "", "Hours description")
-		cmd.Flags().String("time", "", "Time string")
-	}
-
+	registerSubItemFlags(cmd, cmdName)
 	return cmd
 }
 
@@ -818,13 +850,14 @@ func newSubItemUpdateCmd(cmdName, apiPath string) *cobra.Command {
 				return fmt.Errorf("--section-id is required")
 			}
 
-			fields := map[string]interface{}{}
-			cmd.Flags().Visit(func(f *flag.Flag) {
-				if f.Name == "screen-id" || f.Name == "section-id" {
-					return
-				}
-				fields[f.Name] = f.Value.String()
-			})
+			lang := flagLang
+			if lang == "" {
+				lang = "en"
+			}
+			fields, err := buildSubItemFields(cmd, cmdName, lang)
+			if err != nil {
+				return err
+			}
 
 			item, err := api.UpdateSectionSubItem(activeClient, screenID, sectionID, apiPath, args[0], fields)
 			if err != nil {
@@ -836,8 +869,118 @@ func newSubItemUpdateCmd(cmdName, apiPath string) *cobra.Command {
 
 	cmd.Flags().StringVar(&screenID, "screen-id", "", "Screen ID (required)")
 	cmd.Flags().StringVar(&sectionID, "section-id", "", "Section ID (required)")
-
+	registerSubItemFlags(cmd, cmdName)
 	return cmd
+}
+
+// registerSubItemFlags adds the type-specific flags for a sub-item command.
+// Shared between `add` and `update` so the flag surface is symmetric.
+func registerSubItemFlags(cmd *cobra.Command, cmdName string) {
+	switch cmdName {
+	case "badges":
+		cmd.Flags().String("badge-id", "", "Badge ID")
+	case "links":
+		cmd.Flags().String("link-type", "", fmt.Sprintf("Link type (one of: %s)", strings.Join(validLinkTypes, ", ")))
+		cmd.Flags().String("url", "", "Destination URL (TranslatedString; for link-type=url / phone / email / social)")
+		cmd.Flags().String("link-text", "", "Display label for the link (TranslatedString)")
+		cmd.Flags().String("username", "", "Username / handle (TranslatedString; used by social link types)")
+		cmd.Flags().String("icon-type", "", fmt.Sprintf("Icon source (one of: %s). stock_icon is the default — the icon is auto-chosen from --link-type (globe for url, the network's logo for social types, etc.); you can't pick among stock icons. Pass clear to hide the icon, media_item to use an uploaded media item (Builder-only; no public endpoint to set the media item id from this CLI).", strings.Join(validIconTypes, ", ")))
+		cmd.Flags().String("item-type", "", fmt.Sprintf("Linked-resource type for link-type=internal (one of: %s)", strings.Join(validLinkItemTypes, ", ")))
+		cmd.Flags().Int("item-id", 0, "Linked-resource ID for link-type=internal")
+		cmd.Flags().Int("position", 0, "Position within the section (0-based)")
+	case "media":
+		cmd.Flags().String("media-item-id", "", "Media item ID")
+	case "prices":
+		cmd.Flags().Int("price-cents", 0, "Price in cents")
+		cmd.Flags().String("price-currency", "", "Price currency code")
+		cmd.Flags().String("description", "", "Price description")
+	case "social":
+		cmd.Flags().String("social-network", "", fmt.Sprintf("Social network (one of: %s)", strings.Join(validSocialNetworks, ", ")))
+		cmd.Flags().String("username", "", "Username / handle (TranslatedString)")
+		cmd.Flags().String("link-text", "", "Display label (TranslatedString)")
+		cmd.Flags().Int("position", 0, "Position within the section (0-based)")
+	case "hours":
+		cmd.Flags().String("description", "", "Hours description")
+		cmd.Flags().String("time", "", "Time string")
+	}
+}
+
+// buildSubItemFields extracts the set flags from cmd and maps them to the
+// correct API field names. For fields typed as TranslatedString in the public
+// API the flag value is wrapped in a {lang: value} map. For fields with an
+// enum the value is validated client-side so typos surface before hitting the
+// wire.
+func buildSubItemFields(cmd *cobra.Command, cmdName, lang string) (map[string]interface{}, error) {
+	fields := map[string]interface{}{}
+	var enumErr error
+	cmd.Flags().Visit(func(f *flag.Flag) {
+		if enumErr != nil {
+			return
+		}
+		if f.Name == "screen-id" || f.Name == "section-id" {
+			return
+		}
+		v := f.Value.String()
+		switch cmdName {
+		case "links":
+			switch f.Name {
+			case "link-type":
+				if err := validateLinkType(v); err != nil {
+					enumErr = err
+					return
+				}
+				fields["link_type"] = v
+			case "icon-type":
+				if err := validateIconType(v); err != nil {
+					enumErr = err
+					return
+				}
+				fields["icon_type"] = v
+			case "item-type":
+				if err := validateLinkItemType(v); err != nil {
+					enumErr = err
+					return
+				}
+				fields["item_type"] = v
+			case "url":
+				fields["url"] = map[string]interface{}{lang: v}
+			case "link-text":
+				fields["link_text"] = map[string]interface{}{lang: v}
+			case "username":
+				fields["username"] = map[string]interface{}{lang: v}
+			case "item-id":
+				if n, err := strconv.Atoi(v); err == nil {
+					fields["item_id"] = n
+				}
+			case "position":
+				if n, err := strconv.Atoi(v); err == nil {
+					fields["position"] = n
+				}
+			}
+		case "social":
+			switch f.Name {
+			case "social-network":
+				if err := validateSocialNetwork(v); err != nil {
+					enumErr = err
+					return
+				}
+				fields["social_network"] = v
+			case "username":
+				fields["username"] = map[string]interface{}{lang: v}
+			case "link-text":
+				fields["link_text"] = map[string]interface{}{lang: v}
+			case "position":
+				if n, err := strconv.Atoi(v); err == nil {
+					fields["position"] = n
+				}
+			}
+		default:
+			// Generic path for types whose flag names already match the API
+			// field names (badges, media, prices, hours).
+			fields[f.Name] = v
+		}
+	})
+	return fields, enumErr
 }
 
 // newSubItemRemoveCmd builds the remove subcommand for a sub-item type.
