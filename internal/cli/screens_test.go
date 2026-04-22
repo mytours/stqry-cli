@@ -219,6 +219,97 @@ func TestScreensUpdateCmd(t *testing.T) {
 	}
 }
 
+// TestScreensUpdateCmdHeaderLayout asserts that --header-layout reaches the
+// PATCH body as a flat string. This is the one flag that promotes a screen's
+// cover image into the actual header, replacing a redundant single_media
+// section at the top of each stop.
+func TestScreensUpdateCmdHeaderLayout(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" || r.URL.Path != "/api/public/screens/42" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"screen": map[string]interface{}{"id": "42", "type": "story", "header_layout": "image_and_title"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "screens", "update", "42", "--header-layout=image_and_title"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if captured["header_layout"] != "image_and_title" {
+		t.Errorf("expected header_layout=image_and_title in body, got %v", captured["header_layout"])
+	}
+}
+
+// TestScreensUpdateCmdInvalidHeaderLayout asserts that --header-layout is
+// validated client-side against the enum. A typo like "banner" used to reach
+// the API and return a cryptic validation error.
+func TestScreensUpdateCmdInvalidHeaderLayout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request %s %s; should have errored client-side", r.Method, r.URL.Path)
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "screens", "update", "42", "--header-layout=banner"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for invalid header layout, got nil")
+	}
+	if !contains(err.Error(), "invalid header layout") {
+		t.Errorf("expected error to mention \"invalid header layout\", got %q", err.Error())
+	}
+	if !contains(err.Error(), "image_and_title") {
+		t.Errorf("expected error to list valid layouts, got %q", err.Error())
+	}
+}
+
+// TestScreensCreateCmdHeaderLayout asserts that --header-layout is accepted at
+// create time and sent in the POST body, saving a follow-up update call.
+func TestScreensCreateCmdHeaderLayout(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || r.URL.Path != "/api/public/screens" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"screen": map[string]interface{}{"id": 42, "type": "story"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "screens", "create", "--name=Stop 1", "--type=story", "--header-layout=tall"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if captured["header_layout"] != "tall" {
+		t.Errorf("expected header_layout=tall in body, got %v", captured["header_layout"])
+	}
+}
+
 // TestScreensDeleteCmd asserts that `stqry screens delete 42` sends a DELETE
 // request to the correct endpoint.
 func TestScreensDeleteCmd(t *testing.T) {
