@@ -307,17 +307,15 @@ stqry screens get <screen-id> --lang de --json
 
 ---
 
-## Workflow 5: Author a Self-Guided Audio Tour
+## Workflow 5: Build a Self-Guided Audio Tour
 
 This is the default recipe when a user asks for an audio / self-guided / walking tour.
 
 ### Conventions
 
 - **Directory layout** inside the project root:
-  - `scripts/stop_N.txt` — **narration script** source of truth (spoken word; fed to TTS)
-  - `audio/stop_N.mp3` — narration audio per stop
-  - `images/stop_N.jpg` — cover image per stop
-  - `images/LICENSES.md` — image source URL + license per stop
+  - `audio/stop_N.mp3` — narration audio per stop (supplied by the user)
+  - `images/stop_N.jpg` — cover image per stop (supplied by the user)
   - `stqry_ids.json` — captured collection / screen / section / media IDs (for re-runs)
 - **Per-stop screen composition** — one `story` screen per stop with the image first, then audio, then text sections. Audio sits right under the image so the user can tap play without scrolling:
   1. `single_media` section pointing at the cover image
@@ -329,17 +327,18 @@ This is the default recipe when a user asks for an audio / self-guided / walking
 - **Tour type** — set `--tour-type` on the collection so client apps can show the right icon and copy. For a self-guided audio walk it's `walking`. Other common values: `cycling`, `driving`, `bus`, `museum`, `nature_trail`, `historic_house`. The full enum is in `stqry collections create --help`.
 - **Collection cover image** — reuse the most iconic stop image. Set `--cover-image-media-item-id`, `--cover-image-grid-media-item-id`, and `--cover-image-wide-media-item-id` on `stqry collections update` so every UI surface has a cover.
 - **Screen cover images** — every stop's screen also gets the same three cover fields set, pointing at that stop's own image (the one attached as the first section). Without this, stops show up as blank rows in list / grid / wide layouts of the tour. Set via `stqry screens update <screen-id> --cover-image-media-item-id <image-media-id> --cover-image-grid-media-item-id <id> --cover-image-wide-media-item-id <id>` after the image MediaItem is created. Reusing the same image for all three surfaces is fine; pick a different image only if the stop's list-tile image should differ from the in-screen hero image.
-- **Build order per stop** — narration script → audio → image → on-screen text → upload media → create screen → set screen cover images (reuse the stop image) → add image / audio / text sections → reorder → link screen to collection → append IDs to `stqry_ids.json`.
+- **Build order per stop** — collect audio, image, and text from the user → upload media → create screen → set screen cover images (reuse the stop image) → add image / audio / text sections → reorder → link screen to collection → append IDs to `stqry_ids.json`.
 - **Verification** — after building, run `stqry collections items list <id>` to confirm all stops are linked and `stqry screens sections list <screen-id>` for each screen.
 
 ### Questions to ask the user
 
 Ask about the things only the user can decide:
 
-- Tour subject and approximate number of stops
+- Tour subject and the list of stops
 - Walking / driving / mixed route
-- Whether they already have audio files, or want you to generate them (and which TTS tool to use)
-- Whether they already have specific stop photos or want Commons-sourced CC images
+- Where the audio file for each stop lives on disk (the user supplies these)
+- Where the photo for each stop lives on disk (the user supplies these)
+- The on-screen text for each stop (the user supplies this)
 - Any language beyond English
 
 ### Commands
