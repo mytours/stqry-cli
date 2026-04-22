@@ -80,6 +80,19 @@ func ListCollectionItems(c *Client, collectionID string, query map[string]string
 	return resp.CollectionItems, resp.Meta, nil
 }
 
+// GetCollectionItem returns a single collection item by ID.
+func GetCollectionItem(c *Client, collectionID, itemID string) (map[string]interface{}, error) {
+	var resp map[string]interface{}
+	path := fmt.Sprintf("/api/public/collections/%s/collection_items/%s", collectionID, itemID)
+	if err := c.Get(path, nil, &resp); err != nil {
+		return nil, err
+	}
+	if item, ok := resp["collection_item"].(map[string]interface{}); ok {
+		return item, nil
+	}
+	return resp, nil
+}
+
 // CreateCollectionItem adds an item to a collection.
 func CreateCollectionItem(c *Client, collectionID string, fields map[string]interface{}) (map[string]interface{}, error) {
 	var resp map[string]interface{}

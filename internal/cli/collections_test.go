@@ -297,6 +297,177 @@ func TestCollectionsItemsAddCmdOmitsPosition(t *testing.T) {
 	}
 }
 
+// TestCollectionsItemsGetCmd asserts that `stqry collections items get 42 99`
+// hits the right endpoint and returns the item body.
+func TestCollectionsItemsGetCmd(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" || r.URL.Path != "/api/public/collections/42/collection_items/99" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 99, "position": 2, "item_type": "Screen", "item_id": 12},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "items", "get", "42", "99"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+}
+
+// TestCollectionsItemsUpdateCmdPosition asserts that --position on
+// `items update` sends a PATCH with just position, so a single item can be
+// moved without touching anything else (the workaround for reorder's
+// all-or-nothing semantics).
+func TestCollectionsItemsUpdateCmdPosition(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" || r.URL.Path != "/api/public/collections/42/collection_items/99" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 99, "position": 3},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "items", "update", "42", "99", "--position=3"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	pos, ok := captured["position"].(float64)
+	if !ok || int(pos) != 3 {
+		t.Errorf("expected position=3 in body, got %v", captured["position"])
+	}
+	// Unrelated fields must not appear.
+	for _, f := range []string{"lat", "lng", "item_number", "map_pin_icon"} {
+		if _, present := captured[f]; present {
+			t.Errorf("expected no %s field when flag omitted, got %v", f, captured[f])
+		}
+	}
+}
+
+// TestCollectionsItemsUpdateCmdNoFields asserts that calling update with no
+// flags errors out instead of sending an empty PATCH.
+func TestCollectionsItemsUpdateCmdNoFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request %s %s; should have errored before hitting API", r.Method, r.URL.Path)
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "items", "update", "42", "99"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when no update flags passed, got nil")
+	}
+	if !contains(err.Error(), "no fields to update") {
+		t.Errorf("expected error to mention \"no fields to update\", got %q", err.Error())
+	}
+}
+
+// TestCollectionsItemsUpdateCmdMapPinColourHex asserts that a valid CSS hex
+// colour reaches the PATCH body unchanged, so Kyle's "change pin colour for
+// the whole tour" works as a shell loop over items update.
+func TestCollectionsItemsUpdateCmdMapPinColourHex(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 99, "map_pin_colour": "FF6600"},
+		})
+	}))
+	defer server.Close()
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "items", "update", "42", "99", "--map-pin-colour=#FF6600"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if captured["map_pin_colour"] != "#FF6600" {
+		t.Errorf("expected map_pin_colour=#FF6600 in body, got %v", captured["map_pin_colour"])
+	}
+}
+
+// TestCollectionsItemsUpdateCmdMapPinColourDefault asserts that the literal
+// "default" (the reset-to-tour-default sentinel) passes validation.
+func TestCollectionsItemsUpdateCmdMapPinColourDefault(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 99, "map_pin_colour": "default"},
+		})
+	}))
+	defer server.Close()
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "items", "update", "42", "99", "--map-pin-colour=default"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if captured["map_pin_colour"] != "default" {
+		t.Errorf("expected map_pin_colour=default in body, got %v", captured["map_pin_colour"])
+	}
+}
+
+// TestCollectionsItemsUpdateCmdMapPinColourInvalid asserts that free-text
+// colour names (e.g. "red") are rejected client-side with a useful error,
+// so users don't get a cryptic 422 from the server.
+func TestCollectionsItemsUpdateCmdMapPinColourInvalid(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request %s %s; should have errored client-side", r.Method, r.URL.Path)
+	}))
+	defer server.Close()
+	setupTestHome(t, server.URL)
+
+	cases := []string{"red", "rgb(255,0,0)", "#GGGGGG", "#1234", "1234567"}
+	for _, v := range cases {
+		t.Run(v, func(t *testing.T) {
+			cmd := newRootCmd()
+			cmd.SetArgs([]string{"--site=testsite", "collections", "items", "update", "42", "99", "--map-pin-colour=" + v})
+			cmd.SetOut(os.Stderr)
+			cmd.SetErr(os.Stderr)
+			err := cmd.Execute()
+			if err == nil {
+				t.Fatalf("expected error for invalid colour %q, got nil", v)
+			}
+			if !contains(err.Error(), "invalid map pin colour") {
+				t.Errorf("expected error to mention \"invalid map pin colour\", got %q", err.Error())
+			}
+		})
+	}
+}
+
 // TestCollectionsCreateCmdTourType asserts that --tour-type is sent as a flat
 // string field (not a TranslatedString). Tour type is an enum, not localised.
 func TestCollectionsCreateCmdTourType(t *testing.T) {

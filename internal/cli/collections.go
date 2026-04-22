@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -10,6 +11,23 @@ import (
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
 )
+
+// hexColourPattern matches a CSS hex colour (3 or 6 digits, leading # optional).
+// The server enforces "valid CSS hex color code"; passing e.g. `red` returns
+// HTTP 422 "Map pin colour must be a valid CSS hex color code".
+var hexColourPattern = regexp.MustCompile(`^#?[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$`)
+
+// validateMapPinColour accepts the literal "default" (reset sentinel) or a
+// CSS hex colour. Empty string is a no-op for the Visit() pattern.
+func validateMapPinColour(c string) error {
+	if c == "" || c == "default" {
+		return nil
+	}
+	if hexColourPattern.MatchString(c) {
+		return nil
+	}
+	return fmt.Errorf("invalid map pin colour %q (must be a CSS hex code like \"#FF0000\" or \"FF0000\", or \"default\" to reset)", c)
+}
 
 // validCollectionTypes mirrors Collection::SUBTYPES_SHORT in mytours-web
 // (app/models/collection.rb). Keep in sync if new subtypes are added.
@@ -341,7 +359,9 @@ func newCollectionsItemsCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newCollectionsItemsListCmd())
+	cmd.AddCommand(newCollectionsItemsGetCmd())
 	cmd.AddCommand(newCollectionsItemsAddCmd())
+	cmd.AddCommand(newCollectionsItemsUpdateCmd())
 	cmd.AddCommand(newCollectionsItemsRemoveCmd())
 	cmd.AddCommand(newCollectionsItemsReorderCmd())
 
@@ -373,6 +393,29 @@ func newCollectionsItemsListCmd() *cobra.Command {
 				m = &output.Meta{Page: meta.Page, PerPage: meta.PerPage, Total: meta.Count}
 			}
 			return printer.PrintList([]string{"id", "item_type", "item_id", "position"}, items, m)
+		},
+	}
+	cmd.ValidArgsFunction = completeCollectionIDs
+	return cmd
+}
+
+func newCollectionsItemsGetCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "get <collection-id> <item-id>",
+		Short: "Get a single collection item",
+		Example: `  # Get a collection item by ID
+  stqry collections items get 42 99
+
+  # Filter a specific field
+  stqry collections items get 42 99 --jq '.position'`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			item, err := api.GetCollectionItem(activeClient, args[0], args[1])
+			if err != nil {
+				printer.PrintError(err)
+				return err
+			}
+			return printer.PrintOne(item, nil)
 		},
 	}
 	cmd.ValidArgsFunction = completeCollectionIDs
@@ -417,6 +460,80 @@ func newCollectionsItemsAddCmd() *cobra.Command {
 	cmd.Flags().IntVar(&position, "position", 0, "Position in the collection (0-based; omit to append to the end)")
 	cmd.MarkFlagRequired("item-type")
 	cmd.MarkFlagRequired("item-id")
+	cmd.ValidArgsFunction = completeCollectionIDs
+
+	return cmd
+}
+
+func newCollectionsItemsUpdateCmd() *cobra.Command {
+	var position int
+	var itemNumber string
+	var lat, lng float64
+	var mapPinIcon, mapPinStyle, mapPinColour, geofence string
+
+	cmd := &cobra.Command{
+		Use:   "update <collection-id> <item-id>",
+		Short: "Update a collection item",
+		Example: `  # Move a single item to a specific position (1-based)
+  stqry collections items update 42 99 --position 3
+
+  # Set GPS coordinates for a tour stop on the map
+  stqry collections items update 42 99 --lat 42.9018 --lng -78.8728
+
+  # Set a custom item number (e.g. "1A") shown in some UIs
+  stqry collections items update 42 99 --item-number "1A"
+
+  # Change the map pin colour (CSS hex, with or without leading #)
+  stqry collections items update 42 99 --map-pin-colour "#FF6600"
+
+  # Reset to the tour default pin colour
+  stqry collections items update 42 99 --map-pin-colour default`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateMapPinColour(mapPinColour); err != nil {
+				return err
+			}
+			fields := map[string]interface{}{}
+			cmd.Flags().Visit(func(f *flag.Flag) {
+				switch f.Name {
+				case "position":
+					fields["position"] = position
+				case "item-number":
+					fields["item_number"] = itemNumber
+				case "lat":
+					fields["lat"] = lat
+				case "lng":
+					fields["lng"] = lng
+				case "map-pin-icon":
+					fields["map_pin_icon"] = mapPinIcon
+				case "map-pin-style":
+					fields["map_pin_style"] = mapPinStyle
+				case "map-pin-colour":
+					fields["map_pin_colour"] = mapPinColour
+				case "geofence":
+					fields["geofence"] = geofence
+				}
+			})
+			if len(fields) == 0 {
+				return fmt.Errorf("no fields to update; pass at least one flag (e.g. --position)")
+			}
+			item, err := api.UpdateCollectionItem(activeClient, args[0], args[1], fields)
+			if err != nil {
+				printer.PrintError(err)
+				return err
+			}
+			return printer.PrintOne(item, nil)
+		},
+	}
+
+	cmd.Flags().IntVar(&position, "position", 0, "Position in the collection (1-based)")
+	cmd.Flags().StringVar(&itemNumber, "item-number", "", "Display number shown in list / map views")
+	cmd.Flags().Float64Var(&lat, "lat", 0, "Latitude for the map pin")
+	cmd.Flags().Float64Var(&lng, "lng", 0, "Longitude for the map pin")
+	cmd.Flags().StringVar(&mapPinIcon, "map-pin-icon", "", "Map pin icon name. \"default\" resets to the tour default.")
+	cmd.Flags().StringVar(&mapPinStyle, "map-pin-style", "", "Map pin style name. \"default\" resets to the tour default.")
+	cmd.Flags().StringVar(&mapPinColour, "map-pin-colour", "", "Map pin colour as a CSS hex code (with or without leading #, e.g. \"#FF6600\" or \"FF6600\"), or \"default\" to reset. Validated client-side.")
+	cmd.Flags().StringVar(&geofence, "geofence", "", "Geofence mode (e.g. off, on)")
 	cmd.ValidArgsFunction = completeCollectionIDs
 
 	return cmd

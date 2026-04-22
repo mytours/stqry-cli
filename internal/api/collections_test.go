@@ -201,6 +201,31 @@ func TestDeleteCollection(t *testing.T) {
 	}
 }
 
+func TestGetCollectionItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/public/collections/7/collection_items/1" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 1, "position": 2, "item_type": "Screen", "item_id": 42},
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient(server.URL, "test-token")
+	item, err := GetCollectionItem(c, "7", "1")
+	if err != nil {
+		t.Fatalf("GetCollectionItem: %v", err)
+	}
+	if item["position"] != float64(2) {
+		t.Errorf("expected position=2, got %v", item["position"])
+	}
+}
+
 func TestCreateCollectionItem(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
