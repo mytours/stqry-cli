@@ -134,6 +134,24 @@ stqry screens get 12345 --jq '.name'
 
 **Do NOT** pipe `--quiet` output into `python -c` or external `jq` — the built-in `--jq` flag is simpler and avoids extra dependencies.
 
+### Bulk operations
+
+There is no `set-all` or `apply-to-all` command. Combine `--jq` with a shell loop:
+
+```bash
+# Give every stop in a tour a 50m geofence.
+for id in $(stqry collections items list 42 --jq '.[].id'); do
+  stqry collections items update 42 "$id" --geofence gps --radius 50
+done
+
+# Nuke all geofences in a tour.
+for id in $(stqry collections items list 42 --jq '.[].id'); do
+  stqry collections items update 42 "$id" --geofence off
+done
+```
+
+`update` with `--radius` merges into each item's existing `gps_settings`, so repeated calls don't clobber `geofence_lat` / `geofence_lng`.
+
 ### Map pin colour for a whole tour
 
 Each tour stop's map pin colour lives on the collection item: `map_pin_colour` (CSS hex) alongside `map_pin_icon` and `map_pin_style`. Set via `--map-pin-colour` on `collections items update`. Validated client-side — the server requires a CSS hex (with or without leading `#`); free-text names like `red` return HTTP 422.
@@ -190,7 +208,7 @@ stqry collections delete <id>            Delete a collection
 stqry collections items list <collection-id>                    List items in a collection
 stqry collections items get <collection-id> <item-id>           Get a single collection item
 stqry collections items add <collection-id> --item-type <type> --item-id <id> [--position <n>]  Add a screen or collection to a collection
-stqry collections items update <collection-id> <item-id> [--position <n>] [--lat <l>] [--lng <l>] [--item-number <s>]  Update a single collection item (position, GPS, etc.)
+stqry collections items update <collection-id> <item-id> [--position <n>] [--lat <l>] [--lng <l>] [--item-number <s>] [--geofence <mode>] [--radius <m>] [--geofence-lat <l>] [--geofence-lng <l>] [--geofence-content]  Update a single collection item (position, GPS pin, geofence). --radius merges into gps_settings so existing geofence_lat / geofence_lng aren't clobbered. Bulk with a shell loop — see the geofence snippet below.
 stqry collections items reorder <collection-id> <item-id>...    Reorder items in a collection (1-based positions applied to the whole list)
 stqry collections items remove <collection-id> <item-id>        Remove an item from a collection
 ```

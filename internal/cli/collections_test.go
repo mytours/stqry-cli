@@ -385,6 +385,94 @@ func TestCollectionsItemsUpdateCmdNoFields(t *testing.T) {
 	}
 }
 
+// TestCollectionsItemsUpdateCmdRadiusMerges asserts that --radius on
+// `items update` fetches the current item first and merges gps_settings, so
+// existing geofence_lat / geofence_lng aren't wiped out.
+func TestCollectionsItemsUpdateCmdRadiusMerges(t *testing.T) {
+	var captured map[string]interface{}
+	sawGet := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && r.URL.Path == "/api/public/collections/42/collection_items/99" {
+			sawGet = true
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"collection_item": map[string]interface{}{
+					"id":       99,
+					"geofence": "gps",
+					"gps_settings": map[string]interface{}{
+						"geofence_lat":     42.9018,
+						"geofence_lng":     -78.8728,
+						"geofence_content": true,
+					},
+				},
+			})
+			return
+		}
+		if r.Method != "PATCH" || r.URL.Path != "/api/public/collections/42/collection_items/99" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"collection_item": map[string]interface{}{"id": 99},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "items", "update", "42", "99", "--radius=50"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	if !sawGet {
+		t.Error("expected GET before PATCH to merge gps_settings, but none was observed")
+	}
+	gps, ok := captured["gps_settings"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected gps_settings in PATCH body, got %v", captured["gps_settings"])
+	}
+	if r, _ := gps["radius"].(float64); int(r) != 50 {
+		t.Errorf("expected gps_settings.radius=50, got %v", gps["radius"])
+	}
+	// Existing fields must survive the merge.
+	if lat, _ := gps["geofence_lat"].(float64); lat != 42.9018 {
+		t.Errorf("expected geofence_lat preserved, got %v", gps["geofence_lat"])
+	}
+	if gps["geofence_content"] != true {
+		t.Errorf("expected geofence_content preserved, got %v", gps["geofence_content"])
+	}
+}
+
+// TestCollectionsItemsUpdateCmdInvalidGeofence asserts that --geofence rejects
+// values outside the enum. Previously the flag docstring advertised "off, on"
+// but the real enum is "off, gps, beacon".
+func TestCollectionsItemsUpdateCmdInvalidGeofence(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request %s %s; should have errored client-side", r.Method, r.URL.Path)
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "collections", "items", "update", "42", "99", "--geofence=on"})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for invalid geofence mode, got nil")
+	}
+	if !contains(err.Error(), "invalid geofence mode") {
+		t.Errorf("expected error to mention \"invalid geofence mode\", got %q", err.Error())
+	}
+}
+
 // TestCollectionsItemsUpdateCmdMapPinColourHex asserts that a valid CSS hex
 // colour reaches the PATCH body unchanged, so Kyle's "change pin colour for
 // the whole tour" works as a shell loop over items update.

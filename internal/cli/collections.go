@@ -42,6 +42,10 @@ var validTourTypes = []string{
 	"horse_trail", "museum", "nature_trail", "scavenger_hunt", "ship", "train",
 }
 
+// validGeofenceModes mirrors the CollectionItemPartial.geofence enum in
+// docs/public_api.json.
+var validGeofenceModes = []string{"off", "gps", "beacon"}
+
 func validateCollectionType(t string) error {
 	for _, v := range validCollectionTypes {
 		if t == v {
@@ -61,6 +65,32 @@ func validateTourType(t string) error {
 		}
 	}
 	return fmt.Errorf("invalid tour type %q (valid: %s)", t, strings.Join(validTourTypes, ", "))
+}
+
+func validateGeofenceMode(m string) error {
+	if m == "" {
+		return nil
+	}
+	for _, v := range validGeofenceModes {
+		if m == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid geofence mode %q (valid: %s)", m, strings.Join(validGeofenceModes, ", "))
+}
+
+// mergeGPSSettings returns a new gps_settings map built from `existing` (may be
+// nil) with `updates` applied on top. Used so passing --radius doesn't clobber
+// the caller's existing geofence_lat / geofence_lng.
+func mergeGPSSettings(existing map[string]interface{}, updates map[string]interface{}) map[string]interface{} {
+	merged := map[string]interface{}{}
+	for k, v := range existing {
+		merged[k] = v
+	}
+	for k, v := range updates {
+		merged[k] = v
+	}
+	return merged
 }
 
 func newCollectionsCmd() *cobra.Command {
@@ -470,6 +500,9 @@ func newCollectionsItemsUpdateCmd() *cobra.Command {
 	var itemNumber string
 	var lat, lng float64
 	var mapPinIcon, mapPinStyle, mapPinColour, geofence string
+	var radius int
+	var geofenceLat, geofenceLng float64
+	var geofenceContent bool
 
 	cmd := &cobra.Command{
 		Use:   "update <collection-id> <item-id>",
@@ -479,6 +512,9 @@ func newCollectionsItemsUpdateCmd() *cobra.Command {
 
   # Set GPS coordinates for a tour stop on the map
   stqry collections items update 42 99 --lat 42.9018 --lng -78.8728
+
+  # Enable a 50m GPS geofence on a single stop
+  stqry collections items update 42 99 --geofence gps --radius 50
 
   # Set a custom item number (e.g. "1A") shown in some UIs
   stqry collections items update 42 99 --item-number "1A"
@@ -490,10 +526,14 @@ func newCollectionsItemsUpdateCmd() *cobra.Command {
   stqry collections items update 42 99 --map-pin-colour default`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateGeofenceMode(geofence); err != nil {
+				return err
+			}
 			if err := validateMapPinColour(mapPinColour); err != nil {
 				return err
 			}
 			fields := map[string]interface{}{}
+			gpsUpdates := map[string]interface{}{}
 			cmd.Flags().Visit(func(f *flag.Flag) {
 				switch f.Name {
 				case "position":
@@ -512,8 +552,28 @@ func newCollectionsItemsUpdateCmd() *cobra.Command {
 					fields["map_pin_colour"] = mapPinColour
 				case "geofence":
 					fields["geofence"] = geofence
+				case "radius":
+					gpsUpdates["radius"] = radius
+				case "geofence-lat":
+					gpsUpdates["geofence_lat"] = geofenceLat
+				case "geofence-lng":
+					gpsUpdates["geofence_lng"] = geofenceLng
+				case "geofence-content":
+					gpsUpdates["geofence_content"] = geofenceContent
 				}
 			})
+			// Nested gps_settings merge: fetch the current item so existing fields
+			// (e.g. the caller's geofence_lat) aren't clobbered when only --radius
+			// is passed. Only one extra GET per invocation.
+			if len(gpsUpdates) > 0 {
+				current, err := api.GetCollectionItem(activeClient, args[0], args[1])
+				if err != nil {
+					printer.PrintError(err)
+					return err
+				}
+				existing, _ := current["gps_settings"].(map[string]interface{})
+				fields["gps_settings"] = mergeGPSSettings(existing, gpsUpdates)
+			}
 			if len(fields) == 0 {
 				return fmt.Errorf("no fields to update; pass at least one flag (e.g. --position)")
 			}
@@ -533,7 +593,11 @@ func newCollectionsItemsUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&mapPinIcon, "map-pin-icon", "", "Map pin icon name. \"default\" resets to the tour default.")
 	cmd.Flags().StringVar(&mapPinStyle, "map-pin-style", "", "Map pin style name. \"default\" resets to the tour default.")
 	cmd.Flags().StringVar(&mapPinColour, "map-pin-colour", "", "Map pin colour as a CSS hex code (with or without leading #, e.g. \"#FF6600\" or \"FF6600\"), or \"default\" to reset. Validated client-side.")
-	cmd.Flags().StringVar(&geofence, "geofence", "", "Geofence mode (e.g. off, on)")
+	cmd.Flags().StringVar(&geofence, "geofence", "", fmt.Sprintf("Geofence mode (one of: %s). Without also setting --radius and ensuring lat/lng exist, switching mode alone does nothing.", strings.Join(validGeofenceModes, ", ")))
+	cmd.Flags().IntVar(&radius, "radius", 0, "Geofence radius in meters (writes gps_settings.radius)")
+	cmd.Flags().Float64Var(&geofenceLat, "geofence-lat", 0, "Geofence centre latitude (gps_settings.geofence_lat); falls back to --lat if null")
+	cmd.Flags().Float64Var(&geofenceLng, "geofence-lng", 0, "Geofence centre longitude (gps_settings.geofence_lng); falls back to --lng if null")
+	cmd.Flags().BoolVar(&geofenceContent, "geofence-content", false, "Whether entering the geofence triggers content (gps_settings.geofence_content)")
 	cmd.ValidArgsFunction = completeCollectionIDs
 
 	return cmd
