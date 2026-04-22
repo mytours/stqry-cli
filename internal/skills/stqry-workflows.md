@@ -324,10 +324,11 @@ This is the default recipe when a user asks for an audio / self-guided / walking
 - **Section titles.** Only `text` sections get a `--title`. Leave image and audio section titles blank:
   - **Image sections:** don't put captions or credits in the section title. Image `MediaItem`s already have `caption`, `attribution`, and `description` fields — attach credits there via `stqry media create --caption --attribution` (or `stqry media update`), not on the section wrapper. A section title on an image just adds a redundant visual block above the photo.
   - **Audio sections:** don't put filler labels in the section title. But the audio `MediaItem` itself **must** carry a `--title` — that's the label the player surface uses (Builder's media library, the player row at the stop). Set it at create time (`stqry media create --type audio --title "..."`) or via `stqry media update --title "..."`. Leaving an audio item title-less means it shows up as a nameless row in the media library and a blank label in the player.
+- **Audio thumbnail.** Set `--thumbnail-media-item-id` on each audio `MediaItem` to the stop's image MediaItem, so the audio row in the player renders with a poster instead of a blank tile. Create the image MediaItem first, capture its id, then pass it to `stqry media create --type audio --thumbnail-media-item-id <image-id>` (or set it after the fact with `stqry media update --thumbnail-media-item-id <image-id>`).
 - **Tour type** — set `--tour-type` on the collection so client apps can show the right icon and copy. For a self-guided audio walk it's `walking`. Other common values: `cycling`, `driving`, `bus`, `museum`, `nature_trail`, `historic_house`. The full enum is in `stqry collections create --help`.
 - **Collection cover image** — reuse the most iconic stop image. Set `--cover-image-media-item-id`, `--cover-image-grid-media-item-id`, and `--cover-image-wide-media-item-id` on `stqry collections update` so every UI surface has a cover.
 - **Screen cover images** — every stop's screen also gets the same three cover fields set, pointing at that stop's own image (the one attached as the first section). Without this, stops show up as blank rows in list / grid / wide layouts of the tour. Set via `stqry screens update <screen-id> --cover-image-media-item-id <image-media-id> --cover-image-grid-media-item-id <id> --cover-image-wide-media-item-id <id>` after the image MediaItem is created. Reusing the same image for all three surfaces is fine; pick a different image only if the stop's list-tile image should differ from the in-screen hero image.
-- **Build order per stop** — collect audio, image, and text from the user → upload media → create screen → set screen cover images (reuse the stop image) → add image / audio / text sections → reorder → link screen to collection → append IDs to `stqry_ids.json`.
+- **Build order per stop** — collect audio, image, and text from the user → upload the image MediaItem → upload the audio MediaItem (passing the image's id as `--thumbnail-media-item-id`) → create screen → set screen cover images (reuse the stop image) → add image / audio / text sections → reorder → link screen to collection → append IDs to `stqry_ids.json`.
 - **Verification** — after building, run `stqry collections items list <id>` to confirm all stops are linked and `stqry screens sections list <screen-id>` for each screen.
 
 ### Questions to ask the user
@@ -344,12 +345,17 @@ Ask about the things only the user can decide:
 ### Commands
 
 ```bash
-# Always pass --title on audio so the player surface has a label.
+# Create the image MediaItem first so its id is available as the audio thumbnail.
 # Always pass --caption / --attribution on images so credits live on the MediaItem.
-AUDIO_ID=$(stqry media create --type audio --file audio/stop_1.mp3 \
-  --name "Stop 1 audio" --title "$STOP_TITLE" --lang en --jq '.id')
 IMAGE_ID=$(stqry media create --type image --file images/stop_1.jpg \
   --name "Stop 1 image" --caption "$IMG_CAPTION" --attribution "$IMG_CREDIT" --lang en --jq '.id')
+
+# Always pass --title on audio so the player surface has a label, and
+# --thumbnail-media-item-id so the audio row in the player shows the stop's
+# image instead of a blank tile.
+AUDIO_ID=$(stqry media create --type audio --file audio/stop_1.mp3 \
+  --name "Stop 1 audio" --title "$STOP_TITLE" \
+  --thumbnail-media-item-id $IMAGE_ID --lang en --jq '.id')
 
 # Create the screen. Use --name with the full human-readable label (no slugification).
 SCREEN_ID=$(stqry screens create --name "Stop 1 - The Opening" --type story --jq '.id')

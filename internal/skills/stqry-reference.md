@@ -256,6 +256,7 @@ Flags for `stqry media create` and `stqry media update`:
 | `--description` | **Image** long description (TranslatedString) |
 | `--title` | **Audio** display title (TranslatedString) |
 | `--transcription` | **Audio** transcription for accessibility (TranslatedString) |
+| `--thumbnail-media-item-id` | **Audio / video** poster image — ID of an image MediaItem to render behind the audio / video in the player (pass `0` on update to clear) |
 | `--lang` | Language code (global flag) — used as the locale key for all TranslatedString fields above |
 
 **Put credits on the MediaItem, not on the section.** When attaching a CC/public-domain image to a tour stop, set `--caption` and `--attribution` on `stqry media create` / `update`. Do not put the credit in the enclosing section's `--title` — that wraps a redundant label around the image. Similarly, an audio section does not need a "Narration · 2 min" title; use `--title` on the audio MediaItem itself if a display title is needed.

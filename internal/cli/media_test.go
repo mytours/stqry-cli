@@ -303,7 +303,7 @@ func TestMediaCreateCmdOmitsMetadataWhenNotPassed(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
-	for _, field := range []string{"caption", "attribution", "description", "title", "transcription"} {
+	for _, field := range []string{"caption", "attribution", "description", "title", "transcription", "thumbnail_media_item_id"} {
 		if _, present := captured[field]; present {
 			t.Errorf("expected no %s field when flag omitted, got %v", field, captured[field])
 		}
@@ -349,6 +349,105 @@ func TestMediaUpdateCmdAudioMetadata(t *testing.T) {
 	trans, ok := captured["transcription"].(map[string]interface{})
 	if !ok || trans["en"] != "Welcome to the tour..." {
 		t.Errorf("expected transcription.en, got %v", captured["transcription"])
+	}
+}
+
+// TestMediaCreateCmdThumbnailMediaItemID asserts that --thumbnail-media-item-id
+// is sent as a flat integer (not a TranslatedString) on create. This is the
+// field the player uses to show a poster image behind an audio or video item.
+func TestMediaCreateCmdThumbnailMediaItemID(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || r.URL.Path != "/api/public/media_items" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"media_item": map[string]interface{}{"id": 42, "type": "audio"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "media", "create", "--type=audio", "--thumbnail-media-item-id=99"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	got, ok := captured["thumbnail_media_item_id"].(float64)
+	if !ok || int(got) != 99 {
+		t.Errorf("expected thumbnail_media_item_id=99, got %v (type %T)", captured["thumbnail_media_item_id"], captured["thumbnail_media_item_id"])
+	}
+}
+
+// TestMediaUpdateCmdThumbnailMediaItemID asserts that --thumbnail-media-item-id
+// reaches the PATCH body as a flat integer. Previously there was no flag for
+// this field, forcing callers to drop out to curl.
+func TestMediaUpdateCmdThumbnailMediaItemID(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" || r.URL.Path != "/api/public/media_items/72" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"media_item": map[string]interface{}{"id": 72, "type": "audio"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "media", "update", "72", "--thumbnail-media-item-id=99"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	got, ok := captured["thumbnail_media_item_id"].(float64)
+	if !ok || int(got) != 99 {
+		t.Errorf("expected thumbnail_media_item_id=99, got %v", captured["thumbnail_media_item_id"])
+	}
+}
+
+// TestMediaUpdateCmdThumbnailClear asserts that `--thumbnail-media-item-id=0`
+// reaches the PATCH body so callers can explicitly clear the thumbnail
+// (the Visit() pattern: flag was passed, send the zero value).
+func TestMediaUpdateCmdThumbnailClear(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"media_item": map[string]interface{}{"id": 72},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "media", "update", "72", "--thumbnail-media-item-id=0"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	got, ok := captured["thumbnail_media_item_id"]
+	if !ok {
+		t.Fatalf("expected thumbnail_media_item_id in body, got %v", captured)
+	}
+	if g, _ := got.(float64); int(g) != 0 {
+		t.Errorf("expected thumbnail_media_item_id=0 (clear), got %v", got)
 	}
 }
 
