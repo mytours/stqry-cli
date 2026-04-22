@@ -134,6 +134,22 @@ stqry screens get 12345 --jq '.name'
 
 **Do NOT** pipe `--quiet` output into `python -c` or external `jq` — the built-in `--jq` flag is simpler and avoids extra dependencies.
 
+### Map pin colour for a whole tour
+
+Each tour stop's map pin colour lives on the collection item: `map_pin_colour` (CSS hex) alongside `map_pin_icon` and `map_pin_style`. Set via `--map-pin-colour` on `collections items update`. Validated client-side — the server requires a CSS hex (with or without leading `#`); free-text names like `red` return HTTP 422.
+
+```bash
+# Paint every stop in a tour with a brand colour.
+for id in $(stqry collections items list 42 --jq '.[].id'); do
+  stqry collections items update 42 "$id" --map-pin-colour "#FF6600"
+done
+
+# Reset every stop back to the tour default pin colour.
+for id in $(stqry collections items list 42 --jq '.[].id'); do
+  stqry collections items update 42 "$id" --map-pin-colour default
+done
+```
+
 ### Language Support
 
 - When `--lang` is omitted the API returns the site's default language.
@@ -172,8 +188,10 @@ stqry collections update <id>            Update a collection
 stqry collections delete <id>            Delete a collection
 
 stqry collections items list <collection-id>                    List items in a collection
+stqry collections items get <collection-id> <item-id>           Get a single collection item
 stqry collections items add <collection-id> --item-type <type> --item-id <id> [--position <n>]  Add a screen or collection to a collection
-stqry collections items reorder <collection-id> <item-id>...    Reorder items in a collection
+stqry collections items update <collection-id> <item-id> [--position <n>] [--lat <l>] [--lng <l>] [--item-number <s>]  Update a single collection item (position, GPS, etc.)
+stqry collections items reorder <collection-id> <item-id>...    Reorder items in a collection (1-based positions applied to the whole list)
 stqry collections items remove <collection-id> <item-id>        Remove an item from a collection
 ```
 

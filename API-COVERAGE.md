@@ -1,6 +1,6 @@
 # API Coverage
 
-> 56 of 66 API operations covered (85%) — source: `docs/public_api.json`
+> 58 of 66 API operations covered (88%) — source: `docs/public_api.json`
 >
 > PATCH and PUT are collapsed into a single "update" operation throughout.
 > ✅ = direct CLI command · ⚠️ = used internally · ❌ = not implemented
@@ -32,8 +32,8 @@
 | GET    | `/api/public/collections/{id}/collection_items` | `stqry collections items list <id>` | ✅ |
 | POST   | `/api/public/collections/{id}/collection_items` | `stqry collections items add <id>` | ✅ |
 | POST   | `/api/public/collections/{id}/collection_items/update_positions` | `stqry collections items reorder <id>` | ✅ |
-| GET    | `/api/public/collections/{id}/collection_items/{item_id}` | — | ❌ |
-| PATCH  | `/api/public/collections/{id}/collection_items/{item_id}` | — | ❌ |
+| GET    | `/api/public/collections/{id}/collection_items/{item_id}` | `stqry collections items get <id> <item_id>` | ✅ |
+| PATCH  | `/api/public/collections/{id}/collection_items/{item_id}` | `stqry collections items update <id> <item_id>` | ✅ |
 | DELETE | `/api/public/collections/{id}/collection_items/{item_id}` | `stqry collections items remove <id> <item_id>` | ✅ |
 
 ## Media Items
@@ -151,8 +151,6 @@ Sub-item commands take `--screen-id` and `--section-id` flags for list/add; upda
 
 Unimplemented endpoints, in priority order:
 
-- **`stqry collections items get <collection-id> <item-id>`** — GET `/collection_items/{id}`
-- **`stqry collections items update <collection-id> <item-id>`** — PATCH `/collection_items/{id}`
 - **`stqry files list`** — GET `/uploaded_files`
 - **`stqry files get <id>`** — GET `/uploaded_files/{id}`
 - **`stqry files update <id>`** — PATCH `/uploaded_files/{id}`

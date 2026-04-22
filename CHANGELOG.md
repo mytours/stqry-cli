@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Client-side validation on `--map-pin-colour` (on `stqry collections items update`). The flag has existed since the first `items update` commit but shipped with the unhelpful docstring "Map pin colour (e.g. default)" and no validation. The API rejects named colours with HTTP 422 "must be a valid CSS hex color code"; accepts 3- or 6-digit CSS hex (with or without leading `#`) and the literal `"default"` as a reset sentinel. The flag now validates against that set up front so typos fail fast with a useful message instead of a cryptic 422 from the server. Addresses Kyle's "change pin color for the whole tour" via the usual shell-loop composition — added a "Map pin colour for a whole tour" section to stqry-reference with the retrofit loop. Similar minor docstring cleanups on `--map-pin-icon` and `--map-pin-style` (their accepted value sets aren't documented anywhere I could find, so no client-side validation — left as freeform strings with "default" noted as reset).
+- `stqry collections items get <collection-id> <item-id>` and `stqry collections items update <collection-id> <item-id>` for the two endpoints previously listed under "Future Work". `items update` covers the case where you want to move a single item without touching anything else — `items reorder` is whole-list, so fixing up one row forced callers to either resend every id or drop out to curl. Update flags: `--position` (1-based), `--item-number`, `--lat` / `--lng`, `--map-pin-icon` / `--map-pin-style` / `--map-pin-colour`, `--geofence`. Uses the Visit() pattern so only the flags you pass make it into the PATCH body. Bumps coverage to 58/66 (88%).
+
 ### Fixed
 
 - `stqry collections items reorder` and `stqry screens sections reorder` were sending 0-based positions (`0, 1, 2, …`) to the `update_positions` endpoints. The API treats `position: 0` as unset and clamps it to 1, which left the first two items sharing position 1. The list endpoint then sorted the tie by id, so the output order depended on creation order rather than the reorder arguments — a silent bug when the desired order happened to match insertion order, visible when it didn't. Positions are now sent 1-based (`1, 2, 3, …`) so every item gets a distinct stored position.
