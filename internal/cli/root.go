@@ -123,6 +123,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(newCollectionsCmd())
 	rootCmd.AddCommand(newScreensCmd())
 	rootCmd.AddCommand(newMediaCmd())
+	rootCmd.AddCommand(newUploadedFilesCmd())
 	rootCmd.AddCommand(newProjectsCmd())
 	rootCmd.AddCommand(newCodesCmd())
 	rootCmd.AddCommand(newSetupCmd())

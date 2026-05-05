@@ -141,9 +141,9 @@ Sub-item commands take `--screen-id` and `--section-id` flags for list/add; upda
 | POST   | `/api/public/uploaded_files/presigned` | — | ⚠️ internal — `stqry media upload` |
 | POST   | `/api/public/uploaded_files/process_enqueue` | — | ⚠️ internal — `stqry media upload` |
 | GET    | `/api/public/uploaded_files/process_status/{job_id}` | — | ⚠️ internal — `stqry media upload` |
-| GET    | `/api/public/uploaded_files` | — | ❌ |
+| GET    | `/api/public/uploaded_files` | `stqry uploaded-files list` | ✅ |
 | POST   | `/api/public/uploaded_files` | — | ❌ |
-| GET    | `/api/public/uploaded_files/{id}` | — | ❌ |
+| GET    | `/api/public/uploaded_files/{id}` | `stqry uploaded-files get <id>` | ✅ |
 | PATCH  | `/api/public/uploaded_files/{id}` | — | ❌ |
 | DELETE | `/api/public/uploaded_files/{id}` | — | ❌ |
 
@@ -151,11 +151,9 @@ Sub-item commands take `--screen-id` and `--section-id` flags for list/add; upda
 
 Unimplemented endpoints, in priority order:
 
-- **`stqry files list`** — GET `/uploaded_files`
-- **`stqry files get <id>`** — GET `/uploaded_files/{id}`
-- **`stqry files update <id>`** — PATCH `/uploaded_files/{id}`
-- **`stqry files delete <id>`** — DELETE `/uploaded_files/{id}`
-- **`stqry files create`** — POST `/uploaded_files` (record only; uploading content uses `stqry media upload`)
+- **`stqry uploaded-files update <id>`** — PATCH `/uploaded_files/{id}`
+- **`stqry uploaded-files delete <id>`** — DELETE `/uploaded_files/{id}`
+- **`stqry uploaded-files create`** — POST `/uploaded_files` (record only; uploading content uses `stqry media upload`)
 
 ## Keeping This Up To Date
 
