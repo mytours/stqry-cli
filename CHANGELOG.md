@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.10] - 2026-05-05
+
 ### Added
 
 - `--compress` flag on `stqry media create` and `stqry media update`. Maps to the public-API `compress_media` boolean — the same toggle Builder labels "Prefer uncropped image" (the legacy in-Builder field name is `dontTransform`; `compress_media` is its inverse and the canonical name on `MediaItemPartial`). Pass `--compress=false` to keep the uploaded original uncompressed/uncropped. Uses the Visit() pattern so the field is only sent when the flag is explicitly passed.
