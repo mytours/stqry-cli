@@ -303,7 +303,7 @@ func TestMediaCreateCmdOmitsMetadataWhenNotPassed(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
-	for _, field := range []string{"caption", "attribution", "description", "title", "transcription", "thumbnail_media_item_id"} {
+	for _, field := range []string{"caption", "attribution", "description", "title", "transcription", "thumbnail_media_item_id", "compress_media"} {
 		if _, present := captured[field]; present {
 			t.Errorf("expected no %s field when flag omitted, got %v", field, captured[field])
 		}
@@ -448,6 +448,68 @@ func TestMediaUpdateCmdThumbnailClear(t *testing.T) {
 	}
 	if g, _ := got.(float64); int(g) != 0 {
 		t.Errorf("expected thumbnail_media_item_id=0 (clear), got %v", got)
+	}
+}
+
+// TestMediaCreateCmdCompress asserts that --compress=false sends
+// compress_media:false on the wire — the public-API field that maps to the
+// builder's "Prefer uncropped image" / dontTransform toggle.
+func TestMediaCreateCmdCompress(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(201)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"media_item": map[string]interface{}{"id": 42, "type": "image"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "media", "create", "--type=image", "--compress=false"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	got, ok := captured["compress_media"].(bool)
+	if !ok || got != false {
+		t.Errorf("expected compress_media=false, got %v (type %T)", captured["compress_media"], captured["compress_media"])
+	}
+}
+
+// TestMediaUpdateCmdCompress asserts that --compress=false on update reaches
+// the PATCH body as compress_media:false.
+func TestMediaUpdateCmdCompress(t *testing.T) {
+	var captured map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" || r.URL.Path != "/api/public/media_items/55" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decoding body: %v", err)
+		}
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"media_item": map[string]interface{}{"id": 55, "type": "image"},
+		})
+	}))
+	defer server.Close()
+
+	setupTestHome(t, server.URL)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--site=testsite", "media", "update", "55", "--compress=false"})
+	cmd.SetErr(os.Stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	got, ok := captured["compress_media"].(bool)
+	if !ok || got != false {
+		t.Errorf("expected compress_media=false, got %v (type %T)", captured["compress_media"], captured["compress_media"])
 	}
 }
 

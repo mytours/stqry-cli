@@ -311,6 +311,7 @@ Flags for `stqry media create` and `stqry media update`:
 | `--title` | **Audio** display title (TranslatedString) |
 | `--transcription` | **Audio** transcription for accessibility (TranslatedString) |
 | `--thumbnail-media-item-id` | **Audio / video** poster image — ID of an image MediaItem to render behind the audio / video in the player (pass `0` on update to clear) |
+| `--compress` | Whether to compress / transform the uploaded media (default `true`). Pass `--compress=false` to keep the original — Builder labels this "Prefer uncropped image" / "don't transform" (legacy field name `dontTransform`; `compress_media` is the inverse and the canonical public-API name) |
 | `--lang` | Language code (global flag) — used as the locale key for all TranslatedString fields above |
 
 **Put credits on the MediaItem, not on the section.** When attaching a CC/public-domain image to a tour stop, set `--caption` and `--attribution` on `stqry media create` / `update`. Do not put the credit in the enclosing section's `--title` — that wraps a redundant label around the image. Similarly, an audio section does not need a "Narration · 2 min" title; use `--title` on the audio MediaItem itself if a display title is needed.

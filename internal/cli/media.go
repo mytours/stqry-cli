@@ -129,11 +129,12 @@ func newMediaGetCmd() *cobra.Command {
 	return cmd
 }
 
-// media create --file=<path> --type=X [--name=X] [--lang=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X] [--thumbnail-media-item-id=X]
+// media create --file=<path> --type=X [--name=X] [--lang=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X] [--thumbnail-media-item-id=X] [--compress=BOOL]
 func newMediaCreateCmd() *cobra.Command {
 	var filePath, mediaType, name string
 	var caption, attribution, description, title, transcription string
 	var thumbnailMediaItemID int
+	var compress bool
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -154,7 +155,10 @@ func newMediaCreateCmd() *cobra.Command {
 
   # Create an audio item with an image thumbnail (poster) — the referenced
   # image media item shows up wherever the audio is rendered
-  stqry media create --type audio --file ./stop_1.mp3 --title "Stop 1" --thumbnail-media-item-id 99`,
+  stqry media create --type audio --file ./stop_1.mp3 --title "Stop 1" --thumbnail-media-item-id 99
+
+  # Create an image and prefer the uncropped original (skip transform/compression)
+  stqry media create --type image --file ./photo.jpg --compress=false`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateMediaType(mediaType); err != nil {
 				return err
@@ -187,6 +191,9 @@ func newMediaCreateCmd() *cobra.Command {
 			}
 			if cmd.Flags().Changed("thumbnail-media-item-id") {
 				fields["thumbnail_media_item_id"] = thumbnailMediaItemID
+			}
+			if cmd.Flags().Changed("compress") {
+				fields["compress_media"] = compress
 			}
 
 			// If a file is provided, upload it first.
@@ -249,15 +256,17 @@ func newMediaCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&title, "title", "", "Display title (audio media items)")
 	cmd.Flags().StringVar(&transcription, "transcription", "", "Transcription (audio media items — accessibility)")
 	cmd.Flags().IntVar(&thumbnailMediaItemID, "thumbnail-media-item-id", 0, "Image media item ID to use as the thumbnail / poster (audio / video media items)")
+	cmd.Flags().BoolVar(&compress, "compress", true, "Whether to compress / transform the uploaded media. Pass --compress=false to prefer the uncropped original (\"don't transform\" / \"prefer uncropped image\")")
 	cmd.MarkFlagRequired("type")
 
 	return cmd
 }
 
-// media update <id> [--name=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X] [--thumbnail-media-item-id=X]
+// media update <id> [--name=X] [--caption=X] [--attribution=X] [--description=X] [--title=X] [--transcription=X] [--thumbnail-media-item-id=X] [--compress=BOOL]
 func newMediaUpdateCmd() *cobra.Command {
 	var name, caption, attribution, description, title, transcription string
 	var thumbnailMediaItemID int
+	var compress bool
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -273,6 +282,9 @@ func newMediaUpdateCmd() *cobra.Command {
 
   # Attach an image as the thumbnail / poster for an audio item
   stqry media update 72 --thumbnail-media-item-id 99
+
+  # Prefer the uncropped original — skip transform/compression
+  stqry media update 55 --compress=false
 
   # Clear a field (pass empty string)
   stqry media update 55 --attribution ""`,
@@ -299,6 +311,8 @@ func newMediaUpdateCmd() *cobra.Command {
 					fields["transcription"] = map[string]interface{}{lang: transcription}
 				case "thumbnail-media-item-id":
 					fields["thumbnail_media_item_id"] = thumbnailMediaItemID
+				case "compress":
+					fields["compress_media"] = compress
 				}
 			})
 
@@ -318,6 +332,7 @@ func newMediaUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&title, "title", "", "Display title (audio media items)")
 	cmd.Flags().StringVar(&transcription, "transcription", "", "Transcription (audio media items — accessibility)")
 	cmd.Flags().IntVar(&thumbnailMediaItemID, "thumbnail-media-item-id", 0, "Image media item ID to use as the thumbnail / poster (audio / video media items; pass 0 to clear)")
+	cmd.Flags().BoolVar(&compress, "compress", true, "Whether to compress / transform the media. Pass --compress=false to prefer the uncropped original (\"don't transform\" / \"prefer uncropped image\")")
 	cmd.ValidArgsFunction = completeMediaIDs
 
 	return cmd
