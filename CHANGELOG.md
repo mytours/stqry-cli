@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `stqry uploaded-files list` (alias `files`) and `stqry uploaded-files get <id>`. Surfaces the underlying binary metadata that media items reference: filename, byte size, content type, hash, dimensions (images), duration (audio/video), focal point, status. Every `media_items` response lists `file_uploaded_file_id` per language but stops short of naming what's actually behind those IDs, so anyone auditing an account or building an export manifest had to drop out to curl on `/api/public/uploaded_files`. Now `stqry uploaded-files list --per-page 500 --jq '[.[].file_size] | add'` gives you total bytes consumed across one page in one line. There is no public download URL on these records — binaries live in private S3 and the player fetches them via signed URLs minted server-side; the `stqry-reference` skill calls that out so users don't waste time hunting for a download endpoint that doesn't exist.
+
 ### Changed
 
 - Human-formatted `list` output now appends a "Showing N of M (page X of Y) — pass --page / --per-page to see more" footer when the meta envelope reports a higher total than the visible rows. Was silently truncating to the API default of 30 rows with no signal that more existed (a 1017-row media library looked like a 30-row library; counts looked suspiciously identical at 30, 30, 30 across resources). Footer is suppressed when the visible rows already cover the total, and is human-mode only — JSON / quiet / jq output already carry pagination meta in their envelope.

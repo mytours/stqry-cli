@@ -336,6 +336,19 @@ stqry projects get <id>                  Get a single project
 
 ---
 
+### `stqry uploaded-files` (alias: `files`)
+
+Inspect uploaded file metadata — the binaries that media items reference. Each media item points at one or more uploaded_file records via `file_uploaded_file_id` / `thumbnail_uploaded_file_id` (per language). Useful for auditing what's in an account, finding orphaned files, or building a manifest before bulk operations.
+
+```
+stqry uploaded-files list                List uploaded files
+stqry uploaded-files get <id>            Get a single uploaded file's metadata
+```
+
+The response includes `filename`, `content_type`, `file_size`, `file_hash`, `width`/`height` (images), `duration` (audio/video), `status`, and `focal_point`. There is no public download URL — binaries live in a private S3 bucket and are served by the player via short-lived signed URLs.
+
+---
+
 ### `stqry codes`
 
 Manage redemption codes.
