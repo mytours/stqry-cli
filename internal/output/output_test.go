@@ -71,7 +71,7 @@ func TestHumanFormatterList(t *testing.T) {
 		{"id": 1, "name": "Tour A"},
 		{"id": 2, "name": "Tour B"},
 	}
-	err := f.WriteTable([]string{"id", "name"}, items)
+	err := f.WriteTable([]string{"id", "name"}, items, nil)
 	if err != nil {
 		t.Fatalf("WriteTable: %v", err)
 	}
@@ -79,6 +79,50 @@ func TestHumanFormatterList(t *testing.T) {
 	out := buf.String()
 	if len(out) == 0 {
 		t.Error("expected output")
+	}
+}
+
+// When the API returns a page that doesn't cover the total, the human-formatted
+// table should append a footer telling the user there's more to fetch — silent
+// truncation at the default per-page is the worst pagination footgun.
+func TestHumanFormatterList_PaginationFooter(t *testing.T) {
+	var buf bytes.Buffer
+	f := &HumanFormatter{Writer: &buf}
+
+	items := []map[string]interface{}{
+		{"id": 1, "name": "Tour A"},
+		{"id": 2, "name": "Tour B"},
+	}
+	meta := &Meta{Page: 1, PerPage: 30, Total: 1017}
+	if err := f.WriteTable([]string{"id", "name"}, items, meta); err != nil {
+		t.Fatalf("WriteTable: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "Showing 2 of 1017") {
+		t.Errorf("expected pagination footer, got:\n%s", out)
+	}
+	if !strings.Contains(out, "--per-page") {
+		t.Errorf("expected --per-page hint in footer, got:\n%s", out)
+	}
+}
+
+// When the page already covers the entire result set, no footer.
+func TestHumanFormatterList_NoFooterWhenComplete(t *testing.T) {
+	var buf bytes.Buffer
+	f := &HumanFormatter{Writer: &buf}
+
+	items := []map[string]interface{}{
+		{"id": 1, "name": "Tour A"},
+		{"id": 2, "name": "Tour B"},
+	}
+	meta := &Meta{Page: 1, PerPage: 30, Total: 2}
+	if err := f.WriteTable([]string{"id", "name"}, items, meta); err != nil {
+		t.Fatalf("WriteTable: %v", err)
+	}
+
+	if strings.Contains(buf.String(), "Showing") {
+		t.Errorf("did not expect pagination footer when total fits, got:\n%s", buf.String())
 	}
 }
 

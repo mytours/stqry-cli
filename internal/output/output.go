@@ -47,7 +47,7 @@ type HumanFormatter struct {
 	Writer io.Writer
 }
 
-func (f *HumanFormatter) WriteTable(columns []string, rows []map[string]interface{}) error {
+func (f *HumanFormatter) WriteTable(columns []string, rows []map[string]interface{}, meta *Meta) error {
 	w := tabwriter.NewWriter(f.Writer, 0, 0, 2, ' ', 0)
 	headers := make([]string, len(columns))
 	for i, c := range columns {
@@ -63,7 +63,35 @@ func (f *HumanFormatter) WriteTable(columns []string, rows []map[string]interfac
 		}
 		fmt.Fprintln(w, strings.Join(vals, "\t"))
 	}
-	return w.Flush()
+	if err := w.Flush(); err != nil {
+		return err
+	}
+
+	if footer := paginationFooter(meta, len(rows)); footer != "" {
+		fmt.Fprintln(f.Writer)
+		fmt.Fprintln(f.Writer, footer)
+	}
+	return nil
+}
+
+// paginationFooter returns a one-line summary like
+// "Showing 30 of 1017 (page 1 of 34) — pass --page / --per-page to see more"
+// when the response is paginated and more rows exist on the server.
+// Returns "" when meta is nil or the visible rows already cover the total.
+func paginationFooter(meta *Meta, visibleRows int) string {
+	if meta == nil {
+		return ""
+	}
+	if meta.Total == 0 || meta.Total <= visibleRows {
+		return ""
+	}
+	if meta.Page > 0 && meta.PerPage > 0 {
+		pages := (meta.Total + meta.PerPage - 1) / meta.PerPage
+		return fmt.Sprintf("Showing %d of %d (page %d of %d) — pass --page / --per-page to see more",
+			visibleRows, meta.Total, meta.Page, pages)
+	}
+	return fmt.Sprintf("Showing %d of %d — pass --page / --per-page to see more",
+		visibleRows, meta.Total)
 }
 
 func (f *HumanFormatter) WriteKeyValue(data map[string]interface{}) error {
@@ -290,7 +318,7 @@ func (p *Printer) PrintList(columns []string, rows []map[string]interface{}, met
 		return f.Write(rows, meta)
 	}
 	f := &HumanFormatter{Writer: os.Stdout}
-	return f.WriteTable(columns, rows)
+	return f.WriteTable(columns, rows, meta)
 }
 
 func (p *Printer) PrintError(err error) {
