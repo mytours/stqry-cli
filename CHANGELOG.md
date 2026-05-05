@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Human-formatted `list` output now appends a "Showing N of M (page X of Y) — pass --page / --per-page to see more" footer when the meta envelope reports a higher total than the visible rows. Was silently truncating to the API default of 30 rows with no signal that more existed (a 1017-row media library looked like a 30-row library; counts looked suspiciously identical at 30, 30, 30 across resources). Footer is suppressed when the visible rows already cover the total, and is human-mode only — JSON / quiet / jq output already carry pagination meta in their envelope.
+
 ## [0.10.10] - 2026-05-05
 
 ### Added
